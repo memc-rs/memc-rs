@@ -757,6 +757,8 @@ dependencies = [
  "byteorder",
  "bytes",
  "clap",
+ "num-derive",
+ "num-traits",
  "serde",
  "serde_derive",
  "tokio",
@@ -842,6 +844,17 @@ dependencies = [
  "cfg-if",
  "libc",
  "winapi 0.3.8",
+]
+
+[[package]]
+name = "num-derive"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c8b15b261814f992e33760b1fca9fe8b693d8a65299f20c9901688636cfb746"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

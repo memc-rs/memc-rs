@@ -33,13 +33,38 @@ pub enum BinaryResponse {
     Replace(binary::ReplaceResponse),
 }
 
-pub struct MemcacheBinaryCodec {
-    header: binary::RequestHeader
+#[derive(PartialEq, Debug)]
+enum RequestParserState {
+    None,
+    HeaderParsed,
+    RequestParsed,
 }
 
-impl MemcacheBinaryCodec {
-    pub fn header_from_slice(&mut self, src: &mut BytesMut) {
-        assert!(src.len() >= 24);
+pub struct RequestMemcacheBinaryCodec {
+    header: binary::RequestHeader,
+    state: RequestParserState,
+}
+
+impl RequestMemcacheBinaryCodec {
+    pub fn new() -> RequestMemcacheBinaryCodec {
+        RequestMemcacheBinaryCodec {
+            header: binary::RequestHeader {
+                magic: 0,
+                opcode: 0,
+                key_length: 0,
+                extras_length: 0,
+                data_type: 0,
+                reserved: 0,
+                body_length: 0,
+                opaque: 0,
+                cas: 0,
+            },
+            state: RequestParserState::None,
+        }
+    }
+
+    pub fn parse_header(&mut self, src: &mut BytesMut) {
+        assert!(src.len() >= RequestMemcacheBinaryCodec::HEADER_LEN);
 
         self.header = binary::RequestHeader {
             magic: src.get_u8(),
@@ -51,24 +76,50 @@ impl MemcacheBinaryCodec {
             body_length: BigEndian::read_u32(&src),
             opaque: BigEndian::read_u32(&src),
             cas: BigEndian::read_u64(&src),
-        }
+        };
+        self.state = RequestParserState::HeaderParsed;
+    }
+
+    pub fn get_length(&self) -> usize {
+        (self.header.extras_length as usize)
+            + (self.header.key_length as usize)
+            + (self.header.body_length as usize)
+    }
+
+    pub fn parse(&mut self, src: &mut BytesMut) -> Option<BinaryRequest> {
+        assert!(src.len() >= self.get_length());
+        assert!(self.state == RequestParserState::HeaderParsed);
+        self.state = RequestParserState::RequestParsed;
+        None
     }
 }
 
-impl MemcacheBinaryCodec {
+impl RequestMemcacheBinaryCodec {
     const HEADER_LEN: usize = 24;
 }
 
-impl Decoder for MemcacheBinaryCodec {
+impl Decoder for RequestMemcacheBinaryCodec {
     type Item = BinaryRequest;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        let size = {
-            if src.len() < MemcacheBinaryCodec::HEADER_LEN {
-                return Ok(None);
+        match self.state {
+            RequestParserState::None => {
+                if src.len() < RequestMemcacheBinaryCodec::HEADER_LEN {
+                    return Ok(None);
+                }
+                self.parse_header(src)
             }
-        };
+            RequestParserState::HeaderParsed => {
+                if src.len() < self.get_length() {
+                    return Ok(None);
+                }
+                return Ok(self.parse(src));
+            }
+            RequestParserState::RequestParsed => {
+                return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid data"));
+            }
+        }
         Ok(None)
     }
 }

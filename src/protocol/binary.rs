@@ -23,6 +23,7 @@ pub enum DataTypes {
     RawBytes = 0x00,
 }
 
+#[derive(FromPrimitive)]
 pub enum Command {
     Get = 0x00,
     Set = 0x01,
