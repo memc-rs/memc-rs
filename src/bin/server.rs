@@ -1,23 +1,26 @@
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use tokio::io;
 use tokio::net::TcpListener;
 use tokio::stream::StreamExt;
 use tokio_util::codec::{Framed};
 
 use futures::SinkExt;
-use std::collections::HashMap;
-use std::env;
+// We want to use the lines codec with separated variables for read and write, 
+// so the LinesCodec + ReadHalf and LinesCodec + WriteHalf are encapsulated in 
+// a frame use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec};
 use std::error::Error;
-use std::sync::{Arc, Mutex};
 extern crate memix;
 
 #[tokio::main]
-async fn main() {
-    let addr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1), 11211);
-    let mut listener = TcpListener::bind(addr).await?;
+async fn main() -> io::Result<()> {
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 11211);
+    let mut listener = TcpListener::bind("127.0.0.1:11211").await?;
     println!("Listening on: {}", addr);
 
     loop {
         match listener.accept().await {
-            Ok((socket, _)) => {                
+            Ok((socket, peer_addr)) => {      
+                println!("Incoming connection: {}", peer_addr);          
                 // Like with other small servers, we'll `spawn` this client to ensure it
                 // runs concurrently with all other clients. The `move` keyword is used
                 // here to move ownership of our db handle into the async closure.
@@ -33,13 +36,11 @@ async fn main() {
                     while let Some(result) = packets.next().await {
                         match result {
                             Ok(request) => {
-                                let response = handle_request(&request);
+                                let response = handle_request(&request);                            
 
-                                let response = response.serialize();
-
-                                if let Err(e) = packets.send(response).await {
+                                /*if let Err(e) = packets.send(response).await {
                                     println!("error on sending response; error = {:?}", e);
-                                }
+                                }*/
                             }
                             Err(e) => {
                                 println!("error on decoding from socket; error = {:?}", e);
@@ -49,6 +50,8 @@ async fn main() {
 
                     // The connection will be closed at this point as `lines.next()` has returned `None`.
                 });
+
+
             }
             Err(e) => println!("error accepting socket; error = {:?}", e),
         }
@@ -56,7 +59,7 @@ async fn main() {
 }
 
 
-fn handle_request(req: &BinaryRequest) -> BinaryResponse {
+fn handle_request(req: &memix::protocol::binary_codec::BinaryRequest) -> () {
     println!("Received request: {:?}", req);
 
 }

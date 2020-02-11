@@ -63,18 +63,20 @@ impl MemcacheBinaryCodec {
 
     pub fn parse_header(&mut self, src: &mut BytesMut) {
         assert!(src.len() >= MemcacheBinaryCodec::HEADER_LEN);
-
+        println!("Header parsed: {:?} ", self.header);
         self.header = binary::RequestHeader {
             magic: src.get_u8(),
             opcode: src.get_u8(),
-            key_length: BigEndian::read_u16(&src),
+            key_length: src.get_u16(),
             extras_length: src.get_u8(),
             data_type: src.get_u8(),
-            reserved: BigEndian::read_u16(&src),
-            body_length: BigEndian::read_u32(&src),
-            opaque: BigEndian::read_u32(&src),
-            cas: BigEndian::read_u64(&src),
+            reserved: src.get_u16(),
+            body_length: src.get_u32(),
+            opaque: src.get_u32(),
+            cas: src.get_u64(),
         };
+
+        println!("Header parsed: {:?}, remaining: {:?}", self.header, src.len());
         self.state = RequestParserState::HeaderParsed;
     }
 
@@ -239,12 +241,13 @@ impl Decoder for MemcacheBinaryCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        println!("Received bytes: {} => {:?}", src.len(), self.state);
         match self.state {
             RequestParserState::None => {
                 if src.len() < MemcacheBinaryCodec::HEADER_LEN {
                     return Ok(None);
                 }
-                self.parse_header(src)
+                self.parse_header(src);
             }
             RequestParserState::HeaderParsed => {
                 if src.len() < self.get_req_length() {
