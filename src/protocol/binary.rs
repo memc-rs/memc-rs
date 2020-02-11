@@ -1,10 +1,13 @@
+use num_derive::FromPrimitive;
 use serde_derive::{Deserialize, Serialize};
 
+#[derive(FromPrimitive)]
 pub enum Magic {
     Request = 0x80,
     Response = 0x81,
 }
 
+#[derive(FromPrimitive)]
 pub enum ResponseStatus {
     Success = 0x00,
     KeyNotExists = 0x01,
@@ -19,6 +22,7 @@ pub enum ResponseStatus {
     NotEnoughMemory = 0x82,
 }
 
+#[derive(FromPrimitive)]
 pub enum DataTypes {
     RawBytes = 0x00,
 }
@@ -63,40 +67,40 @@ pub enum Command {
     SaslStep = 0x22,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct RequestHeader {
-    pub magic: u8,
-    pub opcode: u8,
-    pub key_length: u16,
-    pub extras_length: u8,
-    pub data_type: u8,
-    pub reserved: u16,
-    pub body_length: u32,
-    pub opaque: u32,
-    pub cas: u64,
+    pub(crate) magic: u8,
+    pub(crate) opcode: u8,
+    pub(crate) key_length: u16,
+    pub(crate) extras_length: u8,
+    pub(crate) data_type: u8,
+    pub(crate) reserved: u16,
+    pub(crate) body_length: u32,
+    pub(crate) opaque: u32,
+    pub(crate) cas: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
 pub struct ResponseHeader {
-    magic: u8,
-    opcode: u8,
-    key_length: u16,
-    extras_length: u8,
-    data_type: u8,
-    status: u16,
-    body_length: u32,
-    opaque: u32,
-    cas: u64,
+    pub(crate) magic: u8,
+    pub(crate) opcode: u8,
+    pub(crate) key_length: u16,
+    pub(crate) extras_length: u8,
+    pub(crate) data_type: u8,
+    pub(crate) status: u16,
+    pub(crate) body_length: u32,
+    pub(crate) opaque: u32,
+    pub(crate) cas: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
-    header: ResponseHeader,
+    pub(crate) header: ResponseHeader,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Response {
-    header: ResponseHeader,
+    pub(crate) header: ResponseHeader,
 }
 
 pub type NoopRequest = Request;
@@ -104,8 +108,8 @@ pub type NoopResponse = Response;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetRequest {
-    header: RequestHeader,
-    key: Vec<u8>,
+    pub(crate) header: RequestHeader,
+    pub(crate) key: Vec<u8>,
 }
 
 pub type GetQuietRequest = GetRequest;
@@ -114,10 +118,10 @@ pub type GetKeyQuietRequest = GetRequest;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetResponse {
-    header: ResponseHeader,
-    flags: u32,
-    key: Vec<u8>,
-    value: Vec<u8>,
+    pub(crate) header: ResponseHeader,
+    pub(crate) flags: u32,
+    pub(crate) key: Vec<u8>,
+    pub(crate) value: Vec<u8>,
 }
 
 pub type DeleteRequest = GetRequest;
@@ -129,11 +133,11 @@ pub type GetKeyQuietlyResponse = GetResponse;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetRequest {
-    header: RequestHeader,
-    flags: u32,
-    expiration: u32,
-    key: Vec<u8>,
-    value: Vec<u8>,
+    pub(crate) header: RequestHeader,
+    pub(crate) flags: u32,
+    pub(crate) expiration: u32,
+    pub(crate) key: Vec<u8>,
+    pub(crate) value: Vec<u8>,
 }
 pub type AddRequest = SetRequest;
 pub type ReplaceRequest = SetRequest;
@@ -144,14 +148,14 @@ pub type ReplaceResponse = Response;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementRequest {
-    header: RequestHeader,
-    delta: u64,
-    initial: u64,
-    expiration: u32,
+    pub(crate) header: RequestHeader,
+    pub(crate) delta: u64,
+    pub(crate) initial: u64,
+    pub(crate) expiration: u32,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementResponse {
-    value: u64,
+    pub(crate) value: u64,
 }
 
 pub type DecrementRequest = IncrementRequest;
@@ -159,15 +163,15 @@ pub type DecrementResponse = IncrementResponse;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TouchRequest {
-    expiration: u32,
+    pub(crate) expiration: u32,
 }
 
 pub type TouchResponse = Response;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlushRequest {
-    header: RequestHeader,
-    expiration: u32,
+    pub(crate) header: RequestHeader,
+    pub(crate) expiration: u32,
 }
 pub type FlushResponse = Response;
 
