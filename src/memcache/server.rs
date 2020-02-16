@@ -8,20 +8,20 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::protocol::binary;
 use crate::protocol::binary_codec;
-use super::engine;
+use super::storage;
 
 pub struct TcpServer {
-    engine: engine::Engine
+    storage: storage::Storage
 }
 
 impl TcpServer {
     pub fn new() -> TcpServer {
         TcpServer {
-            engine: engine::Engine::new()
+            storage: storage::Storage::new()
         }
     }
 
-    pub async fn start<A: ToSocketAddrs+TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
+    pub async fn run<A: ToSocketAddrs+TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         //println!("Listening on: {:?}", addr);
         let mut listener = TcpListener::bind(addr).await?;
         loop {
