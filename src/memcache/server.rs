@@ -5,19 +5,21 @@ use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::stream::{Stream, StreamExt as TokioStreamExt};
 use tokio_util::codec::{FramedRead, FramedWrite};
+use std::sync::Arc;
 
 use crate::protocol::binary;
 use crate::protocol::binary_codec;
 use super::storage;
+use super::handler;
 
 pub struct TcpServer {
-    storage: storage::Storage
+    storage: Arc<storage::Storage>
 }
 
 impl TcpServer {
     pub fn new() -> TcpServer {
         TcpServer {
-            storage: storage::Storage::new()
+            storage: Arc::new(storage::Storage::new())
         }
     }
 
@@ -27,11 +29,13 @@ impl TcpServer {
         loop {
             match listener.accept().await {
                 Ok((mut socket, peer_addr)) => {
+                    let db = self.storage.clone();
                     println!("Incoming connection: {}", peer_addr);
                     // Like with other small servers, we'll `spawn` this client to ensure it
                     // runs concurrently with all other clients. The `move` keyword is used
                     // here to move ownership of our db handle into the async closure.
                     tokio::spawn(async move {
+                        let mut handler = handler::BinaryHandler::new(db);
                         // Since our protocol is line-based we use `tokio_codecs`'s `LineCodec`
                         // to convert our stream of bytes, `socket`, into a `Stream` of lines
                         // as well as convert our line based responses into a stream of bytes.
@@ -48,11 +52,15 @@ impl TcpServer {
                         while let Some(result) = reader.next().await {
                             match result {
                                 Ok(request) => {
-                                    let response = handle_request(&request);
-
-                                    if let Err(e) = writer.send(response).await {
-                                        println!("error on sending response; error = {:?}", e);
-                                    }
+                                    let response = handler.handle_request(&request);
+                                    match response {
+                                        Some(response) => {
+                                            if let Err(e) = writer.send(response).await {
+                                                println!("error on sending response; error = {:?}", e);
+                                            }
+                                        }
+                                        None => {}                                    
+                                    }                                    
                                 }
                                 Err(e) => {
                                     println!("error on decoding from socket; error = {:?}", e);
@@ -67,15 +75,4 @@ impl TcpServer {
             }
         }
     }
-}
-
-
-fn handle_request(req: &binary_codec::BinaryRequest) -> binary_codec::BinaryResponse {
-    let header = binary::ResponseHeader {
-        magic: binary::Magic::Response as u8,
-        opcode: binary::Command::Set as u8,
-        cas: 0x01,
-        ..binary::ResponseHeader::default()
-    };
-    binary_codec::BinaryResponse::Set(binary::SetResponse { header: header })
 }
