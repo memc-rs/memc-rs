@@ -1,7 +1,7 @@
 use num_derive::FromPrimitive;
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, Debug)]
 pub enum Magic {
     Request = 0x80,
     Response = 0x81,
@@ -67,7 +67,7 @@ pub enum Command {
     SaslStep = 0x22,
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub struct RequestHeader {
     pub(crate) magic: u8,
     pub(crate) opcode: u8,
@@ -80,31 +80,37 @@ pub struct RequestHeader {
     pub(crate) cas: u64,
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
 pub struct ResponseHeader {
-    pub(crate) magic: u8,
-    pub(crate) opcode: u8,
-    pub(crate) key_length: u16,
-    pub(crate) extras_length: u8,
-    pub(crate) data_type: u8,
-    pub(crate) status: u16,
-    pub(crate) body_length: u32,
-    pub(crate) opaque: u32,
-    pub(crate) cas: u64,
+    pub magic: u8,
+    pub opcode: u8,
+    pub key_length: u16,
+    pub extras_length: u8,
+    pub data_type: u8,
+    pub status: u16,
+    pub body_length: u32,
+    pub opaque: u32,
+    pub cas: u64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
-    pub(crate) header: ResponseHeader,
+    pub(crate) header: RequestHeader,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Response {
-    pub(crate) header: ResponseHeader,
+    pub header: ResponseHeader,
 }
 
 pub type NoopRequest = Request;
 pub type NoopResponse = Response;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResponse {
+    pub header: ResponseHeader,
+    pub error: String,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetRequest {
