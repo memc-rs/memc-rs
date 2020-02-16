@@ -45,15 +45,27 @@ impl Storage {
 
     pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
         let hash = self.get_hash(key);
-        
-        let result = {
-            let storage = self.memory.lock().unwrap();
-            match storage.get(&hash) {
-                Some(record) => Some(record.clone()),
-                None => None    
-            }
-        };                    
-        result
+        self.get_by_hash(hash)
+    }
+
+    fn get_by_hash(&self, hash: u64) -> Option<Record> {
+        let mut storage = self.memory.lock().unwrap();
+        let value = match storage.get(&hash) {
+            Some(record) => {
+                if self.check_if_expired(record) {                    
+                    None
+                }                                
+                else {
+                    Some(record.clone())
+                }                
+            },
+            None => None    
+        };        
+        value
+    }
+
+    fn check_if_expired(&self, record: &Record) -> bool {
+        false
     }
 
     pub fn set(&self)  {
