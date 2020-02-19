@@ -18,6 +18,20 @@ pub enum BinaryRequest {
     Replace(binary::ReplaceRequest),
 }
 
+impl BinaryRequest {
+    pub fn get_header<'a>(&'a self) -> &'a binary::RequestHeader {
+        match self {        
+            BinaryRequest::Get(request) => &request.header,
+            BinaryRequest::GetKey(request) => &request.header,
+            BinaryRequest::GetKeyQuietly(request) => &request.header,
+            BinaryRequest::GetQuietly(request) => &request.header,
+            BinaryRequest::Set(request) => &request.header,
+            BinaryRequest::Replace(request) => &request.header,
+            BinaryRequest::Add(request) => &request.header,
+        }
+    }
+}
+
 /// Server response
 #[derive(Serialize, Deserialize, Debug)]
 pub enum BinaryResponse {
@@ -29,6 +43,21 @@ pub enum BinaryResponse {
     Set(binary::SetResponse),
     Add(binary::AddResponse),
     Replace(binary::ReplaceResponse),
+}
+
+impl BinaryResponse {
+    pub fn get_header<'a>(&'a self) -> &'a binary::ResponseHeader {
+        match self {
+            BinaryResponse::Error(response) => &response.header,
+            BinaryResponse::Get(response) => &response.header,
+            BinaryResponse::GetKey(response) => &response.header,
+            BinaryResponse::GetKeyQuietly(response) => &response.header,
+            BinaryResponse::GetQuietly(response) => &response.header,
+            BinaryResponse::Set(response) => &response.header,
+            BinaryResponse::Replace(response) => &response.header,
+            BinaryResponse::Add(response) => &response.header,
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -193,16 +222,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn get_header<'a>(&self, msg: &'a BinaryResponse) -> &'a binary::ResponseHeader {
-        match msg {
-            BinaryResponse::Error(response) => &response.header,
-            BinaryResponse::Get(response) => &response.header,
-            BinaryResponse::GetKey(response) => &response.header,
-            BinaryResponse::GetKeyQuietly(response) => &response.header,
-            BinaryResponse::GetQuietly(response) => &response.header,
-            BinaryResponse::Set(response) => &response.header,
-            BinaryResponse::Replace(response) => &response.header,
-            BinaryResponse::Add(response) => &response.header,
-        }
+        msg.get_header()
     }
 
     fn get_len_from_header(&self, header: &binary::ResponseHeader) -> usize {

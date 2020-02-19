@@ -12,10 +12,33 @@ pub struct ValueHeader {
     pub(crate) key: Vec<u8>,
 }
 
+impl ValueHeader {
+    pub fn new(key: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> ValueHeader {
+        ValueHeader {
+            timestamp: 0,
+            cas: cas,
+            flags: flags,
+            expiration: expiration,
+            key: key
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct ValueData {
     pub(crate) header: ValueHeader,
     pub(crate) value: Vec<u8>
+}
+
+
+impl ValueData {
+    pub fn new(key: Vec<u8>, value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> ValueData {
+        let header = ValueHeader::new(key, cas, flags, expiration);
+        ValueData {
+            header: header,
+            value: value
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -32,14 +55,14 @@ pub enum Record {
 }
 
 pub struct Storage {
-    memory: Mutex<HashMap<u64, Record>>,
+    memory: Mutex<HashMap<u64, Record>>
 }
 
 
 impl Storage {
     pub fn new() -> Storage {
         Storage {
-            memory: Mutex::new(std::collections::HashMap::new()),        
+            memory: Mutex::new(std::collections::HashMap::new())
         }
     }
 
@@ -49,13 +72,14 @@ impl Storage {
     }
 
     fn get_by_hash(&self, hash: u64) -> Option<Record> {
-        let mut storage = self.memory.lock().unwrap();
+        let storage = self.memory.lock().unwrap();
         let value = match storage.get(&hash) {
             Some(record) => {
                 if self.check_if_expired(record) {                    
                     None
-                }                                
+                }                             
                 else {
+                    self.touch(record);
                     Some(record.clone())
                 }                
             },
@@ -68,8 +92,23 @@ impl Storage {
         false
     }
 
-    pub fn set(&self)  {
+    fn touch(&self, record: &Record) {        
+        
+        
+    }
 
+    pub fn set(&self, record: Record)  {
+        let header = self.get_header(&record);
+        let hash = self.get_hash(&header.key);
+        let mut storage = self.memory.lock().unwrap();
+        storage.insert(hash, record);        
+    }
+
+    fn get_header<'a>(&self, record: &'a Record) -> &'a ValueHeader {
+        match(record) {
+            Record::Value(data) => &data.header,
+            Record::Counter(counter) => &counter.header
+        }
     }
 
     fn get_hash(&self, key: &Vec<u8>) -> u64 {
