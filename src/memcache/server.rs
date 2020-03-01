@@ -7,7 +7,6 @@ use tokio::stream::{Stream, StreamExt as TokioStreamExt};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use std::sync::Arc;
 
-use crate::protocol::binary;
 use crate::protocol::binary_codec;
 use super::storage;
 use super::handler;

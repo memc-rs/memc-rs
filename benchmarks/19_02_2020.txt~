@@ -19,8 +19,6 @@ Waits           0.00          ---          ---      0.00000          ---
 Totals     300086.07    150043.03         0.00      3.31100   1212001.33
 
 
-
-
 -- memcached
 
 [RUN #1 100%,  29 secs]  0 threads:     9960000 ops,  350354 (avg:  335912) ops/sec, 1.35GB/sec (avg: 1.29GB/sec),  2.84 (avg:  2.89) msec latency
