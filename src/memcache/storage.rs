@@ -1,7 +1,5 @@
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
-use std::sync::Mutex;
 use std::str;
 use dashmap::DashMap;
 
@@ -107,7 +105,7 @@ impl Storage {
     }
 
     fn get_header<'a>(&self, record: &'a Record) -> &'a ValueHeader {
-        match(record) {
+        match record {
             Record::Value(data) => &data.header,
             Record::Counter(counter) => &counter.header
         }
