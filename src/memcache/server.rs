@@ -15,11 +15,17 @@ pub struct TcpServer {
     storage: Arc<storage::Storage>,
 }
 
-impl TcpServer {
-    pub fn new() -> TcpServer {
+impl Default for TcpServer {
+    fn default() -> Self {
         TcpServer {
             storage: Arc::new(storage::Storage::new()),
         }
+    }
+}
+
+impl TcpServer {
+    pub fn new() -> TcpServer {
+        Default::default()
     }
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
