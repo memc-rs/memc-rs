@@ -4,36 +4,34 @@ use std::hash::Hasher;
 use std::str;
 
 #[derive(Clone)]
-pub struct ValueHeader {
+pub struct Header {
     pub(crate) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
     expiration: u32,
-    pub(crate) key: Vec<u8>,
 }
 
-impl ValueHeader {
-    pub fn new(key: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> ValueHeader {
-        ValueHeader {
+impl Header {
+    pub fn new(cas: u64, flags: u32, expiration: u32) -> Header {
+        Header {
             timestamp: 0,
             cas: cas,
             flags: flags,
             expiration: expiration,
-            key: key,
         }
     }
 }
 
 #[derive(Clone)]
-pub struct ValueData {
-    pub(crate) header: ValueHeader,
+pub struct Record {
+    pub(crate) header: Header,
     pub(crate) value: Vec<u8>,
 }
 
-impl ValueData {
-    pub fn new(key: Vec<u8>, value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> ValueData {
-        let header = ValueHeader::new(key, cas, flags, expiration);
-        ValueData {
+impl Record {
+    pub fn new(value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> Record {
+        let header = Header::new(cas, flags, expiration);
+        Record {
             header: header,
             value: value,
         }
@@ -41,73 +39,70 @@ impl ValueData {
 }
 
 #[derive(Clone)]
-pub struct ValueCounter {
-    pub(crate) header: ValueHeader,
+pub struct IncrementParam {
     pub(crate) delta: u64,
     pub(crate) value: u64,
 }
-
-#[derive(Clone)]
-pub enum Record {
-    Value(ValueData),
-    Counter(ValueCounter),
-}
+pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
-    memory: dashmap::DashMap<u64, Record>,
+    memory: dashmap::DashMap<Vec<u8>, Record>,
 }
 
-impl Storage {
-    pub fn new() -> Storage {
+impl Default for Storage {
+    fn default() -> Self {
         Storage {
             memory: dashmap::DashMap::new(),
         }
     }
+}
 
-    pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
-        let hash = self.get_hash(key);
-        info!("Get: {:?} => {:?}", hash, str::from_utf8(key));
-        self.get_by_hash(hash)
+impl Storage {
+    pub fn new() -> Storage {
+        Default::default()
     }
 
-    fn get_by_hash(&self, hash: u64) -> Option<Record> {
-        let value = match self.memory.get(&hash) {
-            Some(record) => {
-                if self.check_if_expired(&record) {
+    pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
+        info!("Get: {:?}", str::from_utf8(key));
+        self.get_by_key(key)
+    }
+
+    fn get_by_key(&self, key: &Vec<u8>) -> Option<Record> {
+        match self.memory.get_mut(key) {
+            Some(mut record) => {
+                if self.check_if_expired(key, &mut record) {
                     None
                 } else {
-                    self.touch(&record);
+                    self.touch(&mut record);
                     Some(record.clone())
                 }
             }
             None => None,
-        };
-        value
-    }
-
-    fn check_if_expired(&self, record: &Record) -> bool {
-        false
-    }
-
-    fn touch(&self, record: &Record) {}
-
-    pub fn set(&self, record: Record) {
-        let header = self.get_header(&record);
-        let hash = self.get_hash(&header.key);
-        info!("Insert: {:?} => {:?}", hash, str::from_utf8(&header.key));
-        self.memory.insert(hash, record);
-    }
-
-    fn get_header<'a>(&self, record: &'a Record) -> &'a ValueHeader {
-        match record {
-            Record::Value(data) => &data.header,
-            Record::Counter(counter) => &counter.header,
         }
     }
 
-    fn get_hash(&self, key: &Vec<u8>) -> u64 {
-        let mut hasher = DefaultHasher::new();
-        hasher.write(key);
-        hasher.finish()
+    fn check_if_expired(&self, key: &Vec<u8>, record: &mut Record) -> bool {
+        false
     }
+
+    fn touch(&self, record: &mut Record) {}
+
+    pub fn set(&self, key: Vec<u8>, record: Record) {
+        info!("Insert: {:?}", &key);
+        self.memory.insert(key, record);
+    }
+
+    pub fn add(&self, key: Vec<u8>, record: Record) {}
+
+    pub fn replace(&self, key: Vec<u8>, record: Record) {}
+
+    pub fn append(&self, key: Vec<u8>, record: Record) {}
+
+    pub fn prepend(&self, key: Vec<u8>, record: Record) {}
+
+    pub fn cas(&self, key: Vec<u8>, record: Record) {}
+
+    pub fn increment(&self, key: Vec<u8>, increment: IncrementParam) {}
+
+    pub fn decrement(&self, key: Vec<u8>, decrement: DecrementParam) {}
 }

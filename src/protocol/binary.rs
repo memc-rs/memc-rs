@@ -93,6 +93,16 @@ pub struct ResponseHeader {
     pub cas: u64,
 }
 
+impl ResponseHeader {
+    pub fn new(cmd: u8) -> Self {
+        ResponseHeader {
+            magic: Magic::Response as u8,
+            opcode: cmd,
+            ..ResponseHeader::default()
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
     pub(crate) header: RequestHeader,
