@@ -1,35 +1,34 @@
 use futures_util::sink::SinkExt;
 use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
+use std::sync::Arc;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::stream::{Stream, StreamExt as TokioStreamExt};
 use tokio_util::codec::{FramedRead, FramedWrite};
-use std::sync::Arc;
 
-use crate::protocol::binary_codec;
-use super::storage;
 use super::handler;
+use super::storage;
+use crate::protocol::binary_codec;
 
 pub struct TcpServer {
-    storage: Arc<storage::Storage>
+    storage: Arc<storage::Storage>,
 }
 
 impl TcpServer {
     pub fn new() -> TcpServer {
         TcpServer {
-            storage: Arc::new(storage::Storage::new())
+            storage: Arc::new(storage::Storage::new()),
         }
     }
 
-    pub async fn run<A: ToSocketAddrs+TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
-        //println!("Listening on: {:?}", addr);
+    pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         let mut listener = TcpListener::bind(addr).await?;
         loop {
             match listener.accept().await {
                 Ok((mut socket, peer_addr)) => {
                     let db = self.storage.clone();
-                    println!("Incoming connection: {}", peer_addr);
+                    info!("Incoming connection: {}", peer_addr);
                     // Like with other small servers, we'll `spawn` this client to ensure it
                     // runs concurrently with all other clients. The `move` keyword is used
                     // here to move ownership of our db handle into the async closure.
@@ -55,14 +54,17 @@ impl TcpServer {
                                     match response {
                                         Some(response) => {
                                             if let Err(e) = writer.send(response).await {
-                                                println!("error on sending response; error = {:?}", e);
+                                                error!(
+                                                    "error on sending response; error = {:?}",
+                                                    e
+                                                );
                                             }
                                         }
-                                        None => {}                                    
-                                    }                                    
+                                        None => {}
+                                    }
                                 }
                                 Err(e) => {
-                                    println!("error on decoding from socket; error = {:?}", e);
+                                    error!("error on decoding from socket; error = {:?}", e);
                                 }
                             }
                         }
@@ -70,7 +72,7 @@ impl TcpServer {
                         // The connection will be closed at this point as `lines.next()` has returned `None`.
                     });
                 }
-                Err(e) => println!("error accepting socket; error = {:?}", e),
+                Err(e) => error!("error accepting socket; error = {:?}", e),
             }
         }
     }

@@ -20,7 +20,7 @@ pub enum BinaryRequest {
 
 impl BinaryRequest {
     pub fn get_header<'a>(&'a self) -> &'a binary::RequestHeader {
-        match self {        
+        match self {
             BinaryRequest::Get(request) => &request.header,
             BinaryRequest::GetKey(request) => &request.header,
             BinaryRequest::GetKeyQuietly(request) => &request.header,
@@ -99,8 +99,6 @@ impl MemcacheBinaryCodec {
             opaque: src.get_u32(),
             cas: src.get_u64(),
         };
-
-        //assert_eq!(self.header.magic, binary::Magic::Request);
 
         // println!("Header parsed: {:?}, remaining: {:?}", self.header, src.len());
         self.state = RequestParserState::HeaderParsed;

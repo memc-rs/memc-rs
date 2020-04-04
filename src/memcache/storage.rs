@@ -1,7 +1,7 @@
+use dashmap::DashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::str;
-use dashmap::DashMap;
 
 #[derive(Clone)]
 pub struct ValueHeader {
@@ -19,7 +19,7 @@ impl ValueHeader {
             cas: cas,
             flags: flags,
             expiration: expiration,
-            key: key
+            key: key,
         }
     }
 }
@@ -27,16 +27,15 @@ impl ValueHeader {
 #[derive(Clone)]
 pub struct ValueData {
     pub(crate) header: ValueHeader,
-    pub(crate) value: Vec<u8>
+    pub(crate) value: Vec<u8>,
 }
-
 
 impl ValueData {
     pub fn new(key: Vec<u8>, value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> ValueData {
         let header = ValueHeader::new(key, cas, flags, expiration);
         ValueData {
             header: header,
-            value: value
+            value: value,
         }
     }
 }
@@ -51,40 +50,38 @@ pub struct ValueCounter {
 #[derive(Clone)]
 pub enum Record {
     Value(ValueData),
-    Counter(ValueCounter)
+    Counter(ValueCounter),
 }
 
 pub struct Storage {
-    memory: dashmap::DashMap<u64, Record>
+    memory: dashmap::DashMap<u64, Record>,
 }
-
 
 impl Storage {
     pub fn new() -> Storage {
         Storage {
-            memory: dashmap::DashMap::new()
+            memory: dashmap::DashMap::new(),
         }
     }
 
     pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
         let hash = self.get_hash(key);
-        println!("Get: {:?} => {:?}", hash, str::from_utf8(key));
+        info!("Get: {:?} => {:?}", hash, str::from_utf8(key));
         self.get_by_hash(hash)
     }
 
-    fn get_by_hash(&self, hash: u64) -> Option<Record> {       
+    fn get_by_hash(&self, hash: u64) -> Option<Record> {
         let value = match self.memory.get(&hash) {
             Some(record) => {
-                if self.check_if_expired(&record) {                    
+                if self.check_if_expired(&record) {
                     None
-                }                             
-                else {
+                } else {
                     self.touch(&record);
                     Some(record.clone())
-                }                
-            },
-            None => None    
-        };        
+                }
+            }
+            None => None,
+        };
         value
     }
 
@@ -92,22 +89,19 @@ impl Storage {
         false
     }
 
-    fn touch(&self, record: &Record) {        
-        
-        
-    }
+    fn touch(&self, record: &Record) {}
 
-    pub fn set(&self, record: Record)  {
+    pub fn set(&self, record: Record) {
         let header = self.get_header(&record);
         let hash = self.get_hash(&header.key);
-        println!("Insert: {:?} => {:?}", hash,  str::from_utf8(&header.key));
-        self.memory.insert(hash, record);        
+        info!("Insert: {:?} => {:?}", hash, str::from_utf8(&header.key));
+        self.memory.insert(hash, record);
     }
 
     fn get_header<'a>(&self, record: &'a Record) -> &'a ValueHeader {
         match record {
             Record::Value(data) => &data.header,
-            Record::Counter(counter) => &counter.header
+            Record::Counter(counter) => &counter.header,
         }
     }
 

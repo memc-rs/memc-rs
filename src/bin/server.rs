@@ -1,4 +1,3 @@
-
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::io;
 extern crate memix;
@@ -9,5 +8,3 @@ async fn main() -> io::Result<()> {
     let mut tcp_server = memix::memcache::server::TcpServer::new();
     tcp_server.run(addr).await
 }
-
-
