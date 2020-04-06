@@ -1,11 +1,11 @@
 use dashmap::DashMap;
-use std::collections::hash_map::DefaultHasher;
-use std::hash::Hasher;
 use std::str;
+use super::timer;
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
 pub struct Header {
-    pub(crate) timestamp: u64,
+    pub(self) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
     expiration: u32,
@@ -47,19 +47,15 @@ pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
     memory: dashmap::DashMap<Vec<u8>, Record>,
-}
-
-impl Default for Storage {
-    fn default() -> Self {
-        Storage {
-            memory: dashmap::DashMap::new(),
-        }
-    }
+    timer: Arc<Box<dyn timer::Timer+Send+Sync>>,
 }
 
 impl Storage {
-    pub fn new() -> Storage {
-        Default::default()
+    pub fn new(timer: Arc<Box<dyn timer::Timer+Send+Sync>>) -> Storage {
+        Storage {
+            memory: dashmap::DashMap::new(),
+            timer,
+        }
     }
 
     pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
@@ -72,8 +68,7 @@ impl Storage {
             Some(mut record) => {
                 if self.check_if_expired(key, &mut record) {
                     None
-                } else {
-                    self.touch(&mut record);
+                } else {                   
                     Some(record.clone())
                 }
             }
@@ -85,10 +80,13 @@ impl Storage {
         false
     }
 
-    fn touch(&self, record: &mut Record) {}
+    fn touch_record(&self, record: &mut Record) {
+        record.header.timestamp = self.timer.secs();
+    }
 
-    pub fn set(&self, key: Vec<u8>, record: Record) {
+    pub fn set(&self, key: Vec<u8>, mut record: Record) {
         info!("Insert: {:?}", &key);
+        self.touch_record(&mut record);
         self.memory.insert(key, record);
     }
 
@@ -105,4 +103,22 @@ impl Storage {
     pub fn increment(&self, key: Vec<u8>, increment: IncrementParam) {}
 
     pub fn decrement(&self, key: Vec<u8>, decrement: DecrementParam) {}
+
+    pub fn delete(&self, key: Vec<u8>, header: Header) {}
+
+    pub fn flush(&self) {}
+
+    pub fn touch(&self, key: Vec<u8>) {}
+
+
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn internal() {
+        assert_eq!(4, 4);
+    }
 }

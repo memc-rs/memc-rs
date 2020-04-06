@@ -1,7 +1,7 @@
 use futures_util::sink::SinkExt;
 use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::stream::{Stream, StreamExt as TokioStreamExt};
@@ -9,6 +9,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use super::handler;
 use super::storage;
+use super::timer;
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
@@ -18,7 +19,7 @@ pub struct TcpServer {
 impl Default for TcpServer {
     fn default() -> Self {
         TcpServer {
-            storage: Arc::new(storage::Storage::new()),
+            storage: Arc::new(storage::Storage::new(Arc::new(Box::new(timer::SystemTimer::new())))),
         }
     }
 }
