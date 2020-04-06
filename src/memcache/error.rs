@@ -2,10 +2,28 @@
 extern crate failure;
 
 
-#[derive(Debug, Failr)]
+#[derive(Debug, Fail)]
 pub enum StorageError {
-    #[fail(display = "Item expired")]
-    ItemExpired,
     #[fail(display = "Key not found")]
-    NotFound
+    NotFound(0x01),
+    #[fail(display = "Key exists")]
+    KeyExists(0x02),
+    #[fail(display = "Value too large")]
+    ValueTooLarge(0x03),
+    #[fail(display = "Invalid arguments")]
+    InvalidArguments(0x04),
+    #[fail(display = "Item not stored")]
+    InvalidArguments(0x05),
+    #[fail(display = "Incr/Decr on non numeric value")]
+    ArithOnNonNumeric(0x06),
+    #[fail(display = "Out of memory")]
+    OutOfMemory(0x82),
+    #[fail(display = "Not supported")]
+    NotSupported(0x83),
+    #[fail(display = "Internal error")]
+    OutOfMemory(0x84),
+    #[fail(display = "Busy")]
+    OutOfMemory(0x85),
+    #[fail(display = "Temporary failure")]
+    OutOfMemory(0x86),
 }
