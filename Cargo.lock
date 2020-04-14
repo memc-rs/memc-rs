@@ -421,6 +421,7 @@ dependencies = [
  "clap",
  "dashmap",
  "failure",
+ "failure_derive",
  "futures",
  "futures-util",
  "log",
