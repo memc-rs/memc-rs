@@ -2,6 +2,7 @@ use dashmap::DashMap;
 use std::str;
 use super::timer;
 use std::sync::{Arc, Mutex};
+use super::error::{StorageResult};
 
 #[derive(Clone)]
 pub struct Header {
@@ -84,10 +85,11 @@ impl Storage {
         record.header.timestamp = self.timer.secs();
     }
 
-    pub fn set(&self, key: Vec<u8>, mut record: Record) {
+    pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<()> {
         info!("Insert: {:?}", &key);
         self.touch_record(&mut record);
         self.memory.insert(key, record);
+        Ok(())
     }
 
     pub fn add(&self, key: Vec<u8>, record: Record) {}
@@ -118,7 +120,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn internal() {
-        assert_eq!(4, 4);
+    fn insert() {
+        let timer: Arc<Box<dyn timer::Timer+Send+Sync>> = Arc::new(Box::new(timer::SystemTimer::new()));
+        let storage = Storage::new(timer);
+        let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
+        let result = storage.set(String::from("key1").into_bytes(), record);
+        assert!(result.is_ok());
     }
 }
