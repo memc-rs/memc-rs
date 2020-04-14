@@ -1,29 +1,30 @@
 
 extern crate failure;
 
-
 #[derive(Debug, Fail)]
 pub enum StorageError {
     #[fail(display = "Key not found")]
-    NotFound(0x01),
+    NotFound = 0x01,
     #[fail(display = "Key exists")]
-    KeyExists(0x02),
+    KeyExists = 0x02,
     #[fail(display = "Value too large")]
-    ValueTooLarge(0x03),
+    ValueTooLarge = 0x03,
     #[fail(display = "Invalid arguments")]
-    InvalidArguments(0x04),
+    InvalidArguments = 0x04,
     #[fail(display = "Item not stored")]
-    InvalidArguments(0x05),
+    ItemNotStored = 0x05,
     #[fail(display = "Incr/Decr on non numeric value")]
-    ArithOnNonNumeric(0x06),
+    ArithOnNonNumeric = 0x06,
     #[fail(display = "Out of memory")]
-    OutOfMemory(0x82),
+    OutOfMemory = 0x82,
     #[fail(display = "Not supported")]
-    NotSupported(0x83),
+    NotSupported = 0x83,
     #[fail(display = "Internal error")]
-    OutOfMemory(0x84),
+    InternalError = 0x84,
     #[fail(display = "Busy")]
-    OutOfMemory(0x85),
+    Busy = 0x85,
     #[fail(display = "Temporary failure")]
-    OutOfMemory(0x86),
+    TemporaryFailure = 0x86,
 }
+
+pub type StorageResult<T> = std::result::Result<T, StorageError>;
