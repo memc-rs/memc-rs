@@ -2,9 +2,9 @@ use dashmap::DashMap;
 use std::str;
 use super::timer;
 use std::sync::{Arc, Mutex};
-use super::error::{StorageResult};
+use super::error::{StorageResult, StorageError};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Header {
     pub(self) timestamp: u64,
     pub(crate) cas: u64,
@@ -23,7 +23,7 @@ impl Header {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Record {
     pub(crate) header: Header,
     pub(crate) value: Vec<u8>,
@@ -36,6 +36,12 @@ impl Record {
             header: header,
             value: value,
         }
+    }
+}
+
+impl PartialEq for Record {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
     }
 }
 
@@ -59,21 +65,21 @@ impl Storage {
         }
     }
 
-    pub fn get(&self, key: &Vec<u8>) -> Option<Record> {
+    pub fn get(&self, key: &Vec<u8>) -> StorageResult<Record> {
         info!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
 
-    fn get_by_key(&self, key: &Vec<u8>) -> Option<Record> {
+    fn get_by_key(&self, key: &Vec<u8>) -> StorageResult<Record> {
         match self.memory.get_mut(key) {
             Some(mut record) => {
                 if self.check_if_expired(key, &mut record) {
-                    None
+                    Err(StorageError::NotFound)
                 } else {                   
-                    Some(record.clone())
+                    Ok(record.clone())
                 }
             }
-            None => None,
+            None => Err(StorageError::NotFound),
         }
     }
 
@@ -92,26 +98,25 @@ impl Storage {
         Ok(())
     }
 
-    pub fn add(&self, key: Vec<u8>, record: Record) {}
+    pub fn add(&self, _key: Vec<u8>, _record: Record) {}
 
-    pub fn replace(&self, key: Vec<u8>, record: Record) {}
+    pub fn replace(&self, _key: Vec<u8>, _record: Record) {}
 
-    pub fn append(&self, key: Vec<u8>, record: Record) {}
+    pub fn append(&self, _key: Vec<u8>, _record: Record) {}
 
-    pub fn prepend(&self, key: Vec<u8>, record: Record) {}
+    pub fn prepend(&self, _key: Vec<u8>, _record: Record) {}
 
-    pub fn cas(&self, key: Vec<u8>, record: Record) {}
+    pub fn cas(&self, _key: Vec<u8>, _record: Record) {}
 
-    pub fn increment(&self, key: Vec<u8>, increment: IncrementParam) {}
+    pub fn increment(&self, _key: Vec<u8>, _increment: IncrementParam) {}
 
-    pub fn decrement(&self, key: Vec<u8>, decrement: DecrementParam) {}
+    pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {}
 
-    pub fn delete(&self, key: Vec<u8>, header: Header) {}
+    pub fn delete(&self, _key: Vec<u8>, _header: Header) {}
 
     pub fn flush(&self) {}
 
-    pub fn touch(&self, key: Vec<u8>) {}
-
+    pub fn touch(&self, _key: Vec<u8>) {}
 
 }
 
@@ -119,12 +124,35 @@ impl Storage {
 mod tests {
     use super::*;
 
+    pub struct MockSystemTimer;
+
+    impl MockSystemTimer {
+        pub fn new() -> Self {
+            MockSystemTimer{            
+            }
+        }
+    }
+
+    impl timer::Timer for MockSystemTimer {
+        fn secs(&self) -> u64 {
+            0
+        }
+    }
+
+    
     #[test]
     fn insert() {
-        let timer: Arc<Box<dyn timer::Timer+Send+Sync>> = Arc::new(Box::new(timer::SystemTimer::new()));
+        let timer: Arc<Box<dyn timer::Timer+Send+Sync>> = Arc::new(Box::new(MockSystemTimer::new()));
         let storage = Storage::new(timer);
+        let key = String::from("key").into_bytes();
         let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
-        let result = storage.set(String::from("key1").into_bytes(), record);
+        let result = storage.set(key.clone(), record.clone());
         assert!(result.is_ok());
+        let found = storage.get(&key);
+        assert!(found.is_ok());
+        match found {
+            Ok(r) => assert_eq!(r, record),
+            Err(er) => assert!(false)
+        }
     }
 }

@@ -22,7 +22,7 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::Get(get_request) => {
                 let result = self.storage.get(&get_request.key);
                 match result {
-                    Some(data) => {
+                    Ok(data) => {
                         response_header.body_length = data.value.len() as u32 + 4;
                         response_header.cas = 1;
                         Some(binary_codec::BinaryResponse::Get(binary::GetResponse {
@@ -32,7 +32,7 @@ impl BinaryHandler {
                             value: data.value,
                         }))
                     }                    
-                    None => None,
+                    Err(e) => None,
                 }
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req) => None,
