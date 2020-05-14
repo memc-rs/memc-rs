@@ -19,7 +19,7 @@ pub enum BinaryRequest {
 }
 
 impl BinaryRequest {
-    pub fn get_header<'a>(&'a self) -> &'a binary::RequestHeader {
+    pub fn get_header(&'_ self) -> &'_ binary::RequestHeader {
         match self {
             BinaryRequest::Get(request) => &request.header,
             BinaryRequest::GetKey(request) => &request.header,
@@ -46,7 +46,7 @@ pub enum BinaryResponse {
 }
 
 impl BinaryResponse {
-    pub fn get_header<'a>(&'a self) -> &'a binary::ResponseHeader {
+    pub fn get_header(&'_ self) -> &'_ binary::ResponseHeader {
         match self {
             BinaryResponse::Error(response) => &response.header,
             BinaryResponse::Get(response) => &response.header,
