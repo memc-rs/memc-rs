@@ -16,20 +16,20 @@ impl BinaryHandler {
         req: binary_codec::BinaryRequest,
     ) -> Option<binary_codec::BinaryResponse> {
         let request_header = req.get_header();
-        let mut response_header = binary::ResponseHeader::new(request_header.opcode);
+        let mut response_header = binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
 
         match req {
             binary_codec::BinaryRequest::Get(get_request) => {
                 let result = self.storage.get(&get_request.key);
                 match result {
-                    Ok(data) => {
-                        response_header.body_length = data.value.len() as u32 + 4;
-                        response_header.cas = 1;
+                    Ok(record) => {
+                        response_header.body_length = record.value.len() as u32 + 4;
+                        response_header.cas = record.header.cas;
                         Some(binary_codec::BinaryResponse::Get(binary::GetResponse {
                             header: response_header,
-                            flags: data.header.flags,
+                            flags: record.header.flags,
                             key: Vec::new(),
-                            value: data.value,
+                            value: record.value,
                         }))
                     }                    
                     Err(e) => None,
