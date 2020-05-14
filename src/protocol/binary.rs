@@ -94,10 +94,11 @@ pub struct ResponseHeader {
 }
 
 impl ResponseHeader {
-    pub fn new(cmd: u8) -> Self {
+    pub fn new(cmd: u8, opaque: u32) -> Self {
         ResponseHeader {
             magic: Magic::Response as u8,
             opcode: cmd,
+            opaque: opaque,
             ..ResponseHeader::default()
         }
     }
