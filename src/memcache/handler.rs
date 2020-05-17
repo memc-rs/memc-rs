@@ -38,22 +38,35 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req) => None,
             binary_codec::BinaryRequest::GetKey(get_key_req) => None,
             binary_codec::BinaryRequest::GetKeyQuietly(get_key_quiet_req) => None,
-            binary_codec::BinaryRequest::Set(set_req) => {
-                let record = storage::Record::new(
-                    set_req.value,
-                    set_req.header.cas,
-                    set_req.flags,
-                    set_req.expiration,
-                );
-                self.storage
-                    .set(set_req.key, record);
-                response_header.cas = 1;
-                Some(binary_codec::BinaryResponse::Set(binary::SetResponse {
-                    header: response_header,
-                }))
+            binary_codec::BinaryRequest::Set(mut set_req) => {
+            let response = self.set_request(set_req, &mut response_header);
+               Some(
+                   binary_codec::BinaryResponse::Set(
+                       response
+                   )
+               )
             }
             binary_codec::BinaryRequest::Add(add_req) => None,
             binary_codec::BinaryRequest::Replace(replace_req) => None,
+        }
+    }
+
+    fn set_request(&mut self, set_req: binary::SetRequest, response_header: &mut binary::ResponseHeader) -> binary::SetResponse {
+        let record = storage::Record::new(
+            set_req.value,
+            set_req.header.cas,
+            set_req.flags,
+            set_req.expiration,
+        );
+        match self.storage
+            .set(set_req.key, record) {
+                Ok(set_status) => response_header.cas = set_status.cas,
+                Err(err) => {
+                    response_header.status = err as u16
+                }
+            }                
+        binary::SetResponse {
+            header: *response_header
         }
     }
 }
