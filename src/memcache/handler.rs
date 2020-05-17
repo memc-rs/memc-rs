@@ -39,7 +39,7 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::GetKey(get_key_req) => None,
             binary_codec::BinaryRequest::GetKeyQuietly(get_key_quiet_req) => None,
             binary_codec::BinaryRequest::Set(mut set_req) => {
-            let response = self.set_request(set_req, &mut response_header);
+            let response = self.set(set_req, &mut response_header);
                Some(
                    binary_codec::BinaryResponse::Set(
                        response
@@ -51,7 +51,7 @@ impl BinaryHandler {
         }
     }
 
-    fn set_request(&mut self, set_req: binary::SetRequest, response_header: &mut binary::ResponseHeader) -> binary::SetResponse {
+    fn set(&mut self, set_req: binary::SetRequest, response_header: &mut binary::ResponseHeader) -> binary::SetResponse {
         let record = storage::Record::new(
             set_req.value,
             set_req.header.cas,
