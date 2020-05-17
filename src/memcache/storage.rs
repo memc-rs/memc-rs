@@ -1,8 +1,8 @@
+use super::error::{StorageError, StorageResult};
+use super::timer;
 use dashmap::DashMap;
 use std::str;
-use super::timer;
-use std::sync::{Arc, Mutex};
-use super::error::{StorageResult, StorageError};
+use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug)]
 pub struct Header {
@@ -32,10 +32,7 @@ pub struct Record {
 impl Record {
     pub fn new(value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> Record {
         let header = Header::new(cas, flags, expiration);
-        Record {
-            header,
-            value,
-        }
+        Record { header, value }
     }
 }
 
@@ -54,15 +51,15 @@ pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
     memory: dashmap::DashMap<Vec<u8>, Record>,
-    timer: Arc<Box<dyn timer::Timer+Send+Sync>>,
+    timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>>,
 }
 
 pub struct SetStatus {
-    pub cas: u64
+    pub cas: u64,
 }
 
 impl Storage {
-    pub fn new(timer: Arc<Box<dyn timer::Timer+Send+Sync>>) -> Storage {
+    pub fn new(timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>>) -> Storage {
         Storage {
             memory: dashmap::DashMap::new(),
             timer,
@@ -79,7 +76,7 @@ impl Storage {
             Some(mut record) => {
                 if self.check_if_expired(key, &mut record) {
                     Err(StorageError::NotFound)
-                } else {                   
+                } else {
                     Ok(record.clone())
                 }
             }
@@ -87,38 +84,50 @@ impl Storage {
         }
     }
 
-    fn check_if_expired(&self, _key: &Vec<u8>, _record: &mut Record) -> bool {
-        false
+    fn check_if_expired(&self, key: &Vec<u8>, record: &mut Record) -> bool {
+        let current_time = {
+            let timer = self.timer.read().unwrap();
+            timer.secs()
+        };   
+
+        if record.header.expiration == 0 {
+            return false;
+        }
+
+        if record.header.timestamp + (record.header.expiration as u64) > current_time {
+            return false;
+        }
+        self.memory.remove(key);
+        true
     }
 
     fn touch_record(&self, record: &mut Record) {
-        record.header.timestamp = self.timer.secs();
+        let timer = self.timer.read().unwrap();
+        record.header.timestamp = timer.secs();
     }
 
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
-        info!("Header: {:?}", &record.header);                
+        info!("Header: {:?}", &record.header);
         match self.check_cas(&key, &record) {
             Ok(cas) => {
                 record.header.cas = cas;
                 self.touch_record(&mut record);
                 info!("Insert: {:?}, {:?}", &key, &record.header);
                 self.memory.insert(key, record);
-                Ok(SetStatus{
-                    cas
-                })
-            },
-            Err(err) => Err(err),        
-        }                
+                Ok(SetStatus { cas })
+            }
+            Err(err) => Err(err),
+        }
     }
 
-    fn check_cas(&self, key: &Vec<u8>, record: &Record) -> StorageResult<u64> {        
-        if record.header.cas>0 {
+    fn check_cas(&self, key: &Vec<u8>, record: &Record) -> StorageResult<u64> {
+        if record.header.cas > 0 {
             if let Some(existing_record) = self.memory.get(key) {
-                if existing_record.header.cas!=record.header.cas {
+                if existing_record.header.cas != record.header.cas {
                     return Err(StorageError::KeyExists);
-                }                
+                }
             }
-            return Ok(record.header.cas)
+            return Ok(record.header.cas);
         }
         Ok(1)
     }
@@ -142,37 +151,71 @@ impl Storage {
     pub fn flush(&self) {}
 
     pub fn touch(&self, _key: Vec<u8>) {}
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use simplelog::{CombinedLogger, Config, LevelFilter, WriteLogger};
     use std::fs::File;
-    use simplelog::{CombinedLogger, WriteLogger, Config, LevelFilter};
 
-    pub struct MockSystemTimer;
+    struct MockSystemTimer {
+        current_time: u64
+    }
+
+    trait SetableTimer : timer::Timer {
+        fn set(&self, time: u64);    
+    }
 
     impl MockSystemTimer {
         pub fn new() -> Self {
-            MockSystemTimer{            
+            MockSystemTimer {
+                current_time: 0
             }
         }
     }
 
     impl timer::Timer for MockSystemTimer {
         fn secs(&self) -> u64 {
-            0
+            self.current_time
         }
     }
 
-    fn create_storage() -> Storage {
-        let timer: Arc<Box<dyn timer::Timer+Send+Sync>> = Arc::new(Box::new(MockSystemTimer::new()));
-        Storage::new(timer)
+    impl SetableTimer for MockSystemTimer {
+        fn set(&self, time: u64) {
+            self.current_time = time
+        }
     }
     
+    struct MockServer {
+        timer: Arc<RwLock<Box<dyn SetableTimer + Send + Sync>>>,
+        storage: Storage
+    }
+
+    impl MockServer {
+        pub fn new() -> Self {
+            let timer: Arc<RwLock<Box<dyn SetableTimer + Send + Sync>>> = Arc::new(RwLock::new(Box::new(
+                MockSystemTimer::new(),
+            )));
+            MockServer {
+                timer: timer.clone(),
+                storage: Storage::new(timer.clone())
+            }
+        }
+    }
+    fn create_timer() -> Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>> {
+        Arc::new(RwLock::new(Box::new(MockSystemTimer::new())))
+    }
+
+    fn create_storage() -> Storage {
+        let timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>> = create_timer();
+        Storage::new(timer)
+    }
+
+    
+
     #[test]
-    fn insert() {    
+    fn if_not_defined_cas_should_be_1() {
         let storage = create_storage();
         let key = String::from("key").into_bytes();
         let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
@@ -181,16 +224,16 @@ mod tests {
         let found = storage.get(&key);
         assert!(found.is_ok());
         match found {
-            Ok(r) =>  { 
+            Ok(r) => {
                 assert_eq!(r, record);
                 assert_eq!(r.header.cas, 1)
-            },
-            Err(_er) => assert!(false)
+            }
+            Err(_er) => unreachable!(),
         }
     }
 
     #[test]
-    fn insert_cas() {    
+    fn if_cas_defined_it_should_be_returned() {
         let storage = create_storage();
         let cas: u64 = 0xDEAD_BEEF;
         let key = String::from("key").into_bytes();
@@ -201,16 +244,16 @@ mod tests {
         let found = storage.get(&key);
         assert!(found.is_ok());
         match found {
-            Ok(r) => { 
+            Ok(r) => {
                 assert_eq!(r, record);
                 assert_eq!(r.header.cas, cas)
-            },
-            Err(_er) => assert!(false)
+            }
+            Err(_er) => unreachable!(),
         }
     }
 
     #[test]
-    fn cas_mismatch_should_fail() {    
+    fn insert_should_fail_on_cas_mismatch() {
         let storage = create_storage();
         let cas: u64 = 0xDEAD_BEEF;
         let key = String::from("key").into_bytes();
@@ -220,12 +263,8 @@ mod tests {
         record.header.cas = 1;
         let result = storage.set(key, record);
         match result {
-            Ok(_) => {
-                assert!(false)
-            }
-            Err(err) => {
-                assert_eq!(err, StorageError::KeyExists)
-            }
-        }        
+            Ok(_) => unreachable!(),
+            Err(err) => assert_eq!(err, StorageError::KeyExists),
+        }
     }
 }
