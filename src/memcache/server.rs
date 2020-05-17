@@ -1,7 +1,7 @@
 use futures_util::sink::SinkExt;
 use std::error::Error;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::stream::{Stream, StreamExt as TokioStreamExt};
@@ -13,13 +13,18 @@ use super::timer;
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
+    timer:  Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>>,
     storage: Arc<storage::Storage>,
 }
 
 impl Default for TcpServer {
     fn default() -> Self {
+        let timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>> = Arc::new(RwLock::new(Box::new(
+            timer::SystemTimer::new(),
+        )));
         TcpServer {
-            storage: Arc::new(storage::Storage::new(Arc::new(Box::new(timer::SystemTimer::new())))),
+            timer: timer.clone(),
+            storage: Arc::new(storage::Storage::new(timer.clone())),
         }
     }
 }
@@ -58,16 +63,10 @@ impl TcpServer {
                             match result {
                                 Ok(request) => {
                                     let response = handler.handle_request(request);
-                                    match response {
-                                        Some(response) => {
-                                            if let Err(e) = writer.send(response).await {
-                                                error!(
-                                                    "error on sending response; error = {:?}",
-                                                    e
-                                                );
-                                            }
+                                    if let Some(response) = response {
+                                        if let Err(e) = writer.send(response).await {
+                                            error!("error on sending response; error = {:?}", e);
                                         }
-                                        None => {}
                                     }
                                 }
                                 Err(e) => {
