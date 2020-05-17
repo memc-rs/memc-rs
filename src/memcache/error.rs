@@ -1,4 +1,3 @@
-
 extern crate failure;
 
 #[derive(Debug, Fail, PartialEq)]
