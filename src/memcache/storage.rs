@@ -51,7 +51,7 @@ pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
     memory: dashmap::DashMap<Vec<u8>, Record>,
-    timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>>,
+    timer: Arc<dyn timer::Timer + Send + Sync>,
 }
 
 pub struct SetStatus {
@@ -59,7 +59,7 @@ pub struct SetStatus {
 }
 
 impl Storage {
-    pub fn new(timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>>) -> Storage {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> Storage {
         Storage {
             memory: dashmap::DashMap::new(),
             timer,
@@ -85,10 +85,7 @@ impl Storage {
     }
 
     fn check_if_expired(&self, key: &Vec<u8>, record: &mut Record) -> bool {
-        let current_time = {
-            let timer = self.timer.read().unwrap();
-            timer.secs()
-        };   
+        let current_time = self.timer.secs();
 
         if record.header.expiration == 0 {
             return false;
@@ -102,8 +99,7 @@ impl Storage {
     }
 
     fn touch_record(&self, record: &mut Record) {
-        let timer = self.timer.read().unwrap();
-        record.header.timestamp = timer.secs();
+        let timer = self.timer.secs();        
     }
 
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
@@ -164,7 +160,7 @@ mod tests {
     }
 
     trait SetableTimer : timer::Timer {
-        fn set(&self, time: u64);    
+        fn set(&mut self, time: u64);    
     }
 
     impl MockSystemTimer {
@@ -182,33 +178,31 @@ mod tests {
     }
 
     impl SetableTimer for MockSystemTimer {
-        fn set(&self, time: u64) {
+        fn set(&mut self, time: u64) {
             self.current_time = time
         }
     }
     
     struct MockServer {
-        timer: Arc<RwLock<Box<dyn SetableTimer + Send + Sync>>>,
+        timer: Arc<dyn SetableTimer + Send + Sync>,
         storage: Storage
     }
 
     impl MockServer {
         pub fn new() -> Self {
-            let timer: Arc<RwLock<Box<dyn SetableTimer + Send + Sync>>> = Arc::new(RwLock::new(Box::new(
-                MockSystemTimer::new(),
-            )));
+            let timer: Arc<dyn SetableTimer + Send + Sync> = Arc::new(MockSystemTimer::new());
             MockServer {
                 timer: timer.clone(),
-                storage: Storage::new(timer.clone())
+                storage: Storage::new(timer as Arc<dyn timer::Timer+Send+Sync>)
             }
         }
     }
-    fn create_timer() -> Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>> {
-        Arc::new(RwLock::new(Box::new(MockSystemTimer::new())))
+    fn create_timer() -> Arc<dyn timer::Timer + Send + Sync> {
+        Arc::new(MockSystemTimer::new())
     }
 
     fn create_storage() -> Storage {
-        let timer: Arc<RwLock<Box<dyn timer::Timer + Send + Sync>>> = create_timer();
+        let timer: Arc<dyn timer::Timer + Send + Sync> = create_timer();
         Storage::new(timer)
     }
 
