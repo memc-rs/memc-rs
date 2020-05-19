@@ -19,7 +19,7 @@ serde = "1.0.104"
 serde_derive = "1.0.104"
 num-traits = "0.2"
 num-derive = "0.3"
-dashmap = "3.5.0"
+dashmap = "3.11.1"
 simplelog = "0.7.4"
 log = "0.4.8"
 

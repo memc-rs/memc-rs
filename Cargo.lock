@@ -181,9 +181,9 @@ dependencies = [
 
 [[package]]
 name = "dashmap"
-version = "3.5.0"
+version = "3.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bc4f1f769b62ee7d6a9ee7c04b37a3e409ed2a02e1a774c2e744c17ebbecc89"
+checksum = "0f87a04c37da1d3d27db1fb7f372802b72fb8c3ff3e9c0914530995127f4a6a1"
 dependencies = [
  "ahash",
  "cfg-if",
