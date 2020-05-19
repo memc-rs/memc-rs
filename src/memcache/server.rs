@@ -13,15 +13,13 @@ use super::timer;
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
-    timer:  Arc<dyn timer::Timer + Send + Sync>,
+    timer: Arc<dyn timer::Timer + Send + Sync>,
     storage: Arc<storage::Storage>,
 }
 
 impl Default for TcpServer {
     fn default() -> Self {
-        let timer: Arc<dyn timer::Timer + Send + Sync> = Arc::new(
-            timer::SystemTimer::new(),
-        );
+        let timer: Arc<dyn timer::Timer + Send + Sync> = Arc::new(timer::SystemTimer::new());
         TcpServer {
             timer: timer.clone(),
             storage: Arc::new(storage::Storage::new(timer.clone())),
