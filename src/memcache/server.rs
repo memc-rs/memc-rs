@@ -56,6 +56,7 @@ impl Client {
         }
     }
 }
+
 impl TcpServer {
     pub fn new() -> TcpServer {
         Default::default()
@@ -66,6 +67,7 @@ impl TcpServer {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_millis(10));
         loop {
+            // TODO: limit number of accepted connections just like memcache
             match listener.accept().await {
                 Ok((mut socket, peer_addr)) => {
                     let client = Client::new(
@@ -107,6 +109,7 @@ impl TcpServer {
                                 if let Some(response) = response {
                                     if let Err(e) = timeout(Duration::from_secs(client.rx_timeout_secs), writer.send(response)).await {
                                         error!("error on sending response; error = {:?}", e);
+                                        return;
                                     }
                                 }
                             }
