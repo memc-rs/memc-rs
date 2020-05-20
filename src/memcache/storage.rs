@@ -74,9 +74,7 @@ impl Storage {
 
     fn get_by_key(&self, key: &Vec<u8>) -> StorageResult<Record> {
         let result = match self.memory.get(key) {
-            Some(record) => {
-                Ok(record.clone())                
-            }
+            Some(record) => Ok(record.clone()),
             None => Err(StorageError::NotFound),
         };
 
@@ -86,9 +84,9 @@ impl Storage {
                     return Err(StorageError::NotFound);
                 }
                 Ok(record)
-            },
-            Err(err) => Err(err)
-        }        
+            }
+            Err(err) => Err(err),
+        }
     }
 
     fn check_if_expired(&self, key: &Vec<u8>, record: &Record) -> bool {
@@ -103,8 +101,8 @@ impl Storage {
         }
         match self.memory.remove(key) {
             Some(_) => true,
-            None => true
-        }        
+            None => true,
+        }
     }
 
     fn touch_record(&self, record: &mut Record) {
@@ -281,9 +279,7 @@ mod tests {
         let found = server.storage.get(&key);
         assert!(found.is_err());
         match found {
-            Ok(_r) => {
-                unreachable!()
-            }
+            Ok(_r) => unreachable!(),
             Err(err) => assert_eq!(err, StorageError::NotFound),
         }
     }
