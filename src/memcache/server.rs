@@ -17,7 +17,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use super::handler;
 use super::storage;
 use super::timer;
-use super::timer::{SetableTimer};
+use super::timer::SetableTimer;
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
