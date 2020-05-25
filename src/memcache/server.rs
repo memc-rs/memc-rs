@@ -1,3 +1,8 @@
+use futures::{
+    future::FutureExt, // for `.fuse()`
+    pin_mut,
+    select,
+};
 use futures_util::sink::SinkExt;
 use std::error::Error;
 use std::net::{SocketAddr, ToSocketAddrs};
@@ -12,6 +17,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use super::handler;
 use super::storage;
 use super::timer;
+use super::timer::{SetableTimer};
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
@@ -67,24 +73,31 @@ impl TcpServer {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_millis(10));
         loop {
-            // TODO: limit number of accepted connections just like memcache
-            match listener.accept().await {
-                Ok((mut socket, peer_addr)) => {
-                    let client = Client::new(
-                        self.storage.clone(),
-                        socket,
-                        peer_addr,
-                        self.timeout_secs,
-                        self.timeout_secs,
-                    );
-                    info!("Incoming connection: {}", peer_addr);
-                    // Like with other small servers, we'll `spawn` this client to ensure it
-                    // runs concurrently with all other clients. The `move` keyword is used
-                    // here to move ownership of our db handle into the async closure.
-                    tokio::spawn(async move { TcpServer::handle_client(client).await });
-                }
-                Err(e) => error!("error accepting socket; error = {:?}", e),
-            }
+            select! {
+                connection = listener.accept().fuse() => {
+                    // TODO: limit number of accepted connections just like memcache
+                    match connection {
+                        Ok((mut socket, peer_addr)) => {
+                            let client = Client::new(
+                                self.storage.clone(),
+                                socket,
+                                peer_addr,
+                                self.timeout_secs,
+                                self.timeout_secs,
+                            );
+                            info!("Incoming connection: {}", peer_addr);
+                            // Like with other small servers, we'll `spawn` this client to ensure it
+                            // runs concurrently with all other clients. The `move` keyword is used
+                            // here to move ownership of our db handle into the async closure.
+                            tokio::spawn(async move { TcpServer::handle_client(client).await });
+                        }
+                        Err(e) => error!("error accepting socket; error = {:?}", e),
+                    }
+                },
+                interval = interval.tick().fuse() => {
+                    self.timer.add_second();
+                },
+            };
         }
     }
 
@@ -98,7 +111,7 @@ impl TcpServer {
 
         // Here for every packet we get back from the `Framed` decoder,
         // we parse the request, and if it's valid we generate a response
-        // based on the values in the database.
+        // based on the values in the storage.
         loop {
             match timeout(Duration::from_secs(client.rx_timeout_secs), reader.next()).await {
                 Ok(req_or_none) => {
@@ -107,14 +120,19 @@ impl TcpServer {
                             Ok(request) => {
                                 let response = handler.handle_request(request);
                                 if let Some(response) = response {
-                                    if let Err(e) = timeout(Duration::from_secs(client.rx_timeout_secs), writer.send(response)).await {
+                                    if let Err(e) = timeout(
+                                        Duration::from_secs(client.rx_timeout_secs),
+                                        writer.send(response),
+                                    )
+                                    .await
+                                    {
                                         error!("error on sending response; error = {:?}", e);
                                         return;
                                     }
                                 }
                             }
                             Err(e) => {
-                                error!("error on decoding from socket; error = {:?}", e);
+                                error!("Error decoding msg from socket; error = {:?}", e);
                             }
                         },
                         None => {
