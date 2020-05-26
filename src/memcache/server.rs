@@ -1,3 +1,4 @@
+use async_listen::{backpressure::Token, error_hint, ListenExt};
 use futures::{
     future::FutureExt, // for `.fuse()`
     pin_mut,
@@ -17,19 +18,21 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use super::handler;
 use super::storage;
 use super::timer;
-use super::timer::SetableTimer;
+use super::timer::{SetableTimer, Timer};
 use crate::protocol::binary_codec;
 
 pub struct TcpServer {
     timer: Arc<timer::SystemTimer>,
     storage: Arc<storage::Storage>,
     timeout_secs: u64,
+    connection_limit: u32,
 }
 
 impl Default for TcpServer {
     fn default() -> Self {
         let timer = Arc::new(timer::SystemTimer::new());
         TcpServer {
+            connection_limit: 100,
             timeout_secs: 60,
             timer: timer.clone(),
             storage: Arc::new(storage::Storage::new(timer)),
@@ -41,6 +44,7 @@ struct Client {
     store: Arc<storage::Storage>,
     socket: TcpStream,
     addr: SocketAddr,
+    token: async_listen::backpressure::Token,
     rx_timeout_secs: u64,
     wx_timeout_secs: u64,
 }
@@ -50,6 +54,7 @@ impl Client {
         store: Arc<storage::Storage>,
         socket: TcpStream,
         addr: SocketAddr,
+        token: async_listen::backpressure::Token,
         rx_timeout_secs: u64,
         wx_timeout_secs: u64,
     ) -> Self {
@@ -57,6 +62,7 @@ impl Client {
             store,
             socket,
             addr,
+            token,
             rx_timeout_secs,
             wx_timeout_secs,
         }
@@ -70,34 +76,43 @@ impl TcpServer {
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         let mut listener = TcpListener::bind(addr).await?;
+        // TODO: limit number of accepted connections just like memcache
+        let mut incoming = listener
+            .incoming()
+            .log_warnings(log_accept_error)
+            .handle_errors(Duration::from_millis(500)) // 1
+            .backpressure(self.connection_limit as usize);
+
         let start = Instant::now();
-        let mut interval = interval_at(start, Duration::from_millis(10));
+        let mut interval = interval_at(start, Duration::from_secs(1));
         loop {
             select! {
-                connection = listener.accept().fuse() => {
-                    // TODO: limit number of accepted connections just like memcache
+                connection = incoming.next().fuse() => {
+
                     match connection {
-                        Ok((mut socket, peer_addr)) => {
+                        Some((token, mut socket)) => {
+                            let peer_addr = socket.peer_addr().unwrap();
                             let client = Client::new(
                                 self.storage.clone(),
                                 socket,
                                 peer_addr,
+                                token,
                                 self.timeout_secs,
                                 self.timeout_secs,
                             );
-                            info!("Incoming connection: {}", peer_addr);
                             // Like with other small servers, we'll `spawn` this client to ensure it
                             // runs concurrently with all other clients. The `move` keyword is used
                             // here to move ownership of our db handle into the async closure.
                             tokio::spawn(async move { TcpServer::handle_client(client).await });
                         }
-                        Err(e) => error!("error accepting socket; error = {:?}", e),
+                        None => { }
                     }
                 },
-                interval = interval.tick().fuse() => {
+                _ = interval.tick().fuse() => {
                     self.timer.add_second();
+                    debug!("Timer tick: {}", self.timer.secs());
                 },
-            };
+            }
         }
     }
 
@@ -152,4 +167,8 @@ impl TcpServer {
             }
         }
     }
+}
+
+fn log_accept_error(e: &io::Error) {
+    error!("Error: {}. Listener paused for 0.5s. {}", e, error_hint(e)); // 3
 }
