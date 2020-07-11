@@ -17,9 +17,9 @@ impl Header {
     pub fn new(cas: u64, flags: u32, expiration: u32) -> Header {
         Header {
             timestamp: 0,
-            cas: cas,
-            flags: flags,
-            expiration: expiration,
+            cas,
+            flags,
+            expiration,
         }
     }
 }
