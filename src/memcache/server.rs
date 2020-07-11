@@ -1,17 +1,18 @@
-use async_listen::{backpressure::Token, error_hint, ListenExt};
+use async_listen::{
+    backpressure::Token, 
+    error_hint, ListenExt
+};
 use futures::{
-    future::FutureExt, // for `.fuse()`
-    pin_mut,
+    future::FutureExt, // for `.fuse()`    
     select,
 };
 use futures_util::sink::SinkExt;
-use std::error::Error;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
-use tokio::stream::{Stream, StreamExt as TokioStreamExt};
+use tokio::stream::{StreamExt as TokioStreamExt};
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
@@ -136,7 +137,7 @@ impl TcpServer {
                                 let response = handler.handle_request(request);
                                 if let Some(response) = response {
                                     if let Err(e) = timeout(
-                                        Duration::from_secs(client.rx_timeout_secs),
+                                        Duration::from_secs(client.wx_timeout_secs),
                                         writer.send(response),
                                     )
                                     .await
