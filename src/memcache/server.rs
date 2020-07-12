@@ -33,7 +33,7 @@ impl Default for TcpServer {
     fn default() -> Self {
         let timer = Arc::new(timer::SystemTimer::new());
         TcpServer {
-            connection_limit: 100,
+            connection_limit: 8192,
             timeout_secs: 60,
             timer: timer.clone(),
             storage: Arc::new(storage::Storage::new(timer)),
