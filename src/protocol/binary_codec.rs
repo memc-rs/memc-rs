@@ -277,8 +277,8 @@ impl MemcacheBinaryCodec {
     }
 }
 
-impl Encoder for MemcacheBinaryCodec {
-    type Item = BinaryResponse;
+impl Encoder<BinaryResponse> for MemcacheBinaryCodec {
+    //type Item = BinaryResponse;
     type Error = io::Error;
 
     fn encode(&mut self, msg: BinaryResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
