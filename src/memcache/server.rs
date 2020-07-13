@@ -2,10 +2,6 @@ use async_listen::{
     backpressure::Token, 
     error_hint, ListenExt
 };
-use futures::{
-    future::FutureExt, // for `.fuse()`    
-    select,
-};
 use futures_util::sink::SinkExt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
@@ -87,9 +83,9 @@ impl TcpServer {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
         loop {
-            select! {
-                connection = incoming.next().fuse() => {
-
+            tokio::select! {
+                connection = incoming.next() => {
+                    
                     match connection {
                         Some((token, mut socket)) => {
                             let peer_addr = socket.peer_addr().unwrap();
@@ -109,7 +105,7 @@ impl TcpServer {
                         None => { }
                     }
                 },
-                _ = interval.tick().fuse() => {
+                _ = interval.tick() => {
                     self.timer.add_second();
                     debug!("Timer tick: {}", self.timer.secs());
                 },
@@ -118,6 +114,7 @@ impl TcpServer {
     }
 
     async fn handle_client(mut client: Client) {
+        info!("New client connected: {}", client.addr);
         let mut handler = handler::BinaryHandler::new(client.store);
         //
         let (rx, tx) = client.socket.split();
