@@ -8,7 +8,7 @@ extern crate memix;
 #[tokio::main]
 async fn main() -> io::Result<()> {
     CombinedLogger::init(vec![WriteLogger::new(
-        LevelFilter::Debug,
+        LevelFilter::Off,
         Config::default(),
         File::create("memix.log").unwrap(),
     )])
