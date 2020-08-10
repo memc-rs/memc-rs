@@ -1,22 +1,23 @@
-use async_listen::{
-    backpressure::Token, 
-    error_hint, ListenExt
-};
-use futures_util::sink::SinkExt;
+use async_listen::{backpressure::Token, error_hint, ListenExt};
+use futures::sink::SinkExt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
-use tokio::stream::{StreamExt as TokioStreamExt};
+use tokio::stream::StreamExt as TokioStreamExt;
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
+use tracing::{debug, info, error};
+//use tracing_attributes::instrument;
 
 use super::handler;
 use super::storage;
 use super::timer;
 use super::timer::{SetableTimer, Timer};
 use crate::protocol::binary_codec;
+
+//extern crate flame;
 
 pub struct TcpServer {
     timer: Arc<timer::SystemTimer>,
@@ -85,24 +86,22 @@ impl TcpServer {
         loop {
             tokio::select! {
                 connection = incoming.next() => {
-                    
-                    match connection {
-                        Some((token, mut socket)) => {
-                            let peer_addr = socket.peer_addr().unwrap();
-                            let client = Client::new(
-                                self.storage.clone(),
-                                socket,
-                                peer_addr,
-                                token,
-                                self.timeout_secs,
-                                self.timeout_secs,
-                            );
-                            // Like with other small servers, we'll `spawn` this client to ensure it
-                            // runs concurrently with all other clients. The `move` keyword is used
-                            // here to move ownership of our db handle into the async closure.
-                            tokio::spawn(async move { TcpServer::handle_client(client).await });
-                        }
-                        None => { }
+                    if let Some((token, mut socket)) = connection {
+                        let peer_addr = socket.peer_addr().unwrap();
+                        socket.set_nodelay(true)?;
+                        socket.set_linger(None)?;
+                        let client = Client::new(
+                            self.storage.clone(),
+                            socket,
+                            peer_addr,
+                            token,
+                            self.timeout_secs,
+                            self.timeout_secs,
+                        );
+                        // Like with other small servers, we'll `spawn` this client to ensure it
+                        // runs concurrently with all other clients. The `move` keyword is used
+                        // here to move ownership of our db handle into the async closure.
+                        tokio::spawn(async move { TcpServer::handle_client(client).await });
                     }
                 },
                 _ = interval.tick() => {
@@ -131,17 +130,14 @@ impl TcpServer {
                     match req_or_none {
                         Some(req_or_error) => match req_or_error {
                             Ok(request) => {
+                                debug!("Got request {:?}", request);
                                 let response = handler.handle_request(request);
                                 if let Some(response) = response {
-                                    if let Err(e) = timeout(
-                                        Duration::from_secs(client.wx_timeout_secs),
-                                        writer.send(response),
-                                    )
-                                    .await
-                                    {
+                                    debug!("Response sent {:?}", response);
+                                    if let Err(e) = writer.send(response).await {
                                         error!("error on sending response; error = {:?}", e);
                                         return;
-                                    }
+                                    }                                   
                                 }
                             }
                             Err(e) => {
