@@ -22,9 +22,9 @@ num-traits = "0.2.12"
 num-derive = "0.3.1"
 dashmap = "3.11.10"
 log = "0.4.11"
-tracing = "0.1.18"
+tracing = "0.1.19"
 tracing-log = "0.1.1"
-tracing-attributes = "0.1.9"
+tracing-attributes = "0.1.11"
 
 
 

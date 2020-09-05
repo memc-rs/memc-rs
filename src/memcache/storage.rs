@@ -105,12 +105,12 @@ impl Storage {
         }
     }
 
-    fn touch_record(&self, record: &mut Record) {
-        let timer = self.timer.secs();
+    fn touch_record(&self, _record: &mut Record) {
+        let _timer = self.timer.secs();
     }
 
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
-        info!("Header: {:?}", &record.header);
+        info!("Set: {:?}", &record.header);
         match self.check_cas(&key, &record) {
             Ok(cas) => {
                 record.header.cas = cas;
@@ -135,31 +135,81 @@ impl Storage {
         Ok(1)
     }
 
-    pub fn add(&self, _key: Vec<u8>, _record: Record) {}
+    pub fn add(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
+        match self.get_by_key(&key) {
+            Ok(_record) => {
+                Err(StorageError::KeyExists)
+            },
+            Err(_err) =>  {
+                self.set(key, record)
+            }
+        }
+    }
 
-    pub fn replace(&self, _key: Vec<u8>, _record: Record) {}
+    pub fn replace(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
+        match self.get_by_key(&key) {
+            Ok(_record) => {
+                self.set(key, record)                
+            },
+            Err(_err) =>  {
+                Err(StorageError::NotFound)
+            }
+        }
+    }
 
-    pub fn append(&self, _key: Vec<u8>, _record: Record) {}
+    pub fn append(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
+        match self.get_by_key(&key) {
+            Ok(mut record) => {
+                record.header = new_record.header;
+                record.value.reserve(new_record.value.len());
+                record.value.append(&mut new_record.value);
+                self.set(key, record)                
+            },
+            Err(_err) =>  {
+                Err(StorageError::NotFound)
+            }
+        }
+    }
 
-    pub fn prepend(&self, _key: Vec<u8>, _record: Record) {}
-
-    pub fn cas(&self, _key: Vec<u8>, _record: Record) {}
+    pub fn prepend(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
+        match self.get_by_key(&key) {
+            Ok(mut record) => {                
+                new_record.value.reserve(record.value.len());
+                new_record.value.append(&mut record.value);
+                self.set(key, new_record)                
+            },
+            Err(_err) =>  {
+                Err(StorageError::NotFound)
+            }
+        }
+    }
 
     pub fn increment(&self, _key: Vec<u8>, _increment: IncrementParam) {}
 
     pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {}
 
-    pub fn delete(&self, _key: Vec<u8>, _header: Header) {}
+    pub fn delete(&self, key: Vec<u8>, _header: Header) -> StorageResult<()> {
+        match self.memory.remove(&key) {
+            Some(_record) => Ok(()),
+            None => Err(StorageError::NotFound),
+        }        
+    }
 
-    pub fn flush(&self) {}
+    pub fn flush(&self, header: Header) {
+        self.memory.alter_all(|_key, mut value| {
+            value.header.expiration = header.expiration;
+            value
+        });
+    }
 
-    pub fn touch(&self, _key: Vec<u8>) {}
+    pub fn touch(&self, _key: Vec<u8>) {
+
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use simplelog::{CombinedLogger, Config, LevelFilter, WriteLogger};
     use std::fs::File;
 
     struct MockSystemTimer {

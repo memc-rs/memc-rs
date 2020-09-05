@@ -42,7 +42,7 @@ struct Client {
     store: Arc<storage::Storage>,
     socket: TcpStream,
     addr: SocketAddr,
-    token: async_listen::backpressure::Token,
+    _token: async_listen::backpressure::Token,
     rx_timeout_secs: u64,
     wx_timeout_secs: u64,
 }
@@ -60,7 +60,7 @@ impl Client {
             store,
             socket,
             addr,
-            token,
+            _token: token,
             rx_timeout_secs,
             wx_timeout_secs,
         }
