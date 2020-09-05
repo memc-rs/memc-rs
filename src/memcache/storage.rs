@@ -2,7 +2,6 @@ use super::error::{StorageError, StorageResult};
 use super::timer;
 use dashmap::DashMap;
 use std::str;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
@@ -111,7 +110,7 @@ impl Storage {
 
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
         info!("Set: {:?}", &record.header);
-        match self.check_cas(&key, &record) {
+        match self.check_cas(&key, &record.header) {
             Ok(cas) => {
                 record.header.cas = cas;
                 self.touch_record(&mut record);
@@ -123,14 +122,14 @@ impl Storage {
         }
     }
 
-    fn check_cas(&self, key: &Vec<u8>, record: &Record) -> StorageResult<u64> {
-        if record.header.cas > 0 {
+    fn check_cas(&self, key: &Vec<u8>, header: &Header) -> StorageResult<u64> {
+        if header.cas > 0 {
             if let Some(existing_record) = self.memory.get(key) {
-                if existing_record.header.cas != record.header.cas {
+                if existing_record.header.cas != header.cas {
                     return Err(StorageError::KeyExists);
                 }
             }
-            return Ok(record.header.cas);
+            return Ok(header.cas);
         }
         Ok(1)
     }
@@ -188,11 +187,23 @@ impl Storage {
 
     pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {}
 
-    pub fn delete(&self, key: Vec<u8>, _header: Header) -> StorageResult<()> {
-        match self.memory.remove(&key) {
-            Some(_record) => Ok(()),
-            None => Err(StorageError::NotFound),
-        }        
+    pub fn delete(&self, key: Vec<u8>, header: Header) -> StorageResult<()> {
+        match self.get_by_key(&key) {
+            Ok(_record) => {                
+                match self.check_cas(&key, &header) {
+                    Ok(_cas) => {                                                
+                        match self.memory.remove(&key) {
+                            Some(_record) => Ok(()),
+                            None => Err(StorageError::NotFound),
+                        }       
+                    }
+                    Err(err) => Err(err),
+                }
+            },
+            Err(_err) =>  {
+                Err(StorageError::NotFound)
+            }
+        }
     }
 
     pub fn flush(&self, header: Header) {
@@ -210,7 +221,7 @@ impl Storage {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs::File;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     struct MockSystemTimer {
         current_time: AtomicUsize,
@@ -333,4 +344,65 @@ mod tests {
             Err(err) => assert_eq!(err, StorageError::NotFound),
         }
     }
+
+    #[test]
+    fn delete_record() {
+        let server = create_server();
+        let key = String::from("key").into_bytes();
+        let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
+        let result = server.storage.set(key.clone(), record.clone());
+        assert!(result.is_ok());
+        let found = server.storage.get(&key);
+        assert!(found.is_ok());
+        let header = Header::new(0,0, 0);
+        let deleted = server.storage.delete(key.clone(), header);
+        match deleted {
+            Ok(_) => {
+                match server.storage.get(&key)  {
+                    Ok(_) => unreachable!(),
+                    Err(err) => assert_eq!(err, StorageError::NotFound),
+                }                 
+            },
+            Err(_err) => unreachable!()
+        }        
+    }
+
+    #[test]
+    fn delete_should_return_not_exists() {
+        let server = create_server();
+        let key = String::from("key").into_bytes();
+        let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
+        let result = server.storage.set(key.clone(), record.clone());
+        assert!(result.is_ok());
+        let found = server.storage.get(&key);
+        assert!(found.is_ok());
+        let header = Header::new(0,0, 0);
+        let deleted = server.storage.delete(String::from("bad key").into_bytes(), header);
+        match deleted {
+            Ok(_) => unreachable!(),
+            Err(err) => {
+                assert_eq!(err, StorageError::NotFound)
+            }
+        }        
+    }
+
+    #[test]
+    fn delete_should_if_cas_doesnt_match_should_not_delete() {
+        let server = create_server();
+        let key = String::from("key").into_bytes();
+        let record = Record::new(String::from("Test data").into_bytes(), 1, 0, 0);
+        let result = server.storage.set(key.clone(), record);
+        assert!(result.is_ok());
+        let found = server.storage.get(&key);
+        assert!(found.is_ok());
+        let header = Header::new(2,0, 0);
+        let deleted = server.storage.delete(String::from("key").into_bytes(), header);
+        match deleted {
+            Ok(_) => unreachable!(),
+            Err(err) => {
+                assert_eq!(err, StorageError::KeyExists)
+            }
+        }        
+    }
+
 }
