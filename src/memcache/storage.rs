@@ -51,7 +51,7 @@ pub struct IncrementParam {
 pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
-    memory: dashmap::DashMap<Vec<u8>, Record>,
+    memory: DashMap<Vec<u8>, Record>,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
 }
@@ -63,18 +63,18 @@ pub struct SetStatus {
 impl Storage {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> Storage {
         Storage {
-            memory: dashmap::DashMap::new(),
+            memory: DashMap::new(),
             timer,
             cas_id: AtomicU64::new(1),
         }
     }
 
-    pub fn get(&self, key: &Vec<u8>) -> StorageResult<Record> {
+    pub fn get(&self, key: &[u8]) -> StorageResult<Record> {
         info!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
 
-    fn get_by_key(&self, key: &Vec<u8>) -> StorageResult<Record> {
+    fn get_by_key(&self, key: &[u8]) -> StorageResult<Record> {
         let result = match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
             None => Err(StorageError::NotFound),
@@ -91,7 +91,7 @@ impl Storage {
         }
     }
 
-    fn check_if_expired(&self, key: &Vec<u8>, record: &Record) -> bool {
+    fn check_if_expired(&self, key: &[u8], record: &Record) -> bool {
         let current_time = self.timer.secs();
 
         if record.header.expiration == 0 {
@@ -125,7 +125,7 @@ impl Storage {
         }
     }
 
-    fn check_cas(&self, key: &Vec<u8>, header: &Header) -> StorageResult<u64> {
+    fn check_cas(&self, key: &[u8], header: &Header) -> StorageResult<u64> {
         if header.cas > 0 {
             if let Some(existing_record) = self.memory.get(key) {
                 if existing_record.header.cas != header.cas {
