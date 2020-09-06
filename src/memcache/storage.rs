@@ -201,8 +201,6 @@ impl Storage {
             value
         });
     }
-
-    pub fn touch(&self, _key: Vec<u8>) {}
 }
 
 #[cfg(test)]
