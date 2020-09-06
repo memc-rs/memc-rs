@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 pub trait Timer {
     fn secs(&self) -> u64;
@@ -9,25 +9,25 @@ pub trait SetableTimer {
 }
 
 pub struct SystemTimer {
-    seconds: AtomicUsize,
+    seconds: AtomicU64,
 }
 
 impl SystemTimer {
     pub fn new() -> Self {
         SystemTimer {
-            seconds: AtomicUsize::new(0),
+            seconds: AtomicU64::new(0),
         }
     }
 }
 
 impl Timer for SystemTimer {
     fn secs(&self) -> u64 {
-        self.seconds.load(Ordering::Relaxed) as u64
+        self.seconds.load(Ordering::SeqCst) 
     }
 }
 
 impl SetableTimer for SystemTimer {
     fn add_second(&self) {
-        self.seconds.fetch_add(1, Ordering::Relaxed);
+        self.seconds.fetch_add(1, Ordering::SeqCst);
     }
 }
