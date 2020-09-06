@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::stream::StreamExt as TokioStreamExt;
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::{debug, info, error};
+use tracing::{debug, error, info};
 //use tracing_attributes::instrument;
 
 use super::handler;
@@ -137,7 +137,7 @@ impl TcpServer {
                                     if let Err(e) = writer.send(response).await {
                                         error!("error on sending response; error = {:?}", e);
                                         return;
-                                    }                                   
+                                    }
                                 }
                             }
                             Err(e) => {
