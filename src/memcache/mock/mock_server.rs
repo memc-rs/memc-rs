@@ -49,3 +49,8 @@ impl MockServer {
 pub fn create_server() -> MockServer {
     MockServer::new()
 }
+
+pub fn create_storage() -> Arc<Storage> {
+    let timer = Arc::new(MockSystemTimer::new());
+    Arc::new(Storage::new(timer))
+}

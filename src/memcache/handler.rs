@@ -12,7 +12,7 @@ impl BinaryHandler {
     }
 
     pub fn handle_request(
-        &mut self,
+        &self,
         req: binary_codec::BinaryRequest,
     ) -> Option<binary_codec::BinaryResponse> {
         let request_header = req.get_header();
@@ -33,13 +33,12 @@ impl BinaryHandler {
                             value: record.value,
                         }))
                     }
-                    Err(e) => {
-                        response_header.status = e as u16;
-                        Some(binary_codec::BinaryResponse::Get(binary::GetResponse {
+                    Err(err) => {
+                        let message = err.to_string();
+                        response_header.status = err as u16;
+                        Some(binary_codec::BinaryResponse::Error(binary::ErrorResponse {
                             header: response_header,
-                            flags: 0,
-                            key: Vec::new(),
-                            value: Vec::new(),
+                            error: message
                         }))
                     },
                 }
@@ -59,7 +58,7 @@ impl BinaryHandler {
     }
 
     fn set(
-        &mut self,
+        &self,
         set_req: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary::SetResponse {
@@ -81,8 +80,52 @@ impl BinaryHandler {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::memcache::mock::mock_server::{create_storage};
+    use crate::memcache::error;
+    use super::binary;
+    use super::binary_codec;
+
+    fn create_handler() -> BinaryHandler {
+        BinaryHandler::new(create_storage())
+    }
+
+    fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
+        binary::RequestHeader {
+            magic: binary::Magic::Request as u8,
+            opcode: opcode as u8,
+            key_length: key.len() as u16,
+            extras_length: 0,
+            data_type: 0,
+            reserved: 0,
+            body_length: 0,
+            opaque: 0,
+            cas: 0,
+        }
+    }
+
     #[test]
-    fn get_request_should_return_not_found() {
-        assert_eq!(2 + 2, 4);
+    fn get_request_should_return_not_found_on_cache_miss() {
+        let handler = create_handler();
+        let key = String::from("key").into_bytes();
+        let header = create_header(binary::Command::Get, &key);
+
+        let request = binary_codec::BinaryRequest::Get(binary::GetRequest {
+            header: header,
+            key: key,
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    assert_eq!(response.header.status, error::StorageError::NotFound as u16);
+                }
+                else {
+                    unreachable!();
+                }
+            },
+            None => unreachable!(),
+        }
     }
 }
