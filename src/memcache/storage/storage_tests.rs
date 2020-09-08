@@ -1,52 +1,5 @@
 use super::*;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-struct MockSystemTimer {
-    current_time: AtomicUsize,
-}
-
-trait SetableTimer: timer::Timer {
-    fn set(&self, time: u64);
-}
-
-impl MockSystemTimer {
-    pub fn new() -> Self {
-        MockSystemTimer {
-            current_time: AtomicUsize::new(0),
-        }
-    }
-}
-
-impl timer::Timer for MockSystemTimer {
-    fn secs(&self) -> u64 {
-        self.current_time.load(Ordering::Relaxed) as u64
-    }
-}
-
-impl SetableTimer for MockSystemTimer {
-    fn set(&self, time: u64) {
-        self.current_time.store(time as usize, Ordering::Relaxed)
-    }
-}
-
-struct MockServer {
-    pub timer: Arc<MockSystemTimer>,
-    pub storage: Storage,
-}
-
-impl MockServer {
-    pub fn new() -> Self {
-        let timer = Arc::new(MockSystemTimer::new());
-        MockServer {
-            timer: timer.clone(),
-            storage: Storage::new(timer),
-        }
-    }
-}
-
-fn create_server() -> MockServer {
-    MockServer::new()
-}
+use crate::memcache::mock::mock_server::{create_server, SetableTimer};
 
 #[test]
 fn if_not_defined_cas_should_be_1() {
