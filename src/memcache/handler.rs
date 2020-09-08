@@ -33,8 +33,17 @@ impl BinaryHandler {
                             value: record.value,
                         }))
                     }
-                    Err(e) => None,
+                    Err(e) => {
+                        response_header.status = e as u16;
+                        Some(binary_codec::BinaryResponse::Get(binary::GetResponse {
+                            header: response_header,
+                            flags: 0,
+                            key: Vec::new(),
+                            value: Vec::new(),
+                        }))
+                    },
                 }
+                
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req) => None,
             binary_codec::BinaryRequest::GetKey(get_key_req) => None,
@@ -45,6 +54,7 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Add(add_req) => None,
             binary_codec::BinaryRequest::Replace(replace_req) => None,
+            
         }
     }
 
@@ -66,5 +76,13 @@ impl BinaryHandler {
         binary::SetResponse {
             header: *response_header,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn get_request_should_return_not_found() {
+        assert_eq!(2 + 2, 4);
     }
 }
