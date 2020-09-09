@@ -6,4 +6,3 @@ pub mod timer;
 
 #[cfg(test)]
 pub mod mock;
-

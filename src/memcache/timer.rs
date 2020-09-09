@@ -22,7 +22,7 @@ impl SystemTimer {
 
 impl Timer for SystemTimer {
     fn secs(&self) -> u64 {
-        self.seconds.load(Ordering::SeqCst) 
+        self.seconds.load(Ordering::SeqCst)
     }
 }
 

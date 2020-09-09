@@ -183,7 +183,7 @@ fn add_should_succeed_if_not_already_stored() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Test data").into_bytes(), 5, 0, 0);
     let result = server.storage.add(key.clone(), record);
-    assert!(result.is_ok());    
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -192,11 +192,11 @@ fn add_should_fail_if_already_stored() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Test data").into_bytes(), 5, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
-    assert!(result.is_ok());    
+    assert!(result.is_ok());
     let add_result = server.storage.add(key.clone(), record);
     match add_result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::KeyExists)
+        Err(err) => assert_eq!(err, StorageError::KeyExists),
     }
 }
 
@@ -208,8 +208,8 @@ fn replace_should_fail_if_not_stored() {
     let result = server.storage.replace(key.clone(), record);
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound)
-    }    
+        Err(err) => assert_eq!(err, StorageError::NotFound),
+    }
 }
 
 #[test]
@@ -224,9 +224,9 @@ fn replace_should_succeed_if_stored() {
             let new_record = Record::new(String::from("New record").into_bytes(), status.cas, 0, 0);
             let replace_result = server.storage.replace(key.clone(), new_record);
             assert!(replace_result.is_ok());
-        },
-        Err(_) => unreachable!()
-    }    
+        }
+        Err(_) => unreachable!(),
+    }
 }
 
 #[test]
@@ -235,11 +235,11 @@ fn append_should_fail_if_not_exist() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
     let result = server.storage.append(key.clone(), record);
-    
+
     match result {
         Ok(status) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound)
-    }    
+        Err(err) => assert_eq!(err, StorageError::NotFound),
+    }
 }
 
 #[test]
@@ -248,11 +248,11 @@ fn prepend_should_fail_if_not_exist() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Test data").into_bytes(), 0, 0, 0);
     let result = server.storage.prepend(key.clone(), record);
-    
+
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound)
-    }    
+        Err(err) => assert_eq!(err, StorageError::NotFound),
+    }
 }
 
 #[test]
@@ -261,7 +261,7 @@ fn append_should_add_at_the_end() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Foo").into_bytes(), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
-    
+
     match result {
         Ok(status) => {
             let append_data = Record::new(String::from("bar").into_bytes(), status.cas, 0, 0);
@@ -270,15 +270,14 @@ fn append_should_add_at_the_end() {
             let get_result = server.storage.get(&key);
             match get_result {
                 Ok(record) => {
-                    let value = String::from("Foobar").into_bytes();                    
+                    let value = String::from("Foobar").into_bytes();
                     assert_eq!(record.value, value);
-                },
-                Err(_) => unreachable!()
-
+                }
+                Err(_) => unreachable!(),
             }
-        },
-        Err(_) => unreachable!()
-    }    
+        }
+        Err(_) => unreachable!(),
+    }
 }
 
 #[test]
@@ -287,7 +286,7 @@ fn prepend_should_add_at_the_begining() {
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Foo").into_bytes(), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
-    
+
     match result {
         Ok(status) => {
             let append_data = Record::new(String::from("bar").into_bytes(), status.cas, 0, 0);
@@ -296,13 +295,12 @@ fn prepend_should_add_at_the_begining() {
             let get_result = server.storage.get(&key);
             match get_result {
                 Ok(record) => {
-                    let value = String::from("barFoo").into_bytes();                    
+                    let value = String::from("barFoo").into_bytes();
                     assert_eq!(record.value, value);
-                },
-                Err(_) => unreachable!()
-
+                }
+                Err(_) => unreachable!(),
             }
-        },
-        Err(_) => unreachable!()
-    }    
+        }
+        Err(_) => unreachable!(),
+    }
 }
