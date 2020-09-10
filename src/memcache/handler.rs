@@ -23,28 +23,7 @@ impl BinaryHandler {
 
         match req {
             binary_codec::BinaryRequest::Get(get_request) => {
-                let result = self.storage.get(&get_request.key);
-                match result {
-                    Ok(record) => {
-                        response_header.body_length = record.value.len() as u32 + EXTRAS_LENGTH as u32;
-                        response_header.extras_length = EXTRAS_LENGTH;
-                        response_header.cas = record.header.cas;
-                        Some(binary_codec::BinaryResponse::Get(binary::GetResponse {
-                            header: response_header,
-                            flags: record.header.flags,
-                            key: Vec::new(),
-                            value: record.value,
-                        }))
-                    }
-                    Err(err) => {
-                        let message = err.to_string();
-                        response_header.status = err as u16;
-                        Some(binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-                            header: response_header,
-                            error: message,
-                        }))
-                    }
-                }
+                Some(self.get(get_request, &mut response_header))
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req) => None,
             binary_codec::BinaryRequest::GetKey(get_key_req) => None,
@@ -77,6 +56,35 @@ impl BinaryHandler {
             header: *response_header,
         }
     }
+
+    fn get(
+        &self,
+        get_request: binary::GetRequest,
+        response_header: &mut binary::ResponseHeader,
+    ) -> binary_codec::BinaryResponse {
+        let result = self.storage.get(&get_request.key);
+        match result {
+            Ok(record) => {
+                response_header.body_length = record.value.len() as u32 + EXTRAS_LENGTH as u32;
+                response_header.extras_length = EXTRAS_LENGTH;
+                response_header.cas = record.header.cas;
+                binary_codec::BinaryResponse::Get(binary::GetResponse {
+                    header: *response_header,
+                    flags: record.header.flags,
+                    key: Vec::new(),
+                    value: record.value,
+                })
+            }
+            Err(err) => {
+                let message = err.to_string();
+                response_header.status = err as u16;
+                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
+                    header: *response_header,
+                    error: message,
+                })
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -86,6 +94,7 @@ mod tests {
     use super::*;
     use crate::memcache::error;
     use crate::memcache::mock::mock_server::create_storage;
+    const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {
         BinaryHandler::new(create_storage())
@@ -100,7 +109,7 @@ mod tests {
             data_type: 0,
             reserved: 0,
             body_length: 0,
-            opaque: 0,
+            opaque: OPAQUE_VALUE,
             cas: 0,
         }
     }
@@ -114,7 +123,6 @@ mod tests {
         data_type: u8,
         status: u16,
         body_length: u32,
-        opaque: u32       
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
@@ -123,7 +131,7 @@ mod tests {
         assert_eq!(response.data_type, data_type);
         assert_eq!(response.status, status);
         assert_eq!(response.body_length, body_length);
-        assert_eq!(response.opaque, opaque);
+        assert_eq!(response.opaque, OPAQUE_VALUE);
         assert_ne!(response.cas, 0);
     }
 
@@ -133,10 +141,7 @@ mod tests {
         let key = String::from("key").into_bytes();
         let header = create_header(binary::Command::Get, &key);
 
-        let request = binary_codec::BinaryRequest::Get(binary::GetRequest {
-            header: header,
-            key: key,
-        });
+        let request = binary_codec::BinaryRequest::Get(binary::GetRequest { header, key });
 
         let result = handler.handle_request(request);
         match result {
@@ -172,7 +177,42 @@ mod tests {
                 if let binary_codec::BinaryResponse::Get(response) = resp {
                     assert_eq!(response.flags, FLAGS);
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Get, 0, EXTRAS_LENGTH, 0, 0, value.len() as u32 + EXTRAS_LENGTH as u32, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::Get,
+                        0,
+                        EXTRAS_LENGTH,
+                        0,
+                        0,
+                        value.len() as u32 + EXTRAS_LENGTH as u32,
+                    );
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn set_request_should_succeed() {
+        let handler = create_handler();
+        let key = String::from("key").into_bytes();
+        let header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        let value = String::from("value").into_bytes();
+        let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key,
+            value,
+        });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Set(response) = resp {
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
