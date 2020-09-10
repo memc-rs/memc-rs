@@ -132,7 +132,6 @@ mod tests {
         assert_eq!(response.status, status);
         assert_eq!(response.body_length, body_length);
         assert_eq!(response.opaque, OPAQUE_VALUE);
-        assert_ne!(response.cas, 0);
     }
 
     #[test]
@@ -212,7 +211,66 @@ mod tests {
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Set(response) = resp {
+                    assert_ne!(response.header.cas, 0);
                     check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn set_request_on_cas_mismatch_should_return_key_exists() {
+        let handler = create_handler();
+        let key = String::from("key").into_bytes();
+        let mut header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        let value = String::from("value").into_bytes();
+        let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
+            header: header.clone(),
+            flags: FLAGS,
+            expiration: 0,
+            key: key.clone(),
+            value: value.clone(),
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Set(response) = resp {
+                    assert_ne!(response.header.cas, 0);
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+        header.cas = 100;
+        let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key,
+            value,
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Set(response) = resp {
+                    assert_eq!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::Set,
+                        0,
+                        0,
+                        0,
+                        error::StorageError::KeyExists as u16,
+                        0,
+                    );
                 } else {
                     unreachable!();
                 }
