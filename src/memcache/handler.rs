@@ -1,4 +1,5 @@
 use super::storage;
+use crate::memcache::error;
 use crate::protocol::{binary, binary_codec};
 use std::sync::Arc;
 
@@ -22,20 +23,22 @@ impl BinaryHandler {
             binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
 
         match req {
-            binary_codec::BinaryRequest::Get(get_request) => {
+            binary_codec::BinaryRequest::Get(get_request)
+            | binary_codec::BinaryRequest::GetKey(get_request) => {
                 Some(self.get(get_request, &mut response_header))
             }
-            binary_codec::BinaryRequest::GetQuietly(get_quiet_req) => None,
-            binary_codec::BinaryRequest::GetKey(get_key_req) => None,
-            binary_codec::BinaryRequest::GetKeyQuietly(get_key_quiet_req) => None,
-            binary_codec::BinaryRequest::Set(mut set_req) => {
+            binary_codec::BinaryRequest::GetQuietly(get_quiet_req)
+            | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
+                self.get_quiet(get_quiet_req, &mut response_header)
+            }
+            binary_codec::BinaryRequest::Set(set_req) => {
                 let response = self.set(set_req, &mut response_header);
                 Some(binary_codec::BinaryResponse::Set(response))
             }
-            binary_codec::BinaryRequest::Add(add_req) => None,
-            binary_codec::BinaryRequest::Replace(replace_req) => None,
-            binary_codec::BinaryRequest::Append(append_req) => None,
-            binary_codec::BinaryRequest::Prepend(prepend_req) => None,
+            binary_codec::BinaryRequest::Add(_add_req) => None,
+            binary_codec::BinaryRequest::Replace(_replace_req) => None,
+            binary_codec::BinaryRequest::Append(_append_req) => None,
+            binary_codec::BinaryRequest::Prepend(_prepend_req) => None,
         }
     }
 
@@ -65,15 +68,23 @@ impl BinaryHandler {
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
         let result = self.storage.get(&get_request.key);
+
         match result {
             Ok(record) => {
-                response_header.body_length = record.value.len() as u32 + EXTRAS_LENGTH as u32;
+                let include_key = self.is_get_key_command(get_request.header.opcode);
+                let mut key: Vec<u8> = Vec::new();
+                if include_key {
+                    key = get_request.key
+                }
+                response_header.body_length =
+                    record.value.len() as u32 + EXTRAS_LENGTH as u32 + key.len() as u32;
+                response_header.key_length = key.len() as u16;
                 response_header.extras_length = EXTRAS_LENGTH;
                 response_header.cas = record.header.cas;
                 binary_codec::BinaryResponse::Get(binary::GetResponse {
                     header: *response_header,
                     flags: record.header.flags,
-                    key: Vec::new(),
+                    key,
                     value: record.value,
                 })
             }
@@ -86,6 +97,24 @@ impl BinaryHandler {
                 })
             }
         }
+    }
+
+    fn is_get_key_command(&self, opcode: u8) -> bool {
+        opcode == binary::Command::GetKey as u8 || opcode == binary::Command::GetKeyQuiet as u8
+    }
+
+    fn get_quiet(
+        &self,
+        get_quiet_request: binary::GetRequest,
+        response_header: &mut binary::ResponseHeader,
+    ) -> Option<binary_codec::BinaryResponse> {
+        let resp = self.get(get_quiet_request, response_header);
+        if let binary_codec::BinaryResponse::Error(response) = &resp {
+            if response.header.status == error::StorageError::NotFound as u16 {
+                return None;
+            }
+        }
+        Some(resp)
     }
 }
 
