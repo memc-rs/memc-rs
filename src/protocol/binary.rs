@@ -156,8 +156,20 @@ pub struct SetRequest {
     pub(crate) key: Vec<u8>,
     pub(crate) value: Vec<u8>,
 }
+
 pub type AddRequest = SetRequest;
 pub type ReplaceRequest = SetRequest;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AppendRequest {
+    pub(crate) header: RequestHeader,
+    pub(crate) key: Vec<u8>,
+    pub(crate) value: Vec<u8>,
+}
+
+pub type PrependRequest = AppendRequest;
+pub type AppendResponse = Response;
+pub type PrependResponse = Response;
 
 pub type SetResponse = Response;
 pub type AddResponse = Response;

@@ -14,6 +14,8 @@ pub enum BinaryRequest {
     GetKey(binary::GetKeyRequest),
     GetKeyQuietly(binary::GetKeyQuietRequest),
     Set(binary::SetRequest),
+    Append(binary::AppendRequest),
+    Prepend(binary::PrependRequest),
     Add(binary::AddRequest),
     Replace(binary::ReplaceRequest),
 }
@@ -28,6 +30,8 @@ impl BinaryRequest {
             BinaryRequest::Set(request) => &request.header,
             BinaryRequest::Replace(request) => &request.header,
             BinaryRequest::Add(request) => &request.header,
+            BinaryRequest::Prepend(request) => &request.header,
+            BinaryRequest::Append(request) => &request.header,
         }
     }
 }
@@ -43,6 +47,8 @@ pub enum BinaryResponse {
     Set(binary::SetResponse),
     Add(binary::AddResponse),
     Replace(binary::ReplaceResponse),
+    Append(binary::AppendResponse),
+    Prepend(binary::PrependResponse),
 }
 
 impl BinaryResponse {
@@ -56,6 +62,8 @@ impl BinaryResponse {
             BinaryResponse::Set(response) => &response.header,
             BinaryResponse::Replace(response) => &response.header,
             BinaryResponse::Add(response) => &response.header,
+            BinaryResponse::Append(response) => &response.header,
+            BinaryResponse::Prepend(response) => &response.header,
         }
     }
 }
@@ -116,7 +124,7 @@ impl MemcacheBinaryCodec {
                 let key = buf.to_vec();
                 Some(BinaryRequest::Get(binary::GetRequest {
                     header: self.header,
-                    key: key,
+                    key,
                 }))
             }
             Some(binary::Command::GetQuiet) => None,
@@ -272,6 +280,8 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Set(_response) => {}
             BinaryResponse::Replace(_response) => {}
             BinaryResponse::Add(_response) => {}
+            BinaryResponse::Append(_response) => {}
+            BinaryResponse::Prepend(_response) => {}
         }
         ()
     }

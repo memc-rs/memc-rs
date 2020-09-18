@@ -34,6 +34,8 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Add(add_req) => None,
             binary_codec::BinaryRequest::Replace(replace_req) => None,
+            binary_codec::BinaryRequest::Append(append_req) => None,
+            binary_codec::BinaryRequest::Prepend(prepend_req) => None,
         }
     }
 
