@@ -37,9 +37,35 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Add(_add_req) => None,
             binary_codec::BinaryRequest::Replace(_replace_req) => None,
-            binary_codec::BinaryRequest::Append(_append_req) => None,
-            binary_codec::BinaryRequest::Prepend(_prepend_req) => None,
+            binary_codec::BinaryRequest::Append(append_req) 
+            | binary_codec::BinaryRequest::Prepend(append_req) => {                
+                let response = self.append_prepend(append_req, & mut response_header);
+                Some(response) 
+            }             
         }
+    }
+
+    fn append_prepend(&self, append_req: binary::AppendRequest, response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
+        let record = storage::Record::new(append_req.value, append_req.header.cas, 0, 0);
+        let result = if self.is_append(append_req.header.opcode) {
+            self.storage.append(append_req.key, record)
+        } else {
+            self.storage.prepend(append_req.key, record)
+        };
+
+        match result {
+            Ok(append_status) => response_header.cas = append_status.cas,
+            Err(err) => response_header.status = err as u16,
+        }
+        binary_codec::BinaryResponse::Append(
+            binary::AppendResponse{
+                header: *response_header,
+            }            
+        )        
+    }
+
+    fn is_append(&self, opcode: u8) -> bool {
+        opcode == binary::Command::Append as u8 || opcode == binary::Command::AppendQuiet as u8
     }
 
     fn set(

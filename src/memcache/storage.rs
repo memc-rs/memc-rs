@@ -110,7 +110,10 @@ impl Storage {
     fn touch_record(&self, _record: &mut Record) {
         let _timer = self.timer.secs();
     }
-
+    /**
+     * FIXME: Make it atomic operation based on CAS, now there is a race between
+     * check_cas and insert
+     */
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
         info!("Set: {:?}", &record.header);
         match self.check_cas(&key, &record.header) {
@@ -158,7 +161,7 @@ impl Storage {
     pub fn append(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
         match self.get_by_key(&key) {
             Ok(mut record) => {
-                record.header = new_record.header;
+                record.header.cas = new_record.header.cas;
                 record.value.reserve(new_record.value.len());
                 record.value.append(&mut new_record.value);
                 self.set(key, record)
@@ -170,8 +173,11 @@ impl Storage {
     pub fn prepend(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
         match self.get_by_key(&key) {
             Ok(mut record) => {
+                let cas = new_record.header.cas;
                 new_record.value.reserve(record.value.len());
                 new_record.value.append(&mut record.value);
+                new_record.header = record.header;
+                new_record.header.cas = cas;
                 self.set(key, new_record)
             }
             Err(_err) => Err(StorageError::NotFound),
