@@ -116,15 +116,29 @@ impl Storage {
      */
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
         info!("Set: {:?}", &record.header);
-        match self.check_cas(&key, &record.header) {
-            Ok(cas) => {
-                record.header.cas = cas;
-                self.touch_record(&mut record);
-                info!("Insert: {:?}, {:?}", &key, &record.header);
-                self.memory.insert(key, record);
-                Ok(SetStatus { cas })
+
+        if record.header.cas > 0 {
+            match self.memory.get_mut(&key) {
+                Some(mut key_value) => {
+                    if key_value.header.cas != record.header.cas {
+                        Err(StorageError::KeyExists)
+                    } else {
+                        let cas = record.header.cas;
+                        *key_value = record;
+                        Ok(SetStatus { cas })
+                    }
+                }
+                None => {
+                    let cas = record.header.cas;
+                    self.memory.insert(key, record);
+                    Ok(SetStatus { cas })
+                }
             }
-            Err(err) => Err(err),
+        } else {
+            let cas = self.get_cas_id();
+            record.header.cas = cas;
+            self.memory.insert(key, record);
+            Ok(SetStatus { cas })
         }
     }
 
@@ -189,15 +203,17 @@ impl Storage {
     pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {}
 
     pub fn delete(&self, key: Vec<u8>, header: Header) -> StorageResult<()> {
-        match self.get_by_key(&key) {
-            Ok(_record) => match self.check_cas(&key, &header) {
-                Ok(_cas) => match self.memory.remove(&key) {
-                    Some(_record) => Ok(()),
-                    None => Err(StorageError::NotFound),
-                },
-                Err(err) => Err(err),
+        let mut cas_match: Option<bool> = None;
+        match self.memory.remove_if(&key, |_key, record| -> bool {
+            let result = header.cas == 0 || record.header.cas == header.cas;
+            cas_match = Some(result);
+            result
+        }) {
+            Some(_key_value) => Ok(()),
+            None => match cas_match {
+                Some(_value) => Err(StorageError::KeyExists),
+                None => Err(StorageError::NotFound),
             },
-            Err(_err) => Err(StorageError::NotFound),
         }
     }
 
