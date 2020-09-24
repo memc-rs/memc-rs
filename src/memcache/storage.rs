@@ -142,18 +142,6 @@ impl Storage {
         }
     }
 
-    fn check_cas(&self, key: &[u8], header: &Header) -> StorageResult<u64> {
-        if header.cas > 0 {
-            if let Some(existing_record) = self.memory.get(key) {
-                if existing_record.header.cas != header.cas {
-                    return Err(StorageError::KeyExists);
-                }
-            }
-            return Ok(header.cas);
-        }
-        Ok(self.get_cas_id())
-    }
-
     fn get_cas_id(&self) -> u64 {
         self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
     }
