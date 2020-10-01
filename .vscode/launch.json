@@ -8,7 +8,7 @@
             "name": "Run Test Debugger",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/target/debug/deps/memix-f05ad9af887bae16",
+            "program": "${workspaceFolder}/target/debug/deps/memix-a375068b84ab9b8d",
             "args": [],        
             "cwd": "${workspaceFolder}"                    
         }
