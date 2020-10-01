@@ -33,7 +33,7 @@ fn if_cas_defined_it_should_be_returned() {
     match found {
         Ok(r) => {
             assert_eq!(r, record);
-            assert_eq!(r.header.cas, cas)
+            assert_eq!(r.header.cas, cas+1)
         }
         Err(_er) => unreachable!(),
     }
@@ -124,7 +124,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(2, 0, 0);
+    let header = Header::new(6, 0, 0);
     let deleted = server
         .storage
         .delete(String::from("key").into_bytes(), header);
@@ -143,7 +143,7 @@ fn delete_if_cas_match_should_succeed() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(5, 0, 0);
+    let header = Header::new(found.unwrap().header.cas, 0, 0);
     let deleted = server
         .storage
         .delete(String::from("key").into_bytes(), header);

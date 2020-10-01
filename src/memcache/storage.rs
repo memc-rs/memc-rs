@@ -123,12 +123,14 @@ impl Storage {
                     if key_value.header.cas != record.header.cas {
                         Err(StorageError::KeyExists)
                     } else {
+                        record.header.cas += 1;
                         let cas = record.header.cas;
                         *key_value = record;
                         Ok(SetStatus { cas })
                     }
                 }
                 None => {
+                    record.header.cas += 1;
                     let cas = record.header.cas;
                     self.memory.insert(key, record);
                     Ok(SetStatus { cas })
@@ -186,9 +188,13 @@ impl Storage {
         }
     }
 
-    pub fn increment(&self, _key: Vec<u8>, _increment: IncrementParam) {}
+    pub fn increment(&self, header: Header, key: Vec<u8>, increment: IncrementParam) {
 
-    pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {}
+    }
+
+    pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {
+
+    }
 
     pub fn delete(&self, key: Vec<u8>, header: Header) -> StorageResult<()> {
         let mut cas_match: Option<bool> = None;
