@@ -33,7 +33,7 @@ fn if_cas_defined_it_should_be_returned() {
     match found {
         Ok(r) => {
             assert_eq!(r, record);
-            assert_eq!(r.header.cas, cas+1)
+            assert_eq!(r.header.cas, cas + 1)
         }
         Err(_er) => unreachable!(),
     }
