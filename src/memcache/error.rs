@@ -14,6 +14,8 @@ pub enum StorageError {
     ItemNotStored = 0x05,
     #[fail(display = "Incr/Decr on non numeric value")]
     ArithOnNonNumeric = 0x06,
+    #[fail(display = "Invalid command")]
+    UnkownCommand = 0x81,
     #[fail(display = "Out of memory")]
     OutOfMemory = 0x82,
     #[fail(display = "Not supported")]

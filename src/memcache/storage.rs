@@ -44,10 +44,11 @@ impl PartialEq for Record {
 }
 
 #[derive(Clone)]
-pub struct IncrementParam {
+pub struct DeltaParam {
     pub(crate) delta: u64,
     pub(crate) value: u64,
 }
+pub type IncrementParam = DeltaParam;
 pub type DecrementParam = IncrementParam;
 
 pub struct Storage {
@@ -188,12 +189,52 @@ impl Storage {
         }
     }
 
-    pub fn increment(&self, header: Header, key: Vec<u8>, increment: IncrementParam) {
-
+    pub fn increment(&self, header: Header, key: Vec<u8>, increment: IncrementParam) -> StorageResult<SetStatus> {
+        self.add_delta(header, key, increment, true)
     }
 
-    pub fn decrement(&self, _key: Vec<u8>, _decrement: DecrementParam) {
+    pub fn decrement(&self, header: Header, key: Vec<u8>, decrement: DecrementParam) -> StorageResult<SetStatus> {
+        self.add_delta(header, key, decrement, false)
+    }
 
+    pub fn add_delta(&self, header: Header, key: Vec<u8>, delta: DeltaParam, increment: bool) -> StorageResult<SetStatus> {
+        match self.get_by_key(&key) {
+            Ok(mut record) => {
+                let conversion_to_utf8_result = str::from_utf8(&record.value);
+                match conversion_to_utf8_result  {
+                    Ok(value_as_str) => {
+                        let parse_u64_result = value_as_str.parse::<u64>();
+                        match parse_u64_result {
+                            Ok(mut value_as_u64) => {
+                                if increment {
+                                    value_as_u64 += delta.delta;
+                                } else if delta.delta > value_as_u64  {                                    
+                                    value_as_u64 = 0;
+                                } else {
+                                    value_as_u64 -= delta.delta;
+                                }                                                                
+                                record.value = value_as_u64.to_string().as_bytes().to_vec();
+                                record.header = header;
+                                self.set(key, record)
+                            },
+                            Err(_err) => {
+                                Err(StorageError::ArithOnNonNumeric)
+                            }
+                        }
+                    }
+                    Err(_err) => {
+                        Err(StorageError::ArithOnNonNumeric)
+                    }
+                }
+            }
+            Err(_err) => {
+                if header.expiration != 0xffffffff {
+                    let record = Record::new(delta.value.to_string().as_bytes().to_vec(), header.cas, header.flags, 0);
+                    return self.set(key, record);
+                }
+                Err(StorageError::NotFound)
+            },
+        }
     }
 
     pub fn delete(&self, key: Vec<u8>, header: Header) -> StorageResult<()> {
