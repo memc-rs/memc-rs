@@ -57,9 +57,16 @@ pub struct Storage {
     cas_id: AtomicU64,
 }
 #[derive(Debug)]
+pub struct DeltaResult {
+    pub cas: u64,
+    pub value: u64,
+}
+
+#[derive(Debug)]
 pub struct SetStatus {
     pub cas: u64,
 }
+
 
 impl Storage {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> Storage {
@@ -194,7 +201,7 @@ impl Storage {
         header: Header,
         key: Vec<u8>,
         increment: IncrementParam,
-    ) -> StorageResult<SetStatus> {
+    ) -> StorageResult<DeltaResult> {
         self.add_delta(header, key, increment, true)
     }
 
@@ -203,17 +210,17 @@ impl Storage {
         header: Header,
         key: Vec<u8>,
         decrement: DecrementParam,
-    ) -> StorageResult<SetStatus> {
+    ) -> StorageResult<DeltaResult> {
         self.add_delta(header, key, decrement, false)
     }
 
-    pub fn add_delta(
+    fn add_delta(
         &self,
         header: Header,
         key: Vec<u8>,
         delta: DeltaParam,
         increment: bool,
-    ) -> StorageResult<SetStatus> {
+    ) -> StorageResult<DeltaResult> {
         match self.get_by_key(&key) {
             Ok(mut record) => {
                 let conversion_to_utf8_result = str::from_utf8(&record.value);
@@ -231,7 +238,12 @@ impl Storage {
                                 }
                                 record.value = value_as_u64.to_string().as_bytes().to_vec();
                                 record.header = header;
-                                self.set(key, record)
+                                self.set(key, record).map(| result | {
+                                    DeltaResult{
+                                        cas: result.cas,
+                                        value: value_as_u64
+                                    }
+                                })
                             }
                             Err(_err) => Err(StorageError::ArithOnNonNumeric),
                         }
@@ -247,7 +259,12 @@ impl Storage {
                         0,
                         header.expiration,
                     );
-                    return self.set(key, record);
+                    return self.set(key, record).map(| result | {
+                        DeltaResult{
+                            cas: result.cas,
+                            value: delta.value
+                        }
+                    });
                 }
                 Err(StorageError::NotFound)
             }

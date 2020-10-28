@@ -304,3 +304,15 @@ fn prepend_should_add_at_the_begining() {
         Err(_) => unreachable!(),
     }
 }
+
+#[test]
+fn increment_value() {
+    let server = create_server();
+    let key = String::from("counter1").into_bytes();
+    let counter = IncrementParam{
+        delta: 0,
+        value: 5
+    };
+    let header = Header::new(0, 0, 0);
+    let result = server.storage.increment(header, key, counter);
+}
