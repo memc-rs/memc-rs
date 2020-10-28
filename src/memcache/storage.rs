@@ -243,9 +243,9 @@ impl Storage {
                 if header.expiration != 0xffffffff {
                     let record = Record::new(
                         delta.value.to_string().as_bytes().to_vec(),
-                        header.cas,
-                        header.flags,
                         0,
+                        0,
+                        header.expiration,
                     );
                     return self.set(key, record);
                 }
