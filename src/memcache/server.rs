@@ -86,7 +86,7 @@ impl TcpServer {
         loop {
             tokio::select! {
                 connection = incoming.next() => {
-                    if let Some((token, mut socket)) = connection {
+                    if let Some((token, socket)) = connection {
                         let peer_addr = socket.peer_addr().unwrap();
                         socket.set_nodelay(true)?;
                         socket.set_linger(None)?;
@@ -114,7 +114,7 @@ impl TcpServer {
 
     async fn handle_client(mut client: Client) {
         info!("New client connected: {}", client.addr);
-        let mut handler = handler::BinaryHandler::new(client.store);
+        let handler = handler::BinaryHandler::new(client.store);
         //
         let (rx, tx) = client.socket.split();
 
