@@ -221,35 +221,43 @@ impl Storage {
         delta: DeltaParam,
         increment: bool,
     ) -> StorageResult<DeltaResult> {
+        
         match self.get_by_key(&key) {
             Ok(mut record) => {
-                let conversion_to_utf8_result = str::from_utf8(&record.value);
-                match conversion_to_utf8_result {
-                    Ok(value_as_str) => {
-                        let parse_u64_result = value_as_str.parse::<u64>();
-                        match parse_u64_result {
-                            Ok(mut value_as_u64) => {
-                                if increment {
-                                    value_as_u64 += delta.delta;
-                                } else if delta.delta > value_as_u64 {
-                                    value_as_u64 = 0;
-                                } else {
-                                    value_as_u64 -= delta.delta;
-                                }
-                                record.value = value_as_u64.to_string().as_bytes().to_vec();
-                                record.header = header;
-                                self.set(key, record).map(| result | {
-                                    DeltaResult{
-                                        cas: result.cas,
-                                        value: value_as_u64
-                                    }
-                                })
-                            }
-                            Err(_err) => Err(StorageError::ArithOnNonNumeric),
+                str::from_utf8(&record.value)
+                    .map(|value: &str| {
+                        value.parse::<u64>().map_err(|_err| {
+                           StorageError::ArithOnNonNumeric
+                        })
+                    })
+                    .map_err(|_err| {
+                        StorageError::ArithOnNonNumeric
+                    })
+                    .and_then(|value: std::result::Result<u64, StorageError>| {
+                        //flatten result
+                        value
+                    })
+                    .map(|mut value: u64| {
+                        if increment {
+                            value += delta.delta;
+                        } else if delta.delta > value {
+                            value = 0;
+                        } else {
+                            value -= delta.delta;
                         }
-                    }
-                    Err(_err) => Err(StorageError::ArithOnNonNumeric),
-                }
+                        record.value = value.to_string().as_bytes().to_vec();
+                        record.header = header;
+                        self.set(key, record).map(| result | {
+                            DeltaResult{
+                                cas: result.cas,
+                                value
+                            }
+                        })
+                    })
+                    .and_then(|result: std::result::Result<DeltaResult, StorageError>| {
+                        //flatten result
+                        result
+                    })                
             }
             Err(_err) => {
                 if header.expiration != 0xffffffff {
