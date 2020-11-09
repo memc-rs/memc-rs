@@ -1,7 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::TcpStream;
 use tokio::prelude::*;
-extern crate memix;
+extern crate memcrs;
 
 #[tokio::main]
 async fn main() {
