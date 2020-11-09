@@ -10,16 +10,16 @@ edition = "2018"
 async-listen = "0.2.1"
 failure = { version = "0.1.8" }
 failure_derive = { version = "0.1.8" }
-futures = "0.3.5"
-futures-util = "0.3.5"
+futures = "0.3.8"
+futures-util = "0.3.8"
 clap = "2.33.3"
 tokio = { version = "0.2.22", features = ["full"] }
 tokio-util = { version = "0.3.1", features = ["full"] }
 bytes = "0.5.6"
-serde = "1.0.116"
-serde_derive = "1.0.116"
-num-traits = "0.2.12"
-num-derive = "0.3.2"
+serde = "1.0.117"
+serde_derive = "1.0.117"
+num-traits = "0.2.14"
+num-derive = "0.3.3"
 dashmap = "3.11.10"
 log = "0.4.11"
 tracing = "0.1.21"
