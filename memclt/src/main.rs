@@ -16,9 +16,9 @@ fn main() {
         val,
         cas.unwrap()
     );
-    
+
     client.set("foo", "3000", 50).unwrap();
-        
+
     println!(
         "Foo: {:?} {} {}",
         str::from_utf8(key).unwrap(),

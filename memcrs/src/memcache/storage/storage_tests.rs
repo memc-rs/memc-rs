@@ -257,7 +257,6 @@ fn prepend_should_fail_if_not_exist() {
 
 #[test]
 fn append_should_add_at_the_end() {
-    
     let server = create_server();
     let key = String::from("key").into_bytes();
     let record = Record::new(String::from("Foo").into_bytes(), 0, 0, 0);
@@ -311,16 +310,16 @@ fn increment_if_counter_doesnt_exists_it_should_created() {
     const COUNTER_INITIAL_VALUE: u64 = 5;
     let server = create_server();
     let key = String::from("counter1").into_bytes();
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: 0,
-        value: COUNTER_INITIAL_VALUE
+        value: COUNTER_INITIAL_VALUE,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(delta_result) => {
             assert_eq!(COUNTER_INITIAL_VALUE, delta_result.value);
-        },
+        }
         Err(_) => {
             unreachable!();
         }
@@ -331,16 +330,13 @@ fn increment_if_counter_doesnt_exists_it_should_created() {
 fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
     let server = create_server();
     let key = String::from("counter1").into_bytes();
-    let counter = IncrementParam{
-        delta: 0,
-        value: 0
-    };
+    let counter = IncrementParam { delta: 0, value: 0 };
     let header = Header::new(0, 0, 0xffffffff);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
             unreachable!();
-        },
+        }
         Err(err) => {
             assert_eq!(err, StorageError::NotFound);
         }
@@ -350,7 +346,7 @@ fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
 #[test]
 fn increment_value_should_be_incremented() {
     const DELTA: u64 = 6;
-    const EXPECTED_RESULT: u64 = 5+DELTA;
+    const EXPECTED_RESULT: u64 = 5 + DELTA;
     let server = create_server();
     let key = String::from("counter1").into_bytes();
     let record = Record::new(String::from("5").into_bytes(), 0, 0, 0);
@@ -358,17 +354,17 @@ fn increment_value_should_be_incremented() {
     assert!(result.is_ok());
     let cas = result.unwrap().cas;
 
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: DELTA,
-        value: 0
+        value: 0,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(counter_value) => {
             assert_eq!(counter_value.value, EXPECTED_RESULT);
-            assert_eq!(counter_value.cas, cas+1);
-        },
+            assert_eq!(counter_value.cas, cas + 1);
+        }
         Err(_) => {
             unreachable!();
         }
@@ -384,16 +380,16 @@ fn increment_if_value_is_not_number_it_should_be_error() {
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
 
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: DELTA,
-        value: 0
+        value: 0,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
-            unreachable!();            
-        },
+            unreachable!();
+        }
         Err(err) => {
             assert_eq!(err, StorageError::ArithOnNonNumeric);
         }
@@ -409,22 +405,21 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
 
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: DELTA,
-        value: 0
+        value: 0,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
-            unreachable!();            
-        },
+            unreachable!();
+        }
         Err(err) => {
             assert_eq!(err, StorageError::ArithOnNonNumeric);
         }
     }
 }
-
 
 #[test]
 fn decrement_should_not_result_in_negitve_value() {
@@ -436,17 +431,17 @@ fn decrement_should_not_result_in_negitve_value() {
     assert!(result.is_ok());
     let cas = result.unwrap().cas;
 
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: DELTA,
-        value: 0
+        value: 0,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.decrement(header, key, counter);
     match result {
         Ok(counter_value) => {
             assert_eq!(counter_value.value, 0);
-            assert_eq!(counter_value.cas, cas+1);
-        },
+            assert_eq!(counter_value.cas, cas + 1);
+        }
         Err(_) => {
             unreachable!();
         }
@@ -464,17 +459,17 @@ fn decrement_value_should_be_decremented() {
     assert!(result.is_ok());
     let cas = result.unwrap().cas;
 
-    let counter = IncrementParam{
+    let counter = IncrementParam {
         delta: DELTA,
-        value: 0
+        value: 0,
     };
     let header = Header::new(0, 0, 0);
     let result = server.storage.decrement(header, key, counter);
     match result {
         Ok(counter_value) => {
             assert_eq!(counter_value.value, EXPECTED_RESULT);
-            assert_eq!(counter_value.cas, cas+1);
-        },
+            assert_eq!(counter_value.cas, cas + 1);
+        }
         Err(_) => {
             unreachable!();
         }

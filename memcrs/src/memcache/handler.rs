@@ -35,9 +35,9 @@ impl BinaryHandler {
                 let response = self.set(set_req, &mut response_header);
                 Some(binary_codec::BinaryResponse::Set(response))
             }
-            binary_codec::BinaryRequest::Add(req)
-             | binary_codec::BinaryRequest::Replace(req) => 
-                Some(self.add_replace(req, &mut response_header)),
+            binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
+                Some(self.add_replace(req, &mut response_header))
+            }
             binary_codec::BinaryRequest::Append(append_req)
             | binary_codec::BinaryRequest::Prepend(append_req) => {
                 let response = self.append_prepend(append_req, &mut response_header);
@@ -46,24 +46,30 @@ impl BinaryHandler {
         }
     }
 
-    fn add_replace(&self,
+    fn add_replace(
+        &self,
         request: binary::SetRequest,
-        response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
-        
-        let record = storage::Record::new(request.value, request.header.cas, request.flags, request.expiration);
+        response_header: &mut binary::ResponseHeader,
+    ) -> binary_codec::BinaryResponse {
+        let record = storage::Record::new(
+            request.value,
+            request.header.cas,
+            request.flags,
+            request.expiration,
+        );
         let result = if self.is_add_command(request.header.opcode) {
             self.storage.add(request.key, record)
         } else {
             self.storage.replace(request.key, record)
         };
-        
-        match result  {
-            Ok(command_status ) => response_header.cas = command_status.cas,               
-            Err(err) => response_header.status = err as u16
+
+        match result {
+            Ok(command_status) => response_header.cas = command_status.cas,
+            Err(err) => response_header.status = err as u16,
         };
 
         binary_codec::BinaryResponse::Set(binary::SetResponse {
-            header: *response_header
+            header: *response_header,
         })
     }
 

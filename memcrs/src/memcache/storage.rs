@@ -67,7 +67,6 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
-
 impl Storage {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> Storage {
         Storage {
@@ -221,18 +220,15 @@ impl Storage {
         delta: DeltaParam,
         increment: bool,
     ) -> StorageResult<DeltaResult> {
-        
         match self.get_by_key(&key) {
             Ok(mut record) => {
                 str::from_utf8(&record.value)
                     .map(|value: &str| {
-                        value.parse::<u64>().map_err(|_err| {
-                           StorageError::ArithOnNonNumeric
-                        })
+                        value
+                            .parse::<u64>()
+                            .map_err(|_err| StorageError::ArithOnNonNumeric)
                     })
-                    .map_err(|_err| {
-                        StorageError::ArithOnNonNumeric
-                    })
+                    .map_err(|_err| StorageError::ArithOnNonNumeric)
                     .and_then(|value: std::result::Result<u64, StorageError>| {
                         //flatten result
                         value
@@ -247,17 +243,15 @@ impl Storage {
                         }
                         record.value = value.to_string().as_bytes().to_vec();
                         record.header = header;
-                        self.set(key, record).map(| result | {
-                            DeltaResult{
-                                cas: result.cas,
-                                value
-                            }
+                        self.set(key, record).map(|result| DeltaResult {
+                            cas: result.cas,
+                            value,
                         })
                     })
                     .and_then(|result: std::result::Result<DeltaResult, StorageError>| {
                         //flatten result
                         result
-                    })                
+                    })
             }
             Err(_err) => {
                 if header.expiration != 0xffffffff {
@@ -267,11 +261,9 @@ impl Storage {
                         0,
                         header.expiration,
                     );
-                    return self.set(key, record).map(| result | {
-                        DeltaResult{
-                            cas: result.cas,
-                            value: delta.value
-                        }
+                    return self.set(key, record).map(|result| DeltaResult {
+                        cas: result.cas,
+                        value: delta.value,
                     });
                 }
                 Err(StorageError::NotFound)
