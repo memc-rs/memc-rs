@@ -98,7 +98,7 @@ impl ResponseHeader {
         ResponseHeader {
             magic: Magic::Response as u8,
             opcode: cmd,
-            opaque: opaque,
+            opaque,
             ..ResponseHeader::default()
         }
     }

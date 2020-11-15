@@ -277,11 +277,13 @@ impl MemcacheBinaryCodec {
                 dst.put_slice(&response.key[..]);
                 dst.put_slice(&response.value[..]);
             }
-            BinaryResponse::Set(_response) => {}
-            BinaryResponse::Replace(_response) => {}
-            BinaryResponse::Add(_response) => {}
-            BinaryResponse::Append(_response) => {}
-            BinaryResponse::Prepend(_response) => {}
+            BinaryResponse::Set(response) 
+            | BinaryResponse::Replace(response)
+            | BinaryResponse::Add(response) 
+            | BinaryResponse::Append(response) 
+            | BinaryResponse::Prepend(response) => {
+                dst.put_u64(response.header.cas)
+            }
         }
         ()
     }
