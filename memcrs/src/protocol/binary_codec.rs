@@ -2,7 +2,7 @@ use std::io;
 
 use crate::protocol::binary;
 use bytes::{Buf, BufMut, BytesMut};
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive, ToPrimitive};
 use serde_derive::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -71,13 +71,18 @@ impl BinaryResponse {
 #[derive(PartialEq, Debug)]
 enum RequestParserState {
     None,
-    HeaderParsed,
-    RequestParsed,
+    HeaderParsed,   
 }
 
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
+}
+
+impl Default for MemcacheBinaryCodec {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MemcacheBinaryCodec {
@@ -91,6 +96,7 @@ impl MemcacheBinaryCodec {
     fn init_parser(&mut self) {
         self.header = Default::default();
         self.state = RequestParserState::None;
+
     }
 
     fn parse_header(&mut self, src: &mut BytesMut) -> Result<(), io::Error> {
@@ -102,7 +108,7 @@ impl MemcacheBinaryCodec {
             key_length: src.get_u16(),
             extras_length: src.get_u8(),
             data_type: src.get_u8(),
-            reserved: src.get_u16(),
+            vbucket_id: src.get_u16(),
             body_length: src.get_u32(),
             opaque: src.get_u32(),
             cas: src.get_u64(),
@@ -111,6 +117,23 @@ impl MemcacheBinaryCodec {
         // println!("Header parsed: {:?}, remaining: {:?}", self.header, src.len());
         self.state = RequestParserState::HeaderParsed;
         Ok(())
+    }
+
+    fn header_valid(&self) -> bool {
+
+        if self.header.opcode != binary::Magic::Request as u8  {
+            return false;
+        }
+
+        if self.header.opcode >= binary::Command::OpCodeMax as u8 {
+            return false;
+        }
+
+        if self.header.data_type != binary::DataTypes::RawBytes as u8 {
+            return false;
+        }
+        true
+
     }
 
     fn parse_request(&mut self, src: &mut BytesMut) -> Option<BinaryRequest> {
@@ -132,7 +155,9 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Flush) => None,
             Some(binary::Command::Append) => None,
             Some(binary::Command::Prepend) => None,
-            Some(binary::Command::Set) => {
+            Some(binary::Command::Set)
+            | Some(binary::Command::Add) 
+            | Some(binary::Command::Replace) => {
                 let extras_size = self.header.extras_length;
 
                 assert_eq!(extras_size, 8);
@@ -151,9 +176,7 @@ impl MemcacheBinaryCodec {
                 };
                 // println!("Set request {:?}", set_request);
                 Some(BinaryRequest::Set(set_request))
-            }
-            Some(binary::Command::Add) => None,
-            Some(binary::Command::Replace) => None,
+            },            
             Some(binary::Command::Delete) => None,
             Some(binary::Command::Increment) => None,
             Some(binary::Command::Decrement) => None,
@@ -180,6 +203,7 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::SaslAuth) => None,
             Some(binary::Command::SaslListMechs) => None,
             Some(binary::Command::SaslStep) => None,
+            Some(binary::Command::OpCodeMax) => None,
             None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
                 None

@@ -1,13 +1,15 @@
-use num_derive::FromPrimitive;
+use num_derive::{FromPrimitive, ToPrimitive};
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(FromPrimitive, Debug)]
+#[derive(FromPrimitive, ToPrimitive, Debug)]
+#[repr(u8)]
 pub enum Magic {
     Request = 0x80,
     Response = 0x81,
 }
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, ToPrimitive)]
+#[repr(u16)]
 pub enum ResponseStatus {
     Success = 0x00,
     KeyNotExists = 0x01,
@@ -22,12 +24,14 @@ pub enum ResponseStatus {
     NotEnoughMemory = 0x82,
 }
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, ToPrimitive)]
+#[repr(u8)]
 pub enum DataTypes {
     RawBytes = 0x00,
 }
 
-#[derive(FromPrimitive)]
+#[derive(FromPrimitive, ToPrimitive)]
+#[repr(u8)]
 pub enum Command {
     Get = 0x00,
     Set = 0x01,
@@ -59,12 +63,15 @@ pub enum Command {
     Touch = 0x1c,
     GetAndTouch = 0x1d,
     GetAndTouchQuiet = 0x1e,
-    GetAndTouchKey = 0x23,
-    GetAndTouchKeyQuiet = 0x24,
 
     SaslListMechs = 0x20,
     SaslAuth = 0x21,
     SaslStep = 0x22,
+
+    GetAndTouchKey = 0x23,
+    GetAndTouchKeyQuiet = 0x24,
+
+    OpCodeMax = 0x25,
 }
 
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
@@ -74,7 +81,7 @@ pub struct RequestHeader {
     pub(crate) key_length: u16,
     pub(crate) extras_length: u8,
     pub(crate) data_type: u8,
-    pub(crate) reserved: u16,
+    pub(crate) vbucket_id: u16,
     pub(crate) body_length: u32,
     pub(crate) opaque: u32,
     pub(crate) cas: u64,
