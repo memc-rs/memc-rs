@@ -198,7 +198,7 @@ mod tests {
             key_length: key.len() as u16,
             extras_length: 0,
             data_type: 0,
-            reserved: 0,
+            vbucket_id: 0,
             body_length: 0,
             opaque: OPAQUE_VALUE,
             cas: 0,

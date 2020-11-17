@@ -2,9 +2,10 @@ use std::io;
 
 use crate::protocol::binary;
 use bytes::{Buf, BufMut, BytesMut};
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::{FromPrimitive};
 use serde_derive::{Deserialize, Serialize};
 use tokio_util::codec::{Decoder, Encoder};
+use std::io::{Error, ErrorKind};
 
 /// Client request
 #[derive(Serialize, Deserialize, Debug)]
@@ -114,8 +115,10 @@ impl MemcacheBinaryCodec {
             cas: src.get_u64(),
         };
 
-        // println!("Header parsed: {:?}, remaining: {:?}", self.header, src.len());
         self.state = RequestParserState::HeaderParsed;
+        if !self.header_valid() {
+            return Err(Error::new(ErrorKind::Other, "Incorrect header"));
+        }
         Ok(())
     }
 
@@ -133,80 +136,60 @@ impl MemcacheBinaryCodec {
             return false;
         }
         true
-
     }
 
-    fn parse_request(&mut self, src: &mut BytesMut) -> Option<BinaryRequest> {
+    fn parse_request(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         assert!(self.state == RequestParserState::HeaderParsed);
         assert!(src.len() >= self.header.body_length as usize);
 
         let result = match FromPrimitive::from_u8(self.header.opcode) {
-            Some(binary::Command::Get) => {
-                let size = self.header.key_length as usize;
-                let buf = src.split_to(size);
-                let key = buf.to_vec();
-                Some(BinaryRequest::Get(binary::GetRequest {
-                    header: self.header,
-                    key,
-                }))
-            }
-            Some(binary::Command::GetQuiet) => None,
-            Some(binary::Command::GetKey) => None,
-            Some(binary::Command::Flush) => None,
-            Some(binary::Command::Append) => None,
-            Some(binary::Command::Prepend) => None,
+            Some(binary::Command::Get) 
+            | Some(binary::Command::GetQuiet) => {
+               self.parse_get_request(src)
+            }            
+            Some(binary::Command::GetKey) => Ok(None),
+            Some(binary::Command::Flush) => Ok(None),
+            Some(binary::Command::Append) => Ok(None),
+            Some(binary::Command::Prepend) => Ok(None),
             Some(binary::Command::Set)
             | Some(binary::Command::Add) 
-            | Some(binary::Command::Replace) => {
-                let extras_size = self.header.extras_length;
-
-                assert_eq!(extras_size, 8);
-                assert_ne!(self.header.key_length, 0);
-                assert!(self.header.body_length >= (self.header.key_length + 8) as u32);
-                assert!(src.len() >= (self.header.body_length as usize));
-
-                let value_len = self.get_value_len();
-
-                let set_request = binary::SetRequest {
-                    header: self.header,
-                    flags: src.get_u32(),
-                    expiration: src.get_u32(),
-                    key: src.split_to(self.header.key_length as usize).to_vec(),
-                    value: src.split_to(value_len as usize).to_vec(),
-                };
-                // println!("Set request {:?}", set_request);
-                Some(BinaryRequest::Set(set_request))
+            | Some(binary::Command::Replace) 
+            | Some(binary::Command::SetQuiet)
+            | Some(binary::Command::AddQuiet)
+            | Some(binary::Command::ReplaceQuiet) => {
+                self.parse_set_request(src)
             },            
-            Some(binary::Command::Delete) => None,
-            Some(binary::Command::Increment) => None,
-            Some(binary::Command::Decrement) => None,
-            Some(binary::Command::Quit) => None,
-            Some(binary::Command::QuitQuiet) => None,
-            Some(binary::Command::Noop) => None,
-            Some(binary::Command::Version) => None,
-            Some(binary::Command::GetKeyQuiet) => None,
-            Some(binary::Command::Stat) => None,
-            Some(binary::Command::SetQuiet) => None,
-            Some(binary::Command::AddQuiet) => None,
-            Some(binary::Command::ReplaceQuiet) => None,
-            Some(binary::Command::DeleteQuiet) => None,
-            Some(binary::Command::IncrementQuiet) => None,
-            Some(binary::Command::DecrementQuiet) => None,
-            Some(binary::Command::FlushQuiet) => None,
-            Some(binary::Command::AppendQuiet) => None,
-            Some(binary::Command::PrependQuiet) => None,
-            Some(binary::Command::Touch) => None,
-            Some(binary::Command::GetAndTouch) => None,
-            Some(binary::Command::GetAndTouchQuiet) => None,
-            Some(binary::Command::GetAndTouchKey) => None,
-            Some(binary::Command::GetAndTouchKeyQuiet) => None,
-            Some(binary::Command::SaslAuth) => None,
-            Some(binary::Command::SaslListMechs) => None,
-            Some(binary::Command::SaslStep) => None,
-            Some(binary::Command::OpCodeMax) => None,
+            Some(binary::Command::Delete) => Ok(None),
+            Some(binary::Command::Increment) => Ok(None),
+            Some(binary::Command::Decrement) => Ok(None),
+            Some(binary::Command::Quit) => Ok(None),
+            Some(binary::Command::QuitQuiet) => Ok(None),
+            Some(binary::Command::Noop) => Ok(None),
+            Some(binary::Command::Version) => Ok(None),
+            Some(binary::Command::GetKeyQuiet) => Ok(None),
+            Some(binary::Command::Stat) => Ok(None),
+            Some(binary::Command::SetQuiet) => Ok(None),
+            Some(binary::Command::AddQuiet) => Ok(None),
+            Some(binary::Command::ReplaceQuiet) => Ok(None),
+            Some(binary::Command::DeleteQuiet) => Ok(None),
+            Some(binary::Command::IncrementQuiet) => Ok(None),
+            Some(binary::Command::DecrementQuiet) => Ok(None),
+            Some(binary::Command::FlushQuiet) => Ok(None),
+            Some(binary::Command::AppendQuiet) 
+            | Some(binary::Command::PrependQuiet)
+            => Ok(None),             
+            Some(binary::Command::Touch) => Ok(None),
+            Some(binary::Command::GetAndTouch) => Ok(None),
+            Some(binary::Command::GetAndTouchQuiet) => Ok(None),
+            Some(binary::Command::GetAndTouchKey) => Ok(None),
+            Some(binary::Command::GetAndTouchKeyQuiet) => Ok(None),
+            Some(binary::Command::SaslAuth) => Ok(None),
+            Some(binary::Command::SaslListMechs) => Ok(None),
+            Some(binary::Command::SaslStep) => Ok(None),
+            Some(binary::Command::OpCodeMax) => Err(Error::new(ErrorKind::Other, "Incorrect opcode")),
             None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
-                None
+                Err(Error::new(ErrorKind::Other, "Incorrect op code"))
             }
         };
         self.init_parser();
@@ -215,6 +198,72 @@ impl MemcacheBinaryCodec {
 
     fn get_value_len(&self) -> usize {
         (self.header.body_length as usize) - ((self.header.key_length + 8) as usize)
+    }
+
+    fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        let size = self.header.key_length as usize;
+        let buf = src.split_to(size);
+        let key = buf.to_vec();
+        if self.header.opcode == binary::Command::Get as u8 {
+            Ok(Some(BinaryRequest::Get(binary::GetRequest {
+                header: self.header,
+                key,
+            })))
+        } else {
+            Ok(Some(BinaryRequest::Get(binary::GetQuietRequest {
+                header: self.header,
+                key,
+            })))
+        }
+    }
+
+    fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {               
+
+        let value_len = self.get_value_len();
+        if !self.set_request_valid(src) {
+            return Err(Error::new(ErrorKind::Other, "Incorrect set request"));
+        }
+
+        let set_request = binary::SetRequest {
+            header: self.header,
+            flags: src.get_u32(),
+            expiration: src.get_u32(),
+            key: src.split_to(self.header.key_length as usize).to_vec(),
+            value: src.split_to(value_len as usize).to_vec(),
+        };        
+
+        if self.header.opcode == binary::Command::Replace as u8 {
+            Ok(Some(BinaryRequest::Replace(set_request)))
+        }  else if self.header.opcode == binary::Command::ReplaceQuiet as u8 {
+            Ok(Some(BinaryRequest::Replace(set_request)))
+        } else if self.header.opcode == binary::Command::Add as u8 {
+            Ok(Some(BinaryRequest::Add(set_request)))
+        } else if self.header.opcode == binary::Command::AddQuiet as u8 {
+            Ok(Some(BinaryRequest::Add(set_request)))
+        } else {
+            Ok(Some(BinaryRequest::Set(set_request)))
+        }
+    }
+
+    fn set_request_valid(&self, src: &mut BytesMut) -> bool {
+        if self.header.extras_length!=8 {
+            return false;
+        }
+        
+        if self.header.key_length!=0 {
+            return false;
+        }
+
+        if self.header.body_length < (self.header.key_length + 8) as u32 {
+            return false;
+        }
+        
+        if src.len() < (self.header.body_length as usize) {
+            return false;
+        }
+
+        true
+        
     }
 }
 
@@ -240,7 +289,7 @@ impl Decoder for MemcacheBinaryCodec {
         if (self.header.body_length as usize) > src.len() {
             return Ok(None);
         }
-        Ok(self.parse_request(src))
+        self.parse_request(src)
     }
 }
 
