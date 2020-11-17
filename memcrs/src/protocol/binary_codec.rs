@@ -168,9 +168,6 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Version) => Ok(None),
             Some(binary::Command::GetKeyQuiet) => Ok(None),
             Some(binary::Command::Stat) => Ok(None),
-            Some(binary::Command::SetQuiet) => Ok(None),
-            Some(binary::Command::AddQuiet) => Ok(None),
-            Some(binary::Command::ReplaceQuiet) => Ok(None),
             Some(binary::Command::DeleteQuiet) => Ok(None),
             Some(binary::Command::IncrementQuiet) => Ok(None),
             Some(binary::Command::DecrementQuiet) => Ok(None),
@@ -232,14 +229,12 @@ impl MemcacheBinaryCodec {
             value: src.split_to(value_len as usize).to_vec(),
         };        
 
-        if self.header.opcode == binary::Command::Replace as u8 {
-            Ok(Some(BinaryRequest::Replace(set_request)))
-        }  else if self.header.opcode == binary::Command::ReplaceQuiet as u8 {
-            Ok(Some(BinaryRequest::Replace(set_request)))
-        } else if self.header.opcode == binary::Command::Add as u8 {
-            Ok(Some(BinaryRequest::Add(set_request)))
-        } else if self.header.opcode == binary::Command::AddQuiet as u8 {
-            Ok(Some(BinaryRequest::Add(set_request)))
+        if self.header.opcode == binary::Command::Replace as u8 || 
+            self.header.opcode == binary::Command::ReplaceQuiet as u8 {
+            Ok(Some(BinaryRequest::Replace(set_request)))                    
+        } else if self.header.opcode == binary::Command::Add as u8 
+            || self.header.opcode == binary::Command::AddQuiet as u8 {
+            Ok(Some(BinaryRequest::Add(set_request)))        
         } else {
             Ok(Some(BinaryRequest::Set(set_request)))
         }
