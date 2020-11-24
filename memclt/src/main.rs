@@ -1,4 +1,4 @@
-use memcache;
+use memcache::Client;
 use std::collections::HashMap;
 use std::str;
 
@@ -7,6 +7,8 @@ fn main() {
         "memcache://127.0.0.1:11211?timeout=10&tcp_nodelay=true&protocol=binary",
     )
     .unwrap();
+    client.set("foo", "test", 50).unwrap();
+
     let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
     let (key, val, cas) = result.get("foo").unwrap();
 
