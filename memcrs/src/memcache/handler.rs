@@ -35,7 +35,8 @@ impl BinaryHandler {
                 let response = self.set(set_req, &mut response_header);
                 Some(binary_codec::BinaryResponse::Set(response))
             }
-            binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
+            binary_codec::BinaryRequest::Add(req) 
+            | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
             }
             binary_codec::BinaryRequest::Append(append_req)
