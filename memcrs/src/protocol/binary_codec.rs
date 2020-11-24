@@ -100,7 +100,12 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_header(&mut self, src: &mut BytesMut) -> Result<(), io::Error> {
-        assert!(src.len() >= MemcacheBinaryCodec::HEADER_LEN);
+        
+        if src.len() < MemcacheBinaryCodec::HEADER_LEN {
+            error!("Buffer len is less than MemcacheBinaryCodec::HEADER_LEN");
+            return Err(Error::new(ErrorKind::Other, "Buffer to small for header"));
+        }
+
         // println!("Header parsed: {:?} ", self.header);
         self.header = binary::RequestHeader {
             magic: src.get_u8(),
@@ -122,15 +127,18 @@ impl MemcacheBinaryCodec {
     }
 
     fn header_valid(&self) -> bool {
-        if self.header.opcode != binary::Magic::Request as u8 {
+        if self.header.magic != binary::Magic::Request as u8 {
+            error!("Invalid header: magic != binary::Magic::Request");
             return false;
         }
 
         if self.header.opcode >= binary::Command::OpCodeMax as u8 {
+            error!("Invalid header: opcode >= OpCodeMax");
             return false;
         }
 
         if self.header.data_type != binary::DataTypes::RawBytes as u8 {
+            error!("Invalid header: data_type != binary::DataTypes::RawBytes");
             return false;
         }
         true
@@ -138,60 +146,75 @@ impl MemcacheBinaryCodec {
 
     fn parse_request(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state != RequestParserState::HeaderParsed {
+            error!("Incorrect parser state ({:?})", self.state);
             return Err(Error::new(
                 ErrorKind::Other,
-                "Incorrect binary parser state",
+                "Header is not parsed",
             ));
         }
 
         if self.header.body_length as usize > src.len() {
+            error!("Header body length({:?}) larger than src buffer length({:?})", self.header.body_length, src.len());
             return Err(Error::new(
                 ErrorKind::Other,
-                "Incorrect binary parser state",
+                "Header body length too large",
             ));
         }
 
         let result = match FromPrimitive::from_u8(self.header.opcode) {
-            Some(binary::Command::Get) | Some(binary::Command::GetQuiet) => {
+            Some(binary::Command::Get) 
+            | Some(binary::Command::GetQuiet)
+            | Some(binary::Command::GetKeyQuiet)
+            | Some(binary::Command::GetKey) => {
                 self.parse_get_request(src)
-            }
-            Some(binary::Command::GetKey) => Ok(None),
-            Some(binary::Command::Flush) => Ok(None),
-            Some(binary::Command::Append) => Ok(None),
-            Some(binary::Command::Prepend) => Ok(None),
+            }                        
+            Some(binary::Command::Append) 
+            | Some(binary::Command::AppendQuiet) 
+            | Some(binary::Command::PrependQuiet)
+            | Some(binary::Command::Prepend) => Ok(None),
+
             Some(binary::Command::Set)
-            | Some(binary::Command::Add)
-            | Some(binary::Command::Replace)
             | Some(binary::Command::SetQuiet)
+            | Some(binary::Command::Add)
+            | Some(binary::Command::Replace)            
             | Some(binary::Command::AddQuiet)
             | Some(binary::Command::ReplaceQuiet) => self.parse_set_request(src),
-            Some(binary::Command::Delete) => Ok(None),
-            Some(binary::Command::Increment) => Ok(None),
-            Some(binary::Command::Decrement) => Ok(None),
-            Some(binary::Command::Quit) => Ok(None),
-            Some(binary::Command::QuitQuiet) => Ok(None),
+
+            Some(binary::Command::Delete)
+            | Some(binary::Command::DeleteQuiet) => Ok(None),
+
+            Some(binary::Command::Increment) 
+            | Some(binary::Command::Decrement) 
+            | Some(binary::Command::IncrementQuiet)
+            | Some(binary::Command::DecrementQuiet) => Ok(None),
+
+            Some(binary::Command::Quit)
+            | Some(binary::Command::QuitQuiet) => Ok(None),
+
             Some(binary::Command::Noop) => Ok(None),
-            Some(binary::Command::Version) => Ok(None),
-            Some(binary::Command::GetKeyQuiet) => Ok(None),
+            Some(binary::Command::Version) => Ok(None),             
             Some(binary::Command::Stat) => Ok(None),
-            Some(binary::Command::DeleteQuiet) => Ok(None),
-            Some(binary::Command::IncrementQuiet) => Ok(None),
-            Some(binary::Command::DecrementQuiet) => Ok(None),
-            Some(binary::Command::FlushQuiet) => Ok(None),
-            Some(binary::Command::AppendQuiet) | Some(binary::Command::PrependQuiet) => Ok(None),
+            
+            Some(binary::Command::Flush)
+            | Some(binary::Command::FlushQuiet) => Ok(None),            
+
             Some(binary::Command::Touch) => Ok(None),
             Some(binary::Command::GetAndTouch) => Ok(None),
             Some(binary::Command::GetAndTouchQuiet) => Ok(None),
             Some(binary::Command::GetAndTouchKey) => Ok(None),
             Some(binary::Command::GetAndTouchKeyQuiet) => Ok(None),
+
             Some(binary::Command::SaslAuth) => Ok(None),
             Some(binary::Command::SaslListMechs) => Ok(None),
             Some(binary::Command::SaslStep) => Ok(None),
+
             Some(binary::Command::OpCodeMax) => {
+                error!("Incorrect command opcode: {:?}", self.header.opcode);
                 Err(Error::new(ErrorKind::Other, "Incorrect opcode"))
             }
             None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
+                error!("Cannot parse command opcode: {:?}", self.header.opcode);
                 Err(Error::new(ErrorKind::Other, "Incorrect op code"))
             }
         };
@@ -357,7 +380,6 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::Append(response)
             | BinaryResponse::Prepend(response) => dst.put_u64(response.header.cas),
         }
-        ()
     }
 }
 
@@ -376,5 +398,12 @@ impl Encoder<BinaryResponse> for MemcacheBinaryCodec {
 mod tests {
     use super::*;
     #[test]
-    fn test_encode_decode() {}
+    fn test_set_request() {
+        let set_request_packet = [ 0x80, 0x01, 0x00, 0x03, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x32,
+        0x66, 0x6f, 0x6f, 0x74, 0x65, 0x73, 0x74
+        ];
+                                       
+        
+    }
 }
