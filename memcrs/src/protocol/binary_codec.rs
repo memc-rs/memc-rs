@@ -392,9 +392,20 @@ mod tests {
     #[test]
     fn test_set_request() {
         let set_request_packet: [u8; 39] = [
-            0x80, 0x01, 0x00, 0x03, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0f, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x32, 0x66, 0x6f, 0x6f, 0x74, 0x65, 0x73, 0x74,
+            0x80,                   // magic
+            0x01,                   // opcode 
+            0x00, 0x03,             // key length
+            0x08,                   // extras length        
+            0x00,                   // data type
+            0x00, 0x00,             // vbucket id
+            0x00, 0x00, 0x00, 0x0f, // total body length
+            0xDE, 0xAD, 0xBE, 0xEF, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x01, // cas
+            0xff, 0xff, 0xff, 0xff, // flags
+            0x00, 0x00, 0x00, 0x32, // expiration
+            0x66, 0x6f, 0x6f,       // key 'foo'
+            0x74, 0x65, 0x73, 0x74, // value 'test'
         ];
 
         let mut decoder = MemcacheBinaryCodec::new();
@@ -407,6 +418,24 @@ mod tests {
                 if let Some(request) = set_request {
                     let header = request.get_header();
                     assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Set as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x08);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x0f);                    
+                    assert_eq!(header.opaque, 0xDEADBEEF);
+                    assert_eq!(header.cas, 0x01);
+                    //
+                    match request {
+                        BinaryRequest::Set(req) => {
+                            assert_eq!(req.flags, 0xffffffff);
+                            assert_eq!(req.expiration, 0x32);
+                            assert_eq!(req.key, ['f' as u8, 'o' as u8, 'o' as u8]);
+                            assert_eq!(req.value, ['t' as u8, 'e' as u8, 's' as u8, 't' as u8]);
+                        },
+                        _ => unreachable!()
+                    }
                 }
             }
             Err(_) => unreachable!(),
