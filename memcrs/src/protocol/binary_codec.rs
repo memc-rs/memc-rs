@@ -402,7 +402,7 @@ mod tests {
             0xDE, 0xAD, 0xBE, 0xEF, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x01, // cas
-            0xff, 0xff, 0xff, 0xff, // flags
+            0xAB, 0xAD, 0xCA, 0xFE, // flags
             0x00, 0x00, 0x00, 0x32, // expiration
             0x66, 0x6f, 0x6f,       // key 'foo'
             0x74, 0x65, 0x73, 0x74, // value 'test'
@@ -429,7 +429,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Set(req) => {
-                            assert_eq!(req.flags, 0xffffffff);
+                            assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
                             assert_eq!(req.key, ['f' as u8, 'o' as u8, 'o' as u8]);
                             assert_eq!(req.value, ['t' as u8, 'e' as u8, 's' as u8, 't' as u8]);
