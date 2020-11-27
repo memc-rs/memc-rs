@@ -67,7 +67,7 @@ fn record_should_expire_in_given_time() {
     let found = server.storage.get(&key);
     assert!(found.is_ok());
 
-    server.timer.set(128);
+    server.timer.set(123);
     let found = server.storage.get(&key);
     assert!(found.is_err());
     match found {
@@ -422,7 +422,7 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
 }
 
 #[test]
-fn decrement_should_not_result_in_negitve_value() {
+fn decrement_should_not_result_in_negative_value() {
     const DELTA: u64 = 1;
     let server = create_server();
     let key = String::from("counter1").into_bytes();
