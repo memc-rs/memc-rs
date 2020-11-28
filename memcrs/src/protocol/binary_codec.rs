@@ -219,7 +219,6 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
-
         if !self.request_valid(src) {
             return Err(Error::new(ErrorKind::Other, "Incorrect set request"));
         }
@@ -268,7 +267,6 @@ impl MemcacheBinaryCodec {
     }
 
     fn request_valid(&self, src: &mut BytesMut) -> bool {
-
         if self.header.extras_length > 12 {
             return false;
         }
@@ -277,7 +275,9 @@ impl MemcacheBinaryCodec {
             return false;
         }
 
-        if self.header.body_length < (self.header.key_length + self.header.extras_length as u16) as u32 {
+        if self.header.body_length
+            < (self.header.key_length + self.header.extras_length as u16) as u32
+        {
             return false;
         }
 
@@ -398,19 +398,19 @@ mod tests {
     #[test]
     fn test_set_request() {
         let set_request_packet: [u8; 39] = [
-            0x80,                   // magic
-            0x01,                   // opcode 
-            0x00, 0x03,             // key length
-            0x08,                   // extras length        
-            0x00,                   // data type
-            0x00, 0x00,             // vbucket id
+            0x80, // magic
+            0x01, // opcode
+            0x00, 0x03, // key length
+            0x08, // extras length
+            0x00, // data type
+            0x00, 0x00, // vbucket id
             0x00, 0x00, 0x00, 0x0f, // total body length
             0xDE, 0xAD, 0xBE, 0xEF, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x01, // cas
             0xAB, 0xAD, 0xCA, 0xFE, // flags
             0x00, 0x00, 0x00, 0x32, // expiration
-            0x66, 0x6f, 0x6f,       // key 'foo'
+            0x66, 0x6f, 0x6f, // key 'foo'
             0x74, 0x65, 0x73, 0x74, // value 'test'
         ];
 
@@ -429,7 +429,7 @@ mod tests {
                     assert_eq!(header.extras_length, 0x08);
                     assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
-                    assert_eq!(header.body_length, 0x0f);                    
+                    assert_eq!(header.body_length, 0x0f);
                     assert_eq!(header.opaque, 0xDEADBEEF);
                     assert_eq!(header.cas, 0x01);
                     //
@@ -439,8 +439,8 @@ mod tests {
                             assert_eq!(req.expiration, 0x32);
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                             assert_eq!(req.value, [b't', b'e', b's', b't']);
-                        },
-                        _ => unreachable!()
+                        }
+                        _ => unreachable!(),
                     }
                 }
             }
