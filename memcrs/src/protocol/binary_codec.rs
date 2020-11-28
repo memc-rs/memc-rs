@@ -219,6 +219,11 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+
+        if !self.request_valid(src) {
+            return Err(Error::new(ErrorKind::Other, "Incorrect set request"));
+        }
+
         let size = self.header.key_length as usize;
         let buf = src.split_to(size);
         let key = buf.to_vec();
@@ -237,7 +242,7 @@ impl MemcacheBinaryCodec {
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         let value_len = self.get_value_len();
-        if !self.set_request_valid(src) {
+        if !self.request_valid(src) {
             return Err(Error::new(ErrorKind::Other, "Incorrect set request"));
         }
 
@@ -262,8 +267,9 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn set_request_valid(&self, src: &mut BytesMut) -> bool {
-        if self.header.extras_length != 8 {
+    fn request_valid(&self, src: &mut BytesMut) -> bool {
+
+        if self.header.extras_length > 12 {
             return false;
         }
 
@@ -271,7 +277,7 @@ impl MemcacheBinaryCodec {
             return false;
         }
 
-        if self.header.body_length < (self.header.key_length + 8) as u32 {
+        if self.header.body_length < (self.header.key_length + self.header.extras_length as u16) as u32 {
             return false;
         }
 
@@ -431,8 +437,8 @@ mod tests {
                         BinaryRequest::Set(req) => {
                             assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
-                            assert_eq!(req.key, ['f' as u8, 'o' as u8, 'o' as u8]);
-                            assert_eq!(req.value, ['t' as u8, 'e' as u8, 's' as u8, 't' as u8]);
+                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.value, [b't', b'e', b's', b't']);
                         },
                         _ => unreachable!()
                     }
