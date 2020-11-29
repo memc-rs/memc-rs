@@ -50,4 +50,8 @@ fn main() {
     );
 
     client.delete("foo").unwrap();
+
+    client.flush_with_delay(100).unwrap();
+
+    client.flush().unwrap();
 }
