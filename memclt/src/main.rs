@@ -33,4 +33,21 @@ fn main() {
         val,
         cas.unwrap()
     );
+    client.replace("foo", "3000", 80).unwrap();
+
+    client.increment("foo", 100).unwrap();
+
+    client.decrement("foo", 50).unwrap();
+
+    let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
+    let (key, val, cas) = result.get("foo").unwrap();
+
+    println!(
+        "Foo: {:?} {} {}",
+        str::from_utf8(key).unwrap(),
+        val,
+        cas.unwrap()
+    );
+
+    client.delete("foo").unwrap();
 }
