@@ -184,10 +184,11 @@ pub type ReplaceResponse = Response;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementRequest {
-    pub(crate) header: RequestHeader,
+    pub(crate) header: RequestHeader,    
     pub(crate) delta: u64,
     pub(crate) initial: u64,
     pub(crate) expiration: u32,
+    pub(crate) key: Vec<u8>,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementResponse {

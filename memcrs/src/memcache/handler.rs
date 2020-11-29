@@ -23,6 +23,10 @@ impl BinaryHandler {
             binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
 
         match req {
+            binary_codec::BinaryRequest::Delete(_delete_request) 
+            | binary_codec::BinaryRequest::DeleteQuiet(_delete_request) => {
+                None
+            },
             binary_codec::BinaryRequest::Get(get_request)
             | binary_codec::BinaryRequest::GetKey(get_request) => {
                 Some(self.get(get_request, &mut response_header))
@@ -31,6 +35,12 @@ impl BinaryHandler {
             | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
                 self.get_quiet(get_quiet_req, &mut response_header)
             }
+            binary_codec::BinaryRequest::Increment(_incr_request) 
+            | binary_codec::BinaryRequest::IncrementQuiet(_incr_request) 
+            | binary_codec::BinaryRequest::Decrement(_incr_request) 
+            | binary_codec::BinaryRequest::DecrementQuiet(_incr_request) => {
+                None
+            },
             binary_codec::BinaryRequest::Set(set_req) => {
                 let response = self.set(set_req, &mut response_header);
                 Some(binary_codec::BinaryResponse::Set(response))

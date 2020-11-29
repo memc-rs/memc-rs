@@ -10,6 +10,8 @@ use tokio_util::codec::{Decoder, Encoder};
 /// Client request
 #[derive(Serialize, Deserialize, Debug)]
 pub enum BinaryRequest {
+    Delete(binary::DeleteRequest),
+    DeleteQuiet(binary::DeleteRequest),
     Get(binary::GetRequest),
     GetQuietly(binary::GetQuietRequest),
     GetKey(binary::GetKeyRequest),
@@ -19,20 +21,33 @@ pub enum BinaryRequest {
     Prepend(binary::PrependRequest),
     Add(binary::AddRequest),
     Replace(binary::ReplaceRequest),
+    Increment(binary::IncrementRequest),
+    IncrementQuiet(binary::IncrementRequest),
+    Decrement(binary::DecrementRequest),
+    DecrementQuiet(binary::DecrementRequest)
 }
 
 impl BinaryRequest {
     pub fn get_header(&'_ self) -> &'_ binary::RequestHeader {
         match self {
-            BinaryRequest::Get(request) => &request.header,
-            BinaryRequest::GetKey(request) => &request.header,
-            BinaryRequest::GetKeyQuietly(request) => &request.header,
-            BinaryRequest::GetQuietly(request) => &request.header,
-            BinaryRequest::Set(request) => &request.header,
-            BinaryRequest::Replace(request) => &request.header,
-            BinaryRequest::Add(request) => &request.header,
-            BinaryRequest::Prepend(request) => &request.header,
-            BinaryRequest::Append(request) => &request.header,
+            BinaryRequest::Delete(request)
+            | BinaryRequest::DeleteQuiet(request)
+            | BinaryRequest::Get(request)
+            | BinaryRequest::GetKey(request)
+            | BinaryRequest::GetKeyQuietly(request)
+            | BinaryRequest::GetQuietly(request) => &request.header,
+
+            BinaryRequest::Set(request)
+            | BinaryRequest::Replace(request)
+            | BinaryRequest::Add(request) => &request.header,
+
+            BinaryRequest::Prepend(request)            
+            | BinaryRequest::Append(request) => &request.header,
+
+            BinaryRequest::Increment(request)
+            | BinaryRequest::IncrementQuiet(request)
+            | BinaryRequest::Decrement(request)
+            | BinaryRequest::DecrementQuiet(request) => &request.header,
         }
     }
 }
@@ -179,12 +194,12 @@ impl MemcacheBinaryCodec {
             | Some(binary::Command::AddQuiet)
             | Some(binary::Command::ReplaceQuiet) => self.parse_set_request(src),
 
-            Some(binary::Command::Delete) | Some(binary::Command::DeleteQuiet) => Ok(None),
+            Some(binary::Command::Delete) | Some(binary::Command::DeleteQuiet) => self.parse_delete_request(src),
 
             Some(binary::Command::Increment)
             | Some(binary::Command::Decrement)
             | Some(binary::Command::IncrementQuiet)
-            | Some(binary::Command::DecrementQuiet) => Ok(None),
+            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),
 
             Some(binary::Command::Quit) | Some(binary::Command::QuitQuiet) => Ok(None),
 
@@ -244,6 +259,27 @@ impl MemcacheBinaryCodec {
         }
     }
 
+    fn parse_delete_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        if !self.request_valid(src) {
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect get request"));
+        }
+
+        let size = self.header.key_length as usize;
+        let buf = src.split_to(size);
+        let key = buf.to_vec();
+        if self.header.opcode == binary::Command::Delete as u8 {
+            Ok(Some(BinaryRequest::Delete(binary::DeleteRequest {
+                header: self.header,
+                key,
+            })))
+        } else {
+            Ok(Some(BinaryRequest::DeleteQuiet(binary::DeleteRequest {
+                header: self.header,
+                key,
+            })))
+        }
+    }
+
     fn parse_append_prepend_request(
         &self,
         src: &mut BytesMut,
@@ -268,6 +304,30 @@ impl MemcacheBinaryCodec {
         } else {
             Ok(Some(BinaryRequest::Prepend(append_request)))
         }
+    }
+
+    fn parse_inc_dec_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        if !self.request_valid(src) {
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect set request"));
+        }
+
+        let request = binary::IncrementRequest {
+            header: self.header,
+            delta: src.get_u64(),
+            initial: src.get_u64(),
+            expiration: src.get_u32(),
+            key: src.split_to(self.header.key_length as usize).to_vec()
+        };
+
+        if self.header.opcode == binary::Command::Increment as u8 {
+            Ok(Some(BinaryRequest::Increment(request)))
+        } else if self.header.opcode == binary::Command::IncrementQuiet as u8 {
+            Ok(Some(BinaryRequest::IncrementQuiet(request)))
+        } else if self.header.opcode == binary::Command::Decrement as u8 {
+            Ok(Some(BinaryRequest::Decrement(request)))
+        } else {
+            Ok(Some(BinaryRequest::DecrementQuiet(request)))
+        }        
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -299,7 +359,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn request_valid(&self, _src: &mut BytesMut) -> bool {
-        if self.header.extras_length > 12 {
+        if self.header.extras_length > 20 {
             return false;
         }
 
@@ -927,14 +987,14 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
             0x66, 0x6f, 0x6f, // key 'foo'
-            0x62, 0x61, 0x73, // key 'bas'
+            0x62, 0x61, 0x73, // value 'bas'
         ];
 
         let decode_result = decode_packet(&append_request_packet);
         match decode_result {
-            Ok(set_request) => {
-                assert!(set_request.is_some());
-                if let Some(request) = set_request {
+            Ok(append_request) => {
+                assert!(append_request.is_some());
+                if let Some(request) = append_request {
                     let header = request.get_header();
                     assert_eq!(header.magic, binary::Magic::Request as u8);
                     assert_eq!(header.opcode, binary::Command::Append as u8);
@@ -973,14 +1033,14 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
             0x66, 0x6f, 0x6f, // key 'foo'
-            0x62, 0x69, 0x73, // key 'bis'
+            0x62, 0x69, 0x73, // value 'bis'
         ];
 
         let decode_result = decode_packet(&prepend_request_packet);
         match decode_result {
-            Ok(set_request) => {
-                assert!(set_request.is_some());
-                if let Some(request) = set_request {
+            Ok(prepend_request) => {
+                assert!(prepend_request.is_some());
+                if let Some(request) = prepend_request {
                     let header = request.get_header();
                     assert_eq!(header.magic, binary::Magic::Request as u8);
                     assert_eq!(header.opcode, binary::Command::Prepend as u8);
@@ -996,6 +1056,196 @@ mod tests {
                         BinaryRequest::Prepend(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                             assert_eq!(req.value, [b'b', b'i', b's']);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_delete_request() {
+        let prepend_request_packet: [u8; 27] = [
+            0x80, // magic
+            0x04, // opcode
+            0x00, 0x03, // key len
+            0x00, // extras len
+            0x00, // data type
+            0x00, 0x00, // vbucket id
+            0x00, 0x00, 0x00, 0x03, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x66, 0x6f, 0x6f // key 'foo'
+        ];
+
+        let decode_result = decode_packet(&prepend_request_packet);
+        match decode_result {
+            Ok(delete_request) => {
+                assert!(delete_request.is_some());
+                if let Some(request) = delete_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Delete as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x00);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x03);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+                    //
+                    match request {
+                        BinaryRequest::Delete(req) => {
+                            assert_eq!(req.key, [b'f', b'o', b'o']);                            
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_delete_quiet_request() {
+        let delete_request_packet: [u8; 27] = [
+            0x80, // magic
+            0x14, // opcode
+            0x00, 0x03, // key len
+            0x00, // extras len
+            0x00, // data type
+            0x00, 0x00, // vbucket id
+            0x00, 0x00, 0x00, 0x03, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x66, 0x6f, 0x6f // key 'foo'
+        ];
+
+        let decode_result = decode_packet(&delete_request_packet);
+        match decode_result {
+            Ok(delete_request) => {
+                assert!(delete_request.is_some());
+                if let Some(request) = delete_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::DeleteQuiet as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x00);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x03);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+                    //
+                    match request {
+                        BinaryRequest::DeleteQuiet(req) => {
+                            assert_eq!(req.key, [b'f', b'o', b'o']);                            
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_increment_request() {
+        let increment_request_packet: [u8; 47] = [
+            0x80, // magic
+            0x05, // opcode
+            0x00, 0x03, //key len
+            0x14, // extras len
+            0x00, // data type
+            0x00, 0x00, //vbucket id
+            0x00, 0x00, 0x00, 0x17, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, // amount to add
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Initial value
+            0x00, 0x00, 0x00, 0x00, // Expiration
+            0x66, 0x6f, 0x6f // key 'foo'
+
+        ];
+
+        let decode_result = decode_packet(&increment_request_packet);
+        match decode_result {
+            Ok(incr_request) => {
+                assert!(incr_request.is_some());
+                if let Some(request) = incr_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Increment as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x14);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x17);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+                    //
+                    match request {
+                        BinaryRequest::Increment(req) => {
+                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.delta, 100);
+                            assert_eq!(req.initial, 0);
+                            assert_eq!(req.expiration, 0);                         
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_decrement_request() {
+        let decrement_request_packet: [u8; 47] = [
+            0x80, // magic
+            0x06, // opcode
+            0x00, 0x03, //key len
+            0x14, // extras len
+            0x00, // data type
+            0x00, 0x00, //vbucket id
+            0x00, 0x00, 0x00, 0x17, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, // amount to add
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Initial value
+            0x00, 0x00, 0x00, 0x00, // Expiration
+            0x66, 0x6f, 0x6f // key 'foo'
+
+        ];
+
+        let decode_result = decode_packet(&decrement_request_packet);
+        match decode_result {
+            Ok(decr_request) => {
+                assert!(decr_request.is_some());
+                if let Some(request) = decr_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Decrement as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x14);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x17);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+                    //
+                    match request {
+                        BinaryRequest::Decrement(req) => {
+                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.delta, 100);
+                            assert_eq!(req.initial, 0);
+                            assert_eq!(req.expiration, 0);
                         }
                         _ => unreachable!(),
                     }
