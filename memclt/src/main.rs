@@ -10,6 +10,7 @@ fn main() {
     client.set("foo", "test", 50).unwrap();
 
     let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
+
     let (key, val, cas) = result.get("foo").unwrap();
 
     println!(
@@ -19,7 +20,13 @@ fn main() {
         cas.unwrap()
     );
 
-    client.set("foo", "3000", 50).unwrap();
+
+    client.append("foo", "bas").unwrap();
+
+    client.prepend("foo", "bis").unwrap();
+
+    let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
+    let (key, val, cas) = result.get("foo").unwrap();
 
     println!(
         "Foo: {:?} {} {}",
