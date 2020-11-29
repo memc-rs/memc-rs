@@ -170,7 +170,7 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Append)
             | Some(binary::Command::AppendQuiet)           
             | Some(binary::Command::Prepend)
-            | Some(binary::Command::PrependQuiet) => Ok(None),
+            | Some(binary::Command::PrependQuiet) => self.parse_append_prepend_request(src),
 
             Some(binary::Command::Set)
             | Some(binary::Command::SetQuiet)
@@ -219,7 +219,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn get_value_len(&self) -> usize {
-        (self.header.body_length as usize) - ((self.header.key_length + 8) as usize)
+        (self.header.body_length as usize) - ((self.header.key_length + self.header.extras_length as u16) as usize)
     }
 
     fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -241,6 +241,26 @@ impl MemcacheBinaryCodec {
                 key,
             })))
         }
+    }
+
+    fn parse_append_prepend_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        if !self.request_valid(src) {
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect append/prepend request"));
+        }
+        let value_len = self.get_value_len();
+        let append_request = binary::AppendRequest {
+            header: self.header,            
+            key: src.split_to(self.header.key_length as usize).to_vec(),
+            value: src.split_to(value_len as usize).to_vec(),
+        };
+
+        if self.header.opcode == binary::Command::Append as u8 
+            || self.header.opcode == binary::Command::AppendQuiet as u8  {
+            Ok(Some(BinaryRequest::Append(append_request)))
+        } else {
+            Ok(Some(BinaryRequest::Prepend(append_request)))
+        }
+
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -271,7 +291,7 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn request_valid(&self, src: &mut BytesMut) -> bool {
+    fn request_valid(&self, _src: &mut BytesMut) -> bool {
         if self.header.extras_length > 12 {
             return false;
         }
@@ -932,7 +952,6 @@ mod tests {
         }
     }
 
-
     #[test]
     fn decode_prepend_request() {
         let prepend_request_packet: [u8; 30] = [
@@ -967,7 +986,7 @@ mod tests {
                     assert_eq!(header.cas, 0x00);
                     //
                     match request {
-                        BinaryRequest::Append(req) => {
+                        BinaryRequest::Prepend(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                             assert_eq!(req.value, [b'b', b'i', b's']);
                         }
