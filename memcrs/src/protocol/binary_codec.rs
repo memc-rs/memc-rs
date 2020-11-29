@@ -168,7 +168,7 @@ impl MemcacheBinaryCodec {
             | Some(binary::Command::GetKey) => self.parse_get_request(src),
 
             Some(binary::Command::Append)
-            | Some(binary::Command::AppendQuiet)           
+            | Some(binary::Command::AppendQuiet)
             | Some(binary::Command::Prepend)
             | Some(binary::Command::PrependQuiet) => self.parse_append_prepend_request(src),
 
@@ -219,7 +219,8 @@ impl MemcacheBinaryCodec {
     }
 
     fn get_value_len(&self) -> usize {
-        (self.header.body_length as usize) - ((self.header.key_length + self.header.extras_length as u16) as usize)
+        (self.header.body_length as usize)
+            - ((self.header.key_length + self.header.extras_length as u16) as usize)
     }
 
     fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -243,24 +244,30 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn parse_append_prepend_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+    fn parse_append_prepend_request(
+        &self,
+        src: &mut BytesMut,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src) {
-            return Err(Error::new(ErrorKind::InvalidData, "Incorrect append/prepend request"));
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Incorrect append/prepend request",
+            ));
         }
         let value_len = self.get_value_len();
         let append_request = binary::AppendRequest {
-            header: self.header,            
+            header: self.header,
             key: src.split_to(self.header.key_length as usize).to_vec(),
             value: src.split_to(value_len as usize).to_vec(),
         };
 
-        if self.header.opcode == binary::Command::Append as u8 
-            || self.header.opcode == binary::Command::AppendQuiet as u8  {
+        if self.header.opcode == binary::Command::Append as u8
+            || self.header.opcode == binary::Command::AppendQuiet as u8
+        {
             Ok(Some(BinaryRequest::Append(append_request)))
         } else {
             Ok(Some(BinaryRequest::Prepend(append_request)))
         }
-
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -519,9 +526,9 @@ mod tests {
     #[test]
     fn decode_add_request() {
         let set_request_packet: [u8; 38] = [
-            0x80, 0x02, 0x00, 0x03, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64,
-            0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72
+            0x80, 0x02, 0x00, 0x03, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x64, 0x66, 0x6f, 0x6f, 0x62, 0x61, 0x72,
         ];
         let decode_result = decode_packet(&set_request_packet);
         match decode_result {
@@ -920,7 +927,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
             0x66, 0x6f, 0x6f, // key 'foo'
-            0x62, 0x61, 0x73  // key 'bas'
+            0x62, 0x61, 0x73, // key 'bas'
         ];
 
         let decode_result = decode_packet(&append_request_packet);
@@ -966,7 +973,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
             0x66, 0x6f, 0x6f, // key 'foo'
-            0x62, 0x69, 0x73  // key 'bis'
+            0x62, 0x69, 0x73, // key 'bis'
         ];
 
         let decode_result = decode_packet(&prepend_request_packet);

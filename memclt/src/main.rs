@@ -20,7 +20,6 @@ fn main() {
         cas.unwrap()
     );
 
-
     client.append("foo", "bas").unwrap();
 
     client.prepend("foo", "bis").unwrap();
