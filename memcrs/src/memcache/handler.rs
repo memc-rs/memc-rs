@@ -27,6 +27,9 @@ impl BinaryHandler {
             | binary_codec::BinaryRequest::DeleteQuiet(_delete_request) => {
                 None
             },
+            binary_codec::BinaryRequest::Flush(_flush_request) => {
+                None
+            },
             binary_codec::BinaryRequest::Get(get_request)
             | binary_codec::BinaryRequest::GetKey(get_request) => {
                 Some(self.get(get_request, &mut response_header))
@@ -39,6 +42,9 @@ impl BinaryHandler {
             | binary_codec::BinaryRequest::IncrementQuiet(_incr_request) 
             | binary_codec::BinaryRequest::Decrement(_incr_request) 
             | binary_codec::BinaryRequest::DecrementQuiet(_incr_request) => {
+                None
+            },
+            binary_codec::BinaryRequest::Noop(_noop_request) => {
                 None
             },
             binary_codec::BinaryRequest::Set(set_req) => {

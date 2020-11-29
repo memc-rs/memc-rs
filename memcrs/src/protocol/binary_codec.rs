@@ -24,7 +24,9 @@ pub enum BinaryRequest {
     Increment(binary::IncrementRequest),
     IncrementQuiet(binary::IncrementRequest),
     Decrement(binary::DecrementRequest),
-    DecrementQuiet(binary::DecrementRequest)
+    DecrementQuiet(binary::DecrementRequest),
+    Noop(binary::NoopRequest),
+    Flush(binary::FlushRequest),
 }
 
 impl BinaryRequest {
@@ -37,7 +39,7 @@ impl BinaryRequest {
             | BinaryRequest::GetKeyQuietly(request)
             | BinaryRequest::GetQuietly(request) => &request.header,
 
-            BinaryRequest::Set(request)
+            | BinaryRequest::Set(request)
             | BinaryRequest::Replace(request)
             | BinaryRequest::Add(request) => &request.header,
 
@@ -48,6 +50,10 @@ impl BinaryRequest {
             | BinaryRequest::IncrementQuiet(request)
             | BinaryRequest::Decrement(request)
             | BinaryRequest::DecrementQuiet(request) => &request.header,
+
+            BinaryRequest::Noop(request) => &request.header,
+
+            BinaryRequest::Flush(request) => &request.header,
         }
     }
 }
@@ -203,11 +209,11 @@ impl MemcacheBinaryCodec {
 
             Some(binary::Command::Quit) | Some(binary::Command::QuitQuiet) => Ok(None),
 
-            Some(binary::Command::Noop) => Ok(None),
+            Some(binary::Command::Noop) => self.parse_noop_request(src),
             Some(binary::Command::Version) => Ok(None),
             Some(binary::Command::Stat) => Ok(None),
 
-            Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => Ok(None),
+            Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => self.parse_flush_request(src),
 
             Some(binary::Command::Touch) => Ok(None),
             Some(binary::Command::GetAndTouch) => Ok(None),
@@ -279,6 +285,38 @@ impl MemcacheBinaryCodec {
             })))
         }
     }
+
+    fn parse_noop_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        if !self.request_valid(src) {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Incorrect Noop request",
+            ));
+        }
+        Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
+            header: self.header,
+        })))
+
+    }
+
+    fn parse_flush_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        if !self.request_valid(src) {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Incorrect Flush request",
+            ));
+        }
+        let mut expiration: u32 = 0;
+        if self.header.extras_length == 4 {
+            expiration = src.get_u32();
+        }
+        Ok(Some(BinaryRequest::Flush(binary::FlushRequest {
+            header: self.header,
+            expiration
+        })))
+
+    }
+
 
     fn parse_append_prepend_request(
         &self,
@@ -363,7 +401,7 @@ impl MemcacheBinaryCodec {
             return false;
         }
 
-        if self.header.key_length == 0 || self.header.key_length > 250 {
+        if self.header.key_length > 250 {
             return false;
         }
 
@@ -867,7 +905,7 @@ mod tests {
             0x80, // magic
             0x01, // opcode
             0x00, 0x03, // key length
-            0x0D, // extras length
+            0x15, // extras length
             0x00, // data type
             0x00, 0x00, // vbucket id
             0x00, 0x00, 0x00, 0x0f, // total body length
@@ -1249,6 +1287,130 @@ mod tests {
                         }
                         _ => unreachable!(),
                     }
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_noop_request() {
+        let noop_request_packet: [u8; 24] = [
+            0x80, // magic
+            0x0a, // opcode
+            0x00, 0x00, //key len
+            0x00, // extras len
+            0x00, // data type
+            0x00, 0x00, //vbucket id
+            0x00, 0x00, 0x00, 0x00, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+        ];
+
+        let decode_result = decode_packet(&noop_request_packet);
+        match decode_result {
+            Ok(noop_request) => {
+                assert!(noop_request.is_some());
+                if let Some(request) = noop_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Noop as u8);
+                    assert_eq!(header.key_length, 0x00);
+                    assert_eq!(header.extras_length, 0x00);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x00);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+                    //
+                    
+                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_flush_with_expiration_request() {
+        let flush_request_packet: [u8; 28] = [
+            0x80, // magic
+            0x08, // opcode
+            0x00, 0x00, //key len
+            0x04, // extras len
+            0x00, // data type
+            0x00, 0x00, //vbucket id
+            0x00, 0x00, 0x00, 0x04, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x64  // expiration 100
+        ];
+
+        let decode_result = decode_packet(&flush_request_packet);
+        match decode_result {
+            Ok(flush_request) => {
+                assert!(flush_request.is_some());
+                if let Some(request) = flush_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Flush as u8);
+                    assert_eq!(header.key_length, 0x00);
+                    assert_eq!(header.extras_length, 0x04);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x04);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+
+                    match request {
+                        BinaryRequest::Flush(req) => {
+                            assert_eq!(req.expiration, 100);
+                        }
+                        _ => unreachable!(),
+                    }                }
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn decode_flush_request() {
+        let flush_request_packet: [u8; 24] = [               
+            0x80, // magic
+            0x08, // opcode
+            0x00, 0x00, //key len
+            0x00, // extras len
+            0x00, // data type
+            0x00, 0x00, //vbucket id
+            0x00, 0x00, 0x00, 0x00, // total body len
+            0x00, 0x00, 0x00, 0x00, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x00, // cas            
+        ];
+
+        let decode_result = decode_packet(&flush_request_packet);
+        match decode_result {
+            Ok(flush_request) => {
+                assert!(flush_request.is_some());
+                if let Some(request) = flush_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Flush as u8);
+                    assert_eq!(header.key_length, 0x00);
+                    assert_eq!(header.extras_length, 0x00);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x00);
+                    assert_eq!(header.opaque, 0x00000000);
+                    assert_eq!(header.cas, 0x00);
+
+                    match request {
+                        BinaryRequest::Flush(req) => {
+                            assert_eq!(req.expiration, 0);
+                        }
+                        _ => unreachable!(),
+                    }                
                 }
             }
             Err(_) => unreachable!(),
