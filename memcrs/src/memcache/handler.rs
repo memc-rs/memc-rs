@@ -53,12 +53,15 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
-            }
+            },
             binary_codec::BinaryRequest::Append(append_req)
             | binary_codec::BinaryRequest::Prepend(append_req) => {
                 let response = self.append_prepend(append_req, &mut response_header);
                 Some(response)
-            }
+            },
+            binary_codec::BinaryRequest::Version(_version_request) => {
+                None
+            },
         }
     }
 

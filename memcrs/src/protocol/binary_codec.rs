@@ -27,6 +27,7 @@ pub enum BinaryRequest {
     DecrementQuiet(binary::DecrementRequest),
     Noop(binary::NoopRequest),
     Flush(binary::FlushRequest),
+    Version(binary::VersionRequest),
 }
 
 impl BinaryRequest {
@@ -51,7 +52,8 @@ impl BinaryRequest {
             | BinaryRequest::Decrement(request)
             | BinaryRequest::DecrementQuiet(request) => &request.header,
 
-            BinaryRequest::Noop(request) => &request.header,
+            BinaryRequest::Noop(request) 
+            | BinaryRequest::Version(request) => &request.header,
 
             BinaryRequest::Flush(request) => &request.header,
         }
@@ -209,8 +211,8 @@ impl MemcacheBinaryCodec {
 
             Some(binary::Command::Quit) | Some(binary::Command::QuitQuiet) => Ok(None),
 
-            Some(binary::Command::Noop) => self.parse_noop_request(src),
-            Some(binary::Command::Version) => Ok(None),
+            Some(binary::Command::Noop)
+            | Some(binary::Command::Version) => self.parse_header_only_request(src),
             Some(binary::Command::Stat) => Ok(None),
 
             Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => self.parse_flush_request(src),
@@ -286,7 +288,7 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn parse_noop_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+    fn parse_header_only_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src) {
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -1295,9 +1297,18 @@ mod tests {
 
     #[test]
     fn decode_noop_request() {
+        decode_header_only_request(binary::Command::Noop);
+    }
+
+    #[test]
+    fn decode_version_request() {
+        decode_header_only_request(binary::Command::Version);
+    }
+
+    fn decode_header_only_request(opcode: binary::Command) {
         let noop_request_packet: [u8; 24] = [
             0x80, // magic
-            0x0a, // opcode
+            opcode as u8, // opcode
             0x00, 0x00, //key len
             0x00, // extras len
             0x00, // data type
@@ -1315,7 +1326,7 @@ mod tests {
                 if let Some(request) = noop_request {
                     let header = request.get_header();
                     assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Noop as u8);
+                    assert_eq!(header.opcode, opcode as u8);
                     assert_eq!(header.key_length, 0x00);
                     assert_eq!(header.extras_length, 0x00);
                     assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);

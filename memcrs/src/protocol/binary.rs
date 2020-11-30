@@ -30,7 +30,7 @@ pub enum DataTypes {
     RawBytes = 0x00,
 }
 
-#[derive(FromPrimitive, ToPrimitive)]
+#[derive(FromPrimitive, ToPrimitive, Copy, Clone)]
 #[repr(u8)]
 pub enum Command {
     Get = 0x00,
@@ -123,6 +123,14 @@ pub struct Response {
 
 pub type NoopRequest = Request;
 pub type NoopResponse = Response;
+
+pub type VersionRequest = Request;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct VersionResponse {
+    pub header: ResponseHeader,
+    pub version: String,
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
