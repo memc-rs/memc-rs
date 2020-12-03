@@ -1,6 +1,7 @@
 use super::storage;
 use crate::memcache::error;
 use crate::protocol::{binary, binary_codec};
+use crate::memcache::version::{MEMCRS_VERSION};
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
@@ -60,7 +61,10 @@ impl BinaryHandler {
                 Some(response)
             },
             binary_codec::BinaryRequest::Version(_version_request) => {
-                None
+                Some(binary_codec::BinaryResponse::Version(binary::VersionResponse{
+                    header: response_header,
+                    version: String::from(MEMCRS_VERSION)
+                }))
             },
         }
     }
