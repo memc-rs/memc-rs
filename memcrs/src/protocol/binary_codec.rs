@@ -74,6 +74,7 @@ pub enum BinaryResponse {
     Append(binary::AppendResponse),
     Prepend(binary::PrependResponse),
     Version(binary::VersionResponse),
+    Noop(binary::NoopResponse),
 }
 
 impl BinaryResponse {
@@ -90,6 +91,7 @@ impl BinaryResponse {
             BinaryResponse::Append(response) => &response.header,
             BinaryResponse::Prepend(response) => &response.header,
             BinaryResponse::Version(response) => &response.header,
+            BinaryResponse::Noop(response) => &response.header,
         }
     }
 }
@@ -510,7 +512,10 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::Prepend(response) => dst.put_u64(response.header.cas),
             BinaryResponse::Version(response) => {
                 dst.put(response.version.as_bytes());
+            },
+            BinaryResponse::Noop(_response) => {
             }
+
         }
     }
 }

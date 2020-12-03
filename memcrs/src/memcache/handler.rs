@@ -46,7 +46,9 @@ impl BinaryHandler {
                 None
             },
             binary_codec::BinaryRequest::Noop(_noop_request) => {
-                None
+                Some(binary_codec::BinaryResponse::Noop(binary::NoopResponse{
+                    header: response_header,                    
+                }))
             },
             binary_codec::BinaryRequest::Set(set_req) => {
                 let response = self.set(set_req, &mut response_header);
