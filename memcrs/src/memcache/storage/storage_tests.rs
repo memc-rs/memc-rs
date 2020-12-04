@@ -85,7 +85,7 @@ fn delete_record() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let deleted = server.storage.delete(key.clone(), header);
     match deleted {
         Ok(_) => match server.storage.get(&key) {
@@ -105,7 +105,7 @@ fn delete_should_return_not_exists() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let deleted = server
         .storage
         .delete(String::from("bad key").into_bytes(), header);
@@ -124,7 +124,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(6, 0, 0);
+    let header = Meta::new(6, 0, 0);
     let deleted = server
         .storage
         .delete(String::from("key").into_bytes(), header);
@@ -143,7 +143,7 @@ fn delete_if_cas_match_should_succeed() {
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
-    let header = Header::new(found.unwrap().header.cas, 0, 0);
+    let header = Meta::new(found.unwrap().header.cas, 0, 0);
     let deleted = server
         .storage
         .delete(String::from("key").into_bytes(), header);
@@ -162,7 +162,7 @@ fn flush_should_remove_all_elements_in_cache() {
         assert!(result.is_ok());
     }
 
-    server.storage.flush(Header::new(0, 0, 3));
+    server.storage.flush(Meta::new(0, 0, 3));
     server.timer.set(10);
 
     for key_suffix in 1..10 {
@@ -314,7 +314,7 @@ fn increment_if_counter_doesnt_exists_it_should_created() {
         delta: 0,
         value: COUNTER_INITIAL_VALUE,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(delta_result) => {
@@ -331,7 +331,7 @@ fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
     let server = create_server();
     let key = String::from("counter1").into_bytes();
     let counter = IncrementParam { delta: 0, value: 0 };
-    let header = Header::new(0, 0, 0xffffffff);
+    let header = Meta::new(0, 0, 0xffffffff);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
@@ -358,7 +358,7 @@ fn increment_value_should_be_incremented() {
         delta: DELTA,
         value: 0,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(counter_value) => {
@@ -384,7 +384,7 @@ fn increment_if_value_is_not_number_it_should_be_error() {
         delta: DELTA,
         value: 0,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
@@ -409,7 +409,7 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
         delta: DELTA,
         value: 0,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.increment(header, key, counter);
     match result {
         Ok(_) => {
@@ -435,7 +435,7 @@ fn decrement_should_not_result_in_negative_value() {
         delta: DELTA,
         value: 0,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.decrement(header, key, counter);
     match result {
         Ok(counter_value) => {
@@ -463,7 +463,7 @@ fn decrement_value_should_be_decremented() {
         delta: DELTA,
         value: 0,
     };
-    let header = Header::new(0, 0, 0);
+    let header = Meta::new(0, 0, 0);
     let result = server.storage.decrement(header, key, counter);
     match result {
         Ok(counter_value) => {

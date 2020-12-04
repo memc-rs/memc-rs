@@ -6,16 +6,16 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub struct Header {
+pub struct Meta {
     pub(self) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
     expiration: u32,
 }
 
-impl Header {
-    pub fn new(cas: u64, flags: u32, expiration: u32) -> Header {
-        Header {
+impl Meta {
+    pub fn new(cas: u64, flags: u32, expiration: u32) -> Meta {
+        Meta {
             timestamp: 0,
             cas,
             flags,
@@ -26,13 +26,13 @@ impl Header {
 
 #[derive(Clone, Debug)]
 pub struct Record {
-    pub(crate) header: Header,
+    pub(crate) header: Meta,
     pub(crate) value: Vec<u8>,
 }
 
 impl Record {
     pub fn new(value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> Record {
-        let header = Header::new(cas, flags, expiration);
+        let header = Meta::new(cas, flags, expiration);
         Record { header, value }
     }
 }
@@ -197,7 +197,7 @@ impl Storage {
 
     pub fn increment(
         &self,
-        header: Header,
+        header: Meta,
         key: Vec<u8>,
         increment: IncrementParam,
     ) -> StorageResult<DeltaResult> {
@@ -206,7 +206,7 @@ impl Storage {
 
     pub fn decrement(
         &self,
-        header: Header,
+        header: Meta,
         key: Vec<u8>,
         decrement: DecrementParam,
     ) -> StorageResult<DeltaResult> {
@@ -215,7 +215,7 @@ impl Storage {
 
     fn add_delta(
         &self,
-        header: Header,
+        header: Meta,
         key: Vec<u8>,
         delta: DeltaParam,
         increment: bool,
@@ -271,7 +271,7 @@ impl Storage {
         }
     }
 
-    pub fn delete(&self, key: Vec<u8>, header: Header) -> StorageResult<()> {
+    pub fn delete(&self, key: Vec<u8>, header: Meta) -> StorageResult<()> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
             let result = header.cas == 0 || record.header.cas == header.cas;
@@ -286,11 +286,16 @@ impl Storage {
         }
     }
 
-    pub fn flush(&self, header: Header) {
-        self.memory.alter_all(|_key, mut value| {
-            value.header.expiration = header.expiration;
-            value
-        });
+    pub fn flush(&self, header: Meta) {
+        if header.expiration == 0 {
+            self.memory.alter_all(|_key, mut value| {
+                value.header.expiration = header.expiration;
+                value
+            });
+        } else {
+            self.memory.clear();
+        }
+        
     }
 }
 
