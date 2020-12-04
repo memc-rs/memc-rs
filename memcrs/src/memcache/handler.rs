@@ -6,6 +6,12 @@ use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
+impl Into<storage::Meta> for binary::RequestHeader {
+    fn into(self) -> storage::Meta {
+        storage::Meta::new(self.cas, self.opaque, 0)
+    }
+}
+
 pub struct BinaryHandler {
     storage: Arc<storage::Storage>,
 }
@@ -24,12 +30,14 @@ impl BinaryHandler {
             binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
 
         match req {
-            binary_codec::BinaryRequest::Delete(_delete_request) 
-            | binary_codec::BinaryRequest::DeleteQuiet(_delete_request) => {
-                None
+            binary_codec::BinaryRequest::Delete(delete_request) => {
+                Some(self.delete(delete_request, &mut response_header))
             },
-            binary_codec::BinaryRequest::Flush(_flush_request) => {
-                None
+            binary_codec::BinaryRequest::DeleteQuiet(delete_request) => {
+                self.delete_quiet(delete_request, &mut response_header)
+            },
+            binary_codec::BinaryRequest::Flush(flush_request) => {
+                Some(self.flush(flush_request, &mut response_header))
             },
             binary_codec::BinaryRequest::Get(get_request)
             | binary_codec::BinaryRequest::GetKey(get_request) => {
@@ -39,11 +47,17 @@ impl BinaryHandler {
             | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
                 self.get_quiet(get_quiet_req, &mut response_header)
             }
-            binary_codec::BinaryRequest::Increment(_incr_request) 
-            | binary_codec::BinaryRequest::IncrementQuiet(_incr_request) 
-            | binary_codec::BinaryRequest::Decrement(_incr_request) 
-            | binary_codec::BinaryRequest::DecrementQuiet(_incr_request) => {
-                None
+            binary_codec::BinaryRequest::Increment(inc_request) => {
+                Some(self.increment(inc_request, &mut response_header))
+            },
+            binary_codec::BinaryRequest::IncrementQuiet(inc_request) => {
+                self.increment_quiet(inc_request, &mut response_header)
+            },
+            binary_codec::BinaryRequest::Decrement(dec_request) => {
+                Some(self.decrement(dec_request, &mut response_header))
+            },
+            binary_codec::BinaryRequest::DecrementQuiet(dec_request) => {
+                self.decrement_quiet(dec_request, &mut response_header)
             },
             binary_codec::BinaryRequest::Noop(_noop_request) => {
                 Some(binary_codec::BinaryResponse::Noop(binary::NoopResponse{
@@ -147,6 +161,43 @@ impl BinaryHandler {
         }
     }
 
+    fn delete(
+            &self,
+            delete_request: binary::DeleteRequest,
+            response_header: &mut binary::ResponseHeader
+            ) -> binary_codec::BinaryResponse {
+        let result = self.storage.delete(delete_request.key, delete_request.header.into());
+        match result {
+            Ok(_record) => {
+                binary_codec::BinaryResponse::Delete(binary::DeleteResponse {
+                    header: *response_header,                    
+                })
+            }
+            Err(err) => {
+                let message = err.to_string();
+                response_header.status = err as u16;
+                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
+                    header: *response_header,
+                    error: message,
+                })
+            }
+        }
+    }
+
+    fn delete_quiet(
+        &self,
+        delete_request: binary::DeleteRequest,
+        response_header: &mut binary::ResponseHeader
+        ) -> Option<binary_codec::BinaryResponse> {
+        let resp = self.delete(delete_request, response_header);
+        if let binary_codec::BinaryResponse::Error(response) = &resp {
+            if response.header.status == error::StorageError::NotFound as u16 {
+                return None;
+            }
+        }
+        Some(resp)
+    }
+
     fn get(
         &self,
         get_request: binary::GetRequest,
@@ -200,6 +251,107 @@ impl BinaryHandler {
             }
         }
         Some(resp)
+    }
+
+    fn flush(
+        &self,
+        flush_request: binary::FlushRequest,
+        response_header: &mut binary::ResponseHeader
+        ) -> binary_codec::BinaryResponse {
+
+        let meta: storage::Meta = storage::Meta::new(0, 0, flush_request.expiration);
+        self.storage.flush(meta);
+        binary_codec::BinaryResponse::Flush(binary::FlushResponse {
+            header: *response_header,                    
+        })
+    }
+
+    fn increment(
+        &self, 
+        inc_request: binary::IncrementRequest, 
+        response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
+        
+        let delta = storage::IncrementParam{
+            delta: inc_request.delta,
+            value: inc_request.initial
+        };
+
+        let result = self.storage.increment(inc_request.header.into(), inc_request.key, delta);
+        match result {
+            Ok(delta_result) => {
+                binary_codec::BinaryResponse::Increment(binary::IncrementResponse {
+                    header: *response_header,
+                    value: delta_result.value                  
+                })
+            }
+            Err(err) => {
+                let message = err.to_string();
+                response_header.status = err as u16;
+                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
+                    header: *response_header,
+                    error: message,
+                })
+            }
+        }
+    }
+
+    fn increment_quiet(
+        &self, 
+        inc_request: binary::IncrementRequest, 
+        response_header: &mut binary::ResponseHeader) -> Option<binary_codec::BinaryResponse> {
+        
+        let result = self.increment(inc_request, response_header);
+        if let binary_codec::BinaryResponse::Error(response) = &result {
+            if response.header.status == error::StorageError::NotFound as u16 {
+                return None;
+            }
+        }
+        Some(result)
+        
+    }
+
+    fn decrement(
+        &self, 
+        dec_request: binary::IncrementRequest, 
+        response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
+        
+        let delta = storage::IncrementParam{
+            delta: dec_request.delta,
+            value: dec_request.initial
+        };
+
+        let result = self.storage.decrement(dec_request.header.into(), dec_request.key, delta);
+        match result {
+            Ok(delta_result) => {
+                binary_codec::BinaryResponse::Decrement(binary::DecrementResponse {
+                    header: *response_header,
+                    value: delta_result.value                  
+                })
+            }
+            Err(err) => {
+                let message = err.to_string();
+                response_header.status = err as u16;
+                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
+                    header: *response_header,
+                    error: message,
+                })
+            }
+        }
+    }
+
+    fn decrement_quiet(
+        &self, 
+        dec_request: binary::DecrementRequest, 
+        response_header: &mut binary::ResponseHeader) -> Option<binary_codec::BinaryResponse> {
+        
+        let result = self.decrement(dec_request, response_header);
+        if let binary_codec::BinaryResponse::Error(response) = &result {
+            if response.header.status == error::StorageError::NotFound as u16 {
+                return None;
+            }
+        }
+        Some(result)
+        
     }
 }
 

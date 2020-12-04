@@ -200,6 +200,7 @@ pub struct IncrementRequest {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementResponse {
+    pub(crate) header: ResponseHeader,
     pub(crate) value: u64,
 }
 
