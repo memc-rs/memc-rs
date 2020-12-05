@@ -210,7 +210,7 @@ mod tests {
                     assert_eq!(header.cas, 0x00);
                     //
                     match request {
-                        BinaryRequest::Get(req) => {
+                        BinaryRequest::GetQuietly(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
@@ -247,7 +247,7 @@ mod tests {
                     assert_eq!(header.opcode, binary::Command::GetKey as u8);
                     //
                     match request {
-                        BinaryRequest::Get(req) => {
+                        BinaryRequest::GetKey(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
@@ -284,7 +284,7 @@ mod tests {
                     assert_eq!(header.opcode, binary::Command::GetKeyQuiet as u8);
                     //
                     match request {
-                        BinaryRequest::Get(req) => {
+                        BinaryRequest::GetKeyQuietly(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
