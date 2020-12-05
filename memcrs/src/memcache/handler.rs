@@ -12,6 +12,26 @@ impl Into<storage::Meta> for binary::RequestHeader {
     }
 }
 
+fn storage_error_to_response(err: error::StorageError, response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
+    let message = err.to_string();
+    response_header.status = err as u16;
+    response_header.body_length = message.len() as u32;
+    binary_codec::BinaryResponse::Error(binary::ErrorResponse {
+        header: *response_header,
+        error: message,
+    })
+}
+
+fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {        
+    if let binary_codec::BinaryResponse::Error(response) = &response {
+        if response.header.status == error::StorageError::NotFound as u16 {
+            return None;
+        }
+    }
+    Some(response)
+}
+
+
 pub struct BinaryHandler {
     storage: Arc<storage::Storage>,
 }
@@ -34,7 +54,7 @@ impl BinaryHandler {
                 Some(self.delete(delete_request, &mut response_header))
             }
             binary_codec::BinaryRequest::DeleteQuiet(delete_request) => {
-                self.delete_quiet(delete_request, &mut response_header)
+                into_quiet(self.delete(delete_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Flush(flush_request) => {
                 Some(self.flush(flush_request, &mut response_header))
@@ -45,19 +65,19 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req)
             | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
-                self.get_quiet(get_quiet_req, &mut response_header)
+                into_quiet(self.get(get_quiet_req, &mut response_header))                
             }
             binary_codec::BinaryRequest::Increment(inc_request) => {
                 Some(self.increment(inc_request, &mut response_header))
             }
             binary_codec::BinaryRequest::IncrementQuiet(inc_request) => {
-                self.increment_quiet(inc_request, &mut response_header)
+                into_quiet(self.increment(inc_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Decrement(dec_request) => {
                 Some(self.decrement(dec_request, &mut response_header))
             }
             binary_codec::BinaryRequest::DecrementQuiet(dec_request) => {
-                self.decrement_quiet(dec_request, &mut response_header)
+                into_quiet(self.decrement(dec_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Noop(_noop_request) => {
                 Some(binary_codec::BinaryResponse::Noop(binary::NoopResponse {
@@ -66,7 +86,7 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Set(set_req) => {
                 let response = self.set(set_req, &mut response_header);
-                Some(binary_codec::BinaryResponse::Set(response))
+                Some(response)
             }
             binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
@@ -106,13 +126,16 @@ impl BinaryHandler {
         };
 
         match result {
-            Ok(command_status) => response_header.cas = command_status.cas,
-            Err(err) => response_header.status = err as u16,
-        };
-
-        binary_codec::BinaryResponse::Set(binary::SetResponse {
-            header: *response_header,
-        })
+            Ok(command_status) => { 
+                response_header.cas = command_status.cas; 
+                binary_codec::BinaryResponse::Set(binary::SetResponse {
+                    header: *response_header,
+                })
+            },
+            Err(err) => { 
+                storage_error_to_response(err, response_header)
+            },
+        }       
     }
 
     fn is_add_command(&self, opcode: u8) -> bool {
@@ -132,12 +155,16 @@ impl BinaryHandler {
         };
 
         match result {
-            Ok(command_status) => response_header.cas = command_status.cas,
-            Err(err) => response_header.status = err as u16,
+            Ok(status) => {
+                response_header.cas = status.cas;
+                binary_codec::BinaryResponse::Append(binary::AppendResponse {
+                    header: *response_header,
+                })
+            },
+            Err(err) => {
+                storage_error_to_response(err, response_header)
+            }
         }
-        binary_codec::BinaryResponse::Append(binary::AppendResponse {
-            header: *response_header,
-        })
     }
 
     fn is_append(&self, opcode: u8) -> bool {
@@ -148,20 +175,26 @@ impl BinaryHandler {
         &self,
         set_req: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> binary::SetResponse {
+    ) -> binary_codec::BinaryResponse {
         let record = storage::Record::new(
             set_req.value,
             set_req.header.cas,
             set_req.flags,
             set_req.expiration,
         );
+        
         match self.storage.set(set_req.key, record) {
-            Ok(set_status) => response_header.cas = set_status.cas,
-            Err(err) => response_header.status = err as u16,
+            Ok(status) => {
+                response_header.cas = status.cas;
+                binary_codec::BinaryResponse::Set(binary::SetResponse {
+                    header: *response_header,
+                })
+            },
+            Err(err) => {
+                storage_error_to_response(err, response_header)
+            }
         }
-        binary::SetResponse {
-            header: *response_header,
-        }
+        
     }
 
     fn delete(
@@ -177,28 +210,9 @@ impl BinaryHandler {
                 header: *response_header,
             }),
             Err(err) => {
-                let message = err.to_string();
-                response_header.status = err as u16;
-                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-                    header: *response_header,
-                    error: message,
-                })
+                storage_error_to_response(err, response_header)
             }
         }
-    }
-
-    fn delete_quiet(
-        &self,
-        delete_request: binary::DeleteRequest,
-        response_header: &mut binary::ResponseHeader,
-    ) -> Option<binary_codec::BinaryResponse> {
-        let resp = self.delete(delete_request, response_header);
-        if let binary_codec::BinaryResponse::Error(response) = &resp {
-            if response.header.status == error::StorageError::NotFound as u16 {
-                return None;
-            }
-        }
-        Some(resp)
     }
 
     fn get(
@@ -228,32 +242,13 @@ impl BinaryHandler {
                 })
             }
             Err(err) => {
-                let message = err.to_string();
-                response_header.status = err as u16;
-                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-                    header: *response_header,
-                    error: message,
-                })
+                storage_error_to_response(err, response_header)
             }
         }
     }
 
     fn is_get_key_command(&self, opcode: u8) -> bool {
         opcode == binary::Command::GetKey as u8 || opcode == binary::Command::GetKeyQuiet as u8
-    }
-
-    fn get_quiet(
-        &self,
-        get_quiet_request: binary::GetRequest,
-        response_header: &mut binary::ResponseHeader,
-    ) -> Option<binary_codec::BinaryResponse> {
-        let resp = self.get(get_quiet_request, response_header);
-        if let binary_codec::BinaryResponse::Error(response) = &resp {
-            if response.header.status == error::StorageError::NotFound as u16 {
-                return None;
-            }
-        }
-        Some(resp)
     }
 
     fn flush(
@@ -289,28 +284,9 @@ impl BinaryHandler {
                 })
             }
             Err(err) => {
-                let message = err.to_string();
-                response_header.status = err as u16;
-                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-                    header: *response_header,
-                    error: message,
-                })
+                storage_error_to_response(err, response_header)
             }
         }
-    }
-
-    fn increment_quiet(
-        &self,
-        inc_request: binary::IncrementRequest,
-        response_header: &mut binary::ResponseHeader,
-    ) -> Option<binary_codec::BinaryResponse> {
-        let result = self.increment(inc_request, response_header);
-        if let binary_codec::BinaryResponse::Error(response) = &result {
-            if response.header.status == error::StorageError::NotFound as u16 {
-                return None;
-            }
-        }
-        Some(result)
     }
 
     fn decrement(
@@ -334,28 +310,9 @@ impl BinaryHandler {
                 })
             }
             Err(err) => {
-                let message = err.to_string();
-                response_header.status = err as u16;
-                binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-                    header: *response_header,
-                    error: message,
-                })
+                storage_error_to_response(err, response_header)
             }
         }
-    }
-
-    fn decrement_quiet(
-        &self,
-        dec_request: binary::DecrementRequest,
-        response_header: &mut binary::ResponseHeader,
-    ) -> Option<binary_codec::BinaryResponse> {
-        let result = self.decrement(dec_request, response_header);
-        if let binary_codec::BinaryResponse::Error(response) = &result {
-            if response.header.status == error::StorageError::NotFound as u16 {
-                return None;
-            }
-        }
-        Some(result)
     }
 }
 
@@ -420,6 +377,7 @@ mod tests {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.status, error::StorageError::NotFound as u16);
                     assert_eq!(response.error, "Key not found");
+                    assert_eq!(response.header.body_length, response.error.len() as u32);
                 } else {
                     unreachable!();
                 }
@@ -532,7 +490,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Set(response) = resp {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -541,7 +499,7 @@ mod tests {
                         0,
                         0,
                         error::StorageError::KeyExists as u16,
-                        0,
+                        response.error.len() as u32,
                     );
                 } else {
                     unreachable!();
