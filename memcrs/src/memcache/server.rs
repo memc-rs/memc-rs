@@ -130,10 +130,10 @@ impl TcpServer {
                     match req_or_none {
                         Some(req_or_error) => match req_or_error {
                             Ok(request) => {
-                                debug!("Got request {:?}", request);                                
+                                debug!("Got request {:?}", request);
                                 let response = handler.handle_request(request);
                                 if let Some(response) = response {
-                                    debug!("Response sent {:?}", response);                                
+                                    debug!("Response sent {:?}", response);
                                     if let Err(e) = writer.send(response).await {
                                         error!("error on sending response; error = {:?}", e);
                                         return;

@@ -40,20 +40,18 @@ impl BinaryRequest {
             | BinaryRequest::GetKeyQuietly(request)
             | BinaryRequest::GetQuietly(request) => &request.header,
 
-            | BinaryRequest::Set(request)
+            BinaryRequest::Set(request)
             | BinaryRequest::Replace(request)
             | BinaryRequest::Add(request) => &request.header,
 
-            BinaryRequest::Prepend(request)            
-            | BinaryRequest::Append(request) => &request.header,
+            BinaryRequest::Prepend(request) | BinaryRequest::Append(request) => &request.header,
 
             BinaryRequest::Increment(request)
             | BinaryRequest::IncrementQuiet(request)
             | BinaryRequest::Decrement(request)
             | BinaryRequest::DecrementQuiet(request) => &request.header,
 
-            BinaryRequest::Noop(request) 
-            | BinaryRequest::Version(request) => &request.header,
+            BinaryRequest::Noop(request) | BinaryRequest::Version(request) => &request.header,
 
             BinaryRequest::Flush(request) => &request.header,
         }
@@ -215,7 +213,9 @@ impl MemcacheBinaryCodec {
             | Some(binary::Command::AddQuiet)
             | Some(binary::Command::ReplaceQuiet) => self.parse_set_request(src),
 
-            Some(binary::Command::Delete) | Some(binary::Command::DeleteQuiet) => self.parse_delete_request(src),
+            Some(binary::Command::Delete) | Some(binary::Command::DeleteQuiet) => {
+                self.parse_delete_request(src)
+            }
 
             Some(binary::Command::Increment)
             | Some(binary::Command::Decrement)
@@ -224,11 +224,14 @@ impl MemcacheBinaryCodec {
 
             Some(binary::Command::Quit) | Some(binary::Command::QuitQuiet) => Ok(None),
 
-            Some(binary::Command::Noop)
-            | Some(binary::Command::Version) => self.parse_header_only_request(src),
+            Some(binary::Command::Noop) | Some(binary::Command::Version) => {
+                self.parse_header_only_request(src)
+            }
             Some(binary::Command::Stat) => Ok(None),
 
-            Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => self.parse_flush_request(src),
+            Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
+                self.parse_flush_request(src)
+            }
 
             Some(binary::Command::Touch) => Ok(None),
             Some(binary::Command::GetAndTouch) => Ok(None),
@@ -283,10 +286,12 @@ impl MemcacheBinaryCodec {
                 key,
             })))
         } else {
-            Ok(Some(BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest {
-                header: self.header,
-                key,
-            })))
+            Ok(Some(BinaryRequest::GetKeyQuietly(
+                binary::GetKeyQuietRequest {
+                    header: self.header,
+                    key,
+                },
+            )))
         }
     }
 
@@ -311,12 +316,12 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn parse_header_only_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+    fn parse_header_only_request(
+        &self,
+        src: &mut BytesMut,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src) {
-            return Err(Error::new(
-                ErrorKind::InvalidData,
-                "Incorrect Noop request",
-            ));
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect Noop request"));
         }
         if self.header.opcode == binary::Command::Version as u8 {
             Ok(Some(BinaryRequest::Version(binary::VersionRequest {
@@ -327,7 +332,6 @@ impl MemcacheBinaryCodec {
                 header: self.header,
             })))
         }
-
     }
 
     fn parse_flush_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -343,11 +347,9 @@ impl MemcacheBinaryCodec {
         }
         Ok(Some(BinaryRequest::Flush(binary::FlushRequest {
             header: self.header,
-            expiration
+            expiration,
         })))
-
     }
-
 
     fn parse_append_prepend_request(
         &self,
@@ -375,7 +377,10 @@ impl MemcacheBinaryCodec {
         }
     }
 
-    fn parse_inc_dec_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+    fn parse_inc_dec_request(
+        &self,
+        src: &mut BytesMut,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src) {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect set request"));
         }
@@ -385,7 +390,7 @@ impl MemcacheBinaryCodec {
             delta: src.get_u64(),
             initial: src.get_u64(),
             expiration: src.get_u32(),
-            key: src.split_to(self.header.key_length as usize).to_vec()
+            key: src.split_to(self.header.key_length as usize).to_vec(),
         };
 
         if self.header.opcode == binary::Command::Increment as u8 {
@@ -396,7 +401,7 @@ impl MemcacheBinaryCodec {
             Ok(Some(BinaryRequest::Decrement(request)))
         } else {
             Ok(Some(BinaryRequest::DecrementQuiet(request)))
-        }        
+        }
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
@@ -533,21 +538,16 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::Replace(response)
             | BinaryResponse::Add(response)
             | BinaryResponse::Append(response)
-            | BinaryResponse::Prepend(response) => {},
+            | BinaryResponse::Prepend(response) => {}
             BinaryResponse::Version(response) => {
                 dst.put_slice(response.version.as_bytes());
-            },
-            BinaryResponse::Noop(_response) => {
-            },
-            BinaryResponse::Delete(_response) => {
-            },
-            BinaryResponse::Flush(_response) => {
-            },
-            BinaryResponse::Increment(response)
-            | BinaryResponse::Decrement(response) => {
+            }
+            BinaryResponse::Noop(_response) => {}
+            BinaryResponse::Delete(_response) => {}
+            BinaryResponse::Flush(_response) => {}
+            BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
                 dst.put_u64(response.value);
             }
-
         }
     }
 }

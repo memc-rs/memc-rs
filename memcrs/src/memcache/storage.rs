@@ -298,7 +298,6 @@ impl Storage {
         } else {
             self.memory.clear();
         }
-        
     }
 }
 

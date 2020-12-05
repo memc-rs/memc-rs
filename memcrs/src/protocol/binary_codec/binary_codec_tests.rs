@@ -598,7 +598,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
-            0x66, 0x6f, 0x6f // key 'foo'
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&prepend_request_packet);
@@ -619,7 +619,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Delete(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);                            
+                            assert_eq!(req.key, [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -642,7 +642,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
-            0x66, 0x6f, 0x6f // key 'foo'
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&delete_request_packet);
@@ -663,7 +663,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::DeleteQuiet(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);                            
+                            assert_eq!(req.key, [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -673,7 +673,10 @@ mod tests {
         }
     }
 
-    fn inc_dec_request_check_header(decode_result: &Result<Option<BinaryRequest>, io::Error>, opcode: binary::Command) {                
+    fn inc_dec_request_check_header(
+        decode_result: &Result<Option<BinaryRequest>, io::Error>,
+        opcode: binary::Command,
+    ) {
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
@@ -688,7 +691,7 @@ mod tests {
                     assert_eq!(header.body_length, 0x17);
                     assert_eq!(header.opaque, 0x00000000);
                     assert_eq!(header.cas, 0x00);
-                    //                    
+                    //
                 }
             }
             Err(_) => unreachable!(),
@@ -711,8 +714,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, // amount to add
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Initial value
             0x00, 0x00, 0x00, 0x00, // Expiration
-            0x66, 0x6f, 0x6f // key 'foo'
-
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&increment_request_packet);
@@ -720,14 +722,14 @@ mod tests {
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
-                if let Some(request) = incr_request {                    
+                if let Some(request) = incr_request {
                     //
                     match request {
                         BinaryRequest::Increment(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 100);
                             assert_eq!(req.initial, 0);
-                            assert_eq!(req.expiration, 0);                         
+                            assert_eq!(req.expiration, 0);
                         }
                         _ => unreachable!(),
                     }
@@ -753,8 +755,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x65, // amount to add
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, // Initial value
             0x00, 0xff, 0x00, 0x00, // Expiration
-            0x66, 0x6f, 0x6f // key 'foo'
-
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&increment_request_packet);
@@ -762,14 +763,14 @@ mod tests {
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
-                if let Some(request) = incr_request {                    
+                if let Some(request) = incr_request {
                     //
                     match request {
                         BinaryRequest::IncrementQuiet(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 101);
                             assert_eq!(req.initial, 1);
-                            assert_eq!(req.expiration, 0x00ff0000);                         
+                            assert_eq!(req.expiration, 0x00ff0000);
                         }
                         _ => unreachable!(),
                     }
@@ -779,7 +780,6 @@ mod tests {
         }
     }
 
-    
     #[test]
     fn decode_decrement_request() {
         let decrement_request_packet: [u8; 47] = [
@@ -796,8 +796,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, // amount to add
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Initial value
             0x00, 0x00, 0x00, 0x00, // Expiration
-            0x66, 0x6f, 0x6f // key 'foo'
-
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&decrement_request_packet);
@@ -805,7 +804,7 @@ mod tests {
         match decode_result {
             Ok(decr_request) => {
                 assert!(decr_request.is_some());
-                if let Some(request) = decr_request {                    
+                if let Some(request) = decr_request {
                     //
                     match request {
                         BinaryRequest::Decrement(req) => {
@@ -838,8 +837,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x66, // amount to add
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, // Initial value
             0xDE, 0xAD, 0xBE, 0xEF, // Expiration
-            0x66, 0x6f, 0x6f // key 'foo'
-
+            0x66, 0x6f, 0x6f, // key 'foo'
         ];
 
         let decode_result = decode_packet(&decrement_request_packet);
@@ -847,7 +845,7 @@ mod tests {
         match decode_result {
             Ok(decr_request) => {
                 assert!(decr_request.is_some());
-                if let Some(request) = decr_request {                    
+                if let Some(request) = decr_request {
                     //
                     match request {
                         BinaryRequest::DecrementQuiet(req) => {
@@ -876,16 +874,30 @@ mod tests {
 
     fn decode_header_only_request(opcode: binary::Command) {
         let noop_request_packet: [u8; 24] = [
-            0x80, // magic
+            0x80,         // magic
             opcode as u8, // opcode
-            0x00, 0x00, //key len
+            0x00,
+            0x00, //key len
             0x00, // extras len
             0x00, // data type
-            0x00, 0x00, //vbucket id
-            0x00, 0x00, 0x00, 0x00, // total body len
-            0x00, 0x00, 0x00, 0x00, // opaque
-            0x00, 0x00, 0x00, 0x00, // cas
-            0x00, 0x00, 0x00, 0x00, // cas
+            0x00,
+            0x00, //vbucket id
+            0x00,
+            0x00,
+            0x00,
+            0x00, // total body len
+            0x00,
+            0x00,
+            0x00,
+            0x00, // opaque
+            0x00,
+            0x00,
+            0x00,
+            0x00, // cas
+            0x00,
+            0x00,
+            0x00,
+            0x00, // cas
         ];
 
         let decode_result = decode_packet(&noop_request_packet);
@@ -904,7 +916,6 @@ mod tests {
                     assert_eq!(header.opaque, 0x00000000);
                     assert_eq!(header.cas, 0x00);
                     //
-                    
                 }
             }
             Err(_) => unreachable!(),
@@ -924,7 +935,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
             0x00, 0x00, 0x00, 0x00, // cas
-            0x00, 0x00, 0x00, 0x64  // expiration 100
+            0x00, 0x00, 0x00, 0x64, // expiration 100
         ];
 
         let decode_result = decode_packet(&flush_request_packet);
@@ -948,7 +959,8 @@ mod tests {
                             assert_eq!(req.expiration, 100);
                         }
                         _ => unreachable!(),
-                    }                }
+                    }
+                }
             }
             Err(_) => unreachable!(),
         }
@@ -956,7 +968,7 @@ mod tests {
 
     #[test]
     fn decode_flush_request() {
-        let flush_request_packet: [u8; 24] = [               
+        let flush_request_packet: [u8; 24] = [
             0x80, // magic
             0x08, // opcode
             0x00, 0x00, //key len
@@ -966,7 +978,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // total body len
             0x00, 0x00, 0x00, 0x00, // opaque
             0x00, 0x00, 0x00, 0x00, // cas
-            0x00, 0x00, 0x00, 0x00, // cas            
+            0x00, 0x00, 0x00, 0x00, // cas
         ];
 
         let decode_result = decode_packet(&flush_request_packet);
@@ -990,7 +1002,7 @@ mod tests {
                             assert_eq!(req.expiration, 0);
                         }
                         _ => unreachable!(),
-                    }                
+                    }
                 }
             }
             Err(_) => unreachable!(),

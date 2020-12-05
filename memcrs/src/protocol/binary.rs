@@ -131,7 +131,6 @@ pub struct VersionResponse {
     pub version: String,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     pub header: ResponseHeader,
@@ -192,7 +191,7 @@ pub type ReplaceResponse = Response;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementRequest {
-    pub(crate) header: RequestHeader,    
+    pub(crate) header: RequestHeader,
     pub(crate) delta: u64,
     pub(crate) initial: u64,
     pub(crate) expiration: u32,
