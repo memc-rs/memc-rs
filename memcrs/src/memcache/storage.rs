@@ -131,6 +131,7 @@ impl Storage {
                         Err(StorageError::KeyExists)
                     } else {
                         record.header.cas += 1;
+                        record.header.timestamp = self.timer.secs();
                         let cas = record.header.cas;
                         *key_value = record;
                         Ok(SetStatus { cas })
@@ -138,6 +139,7 @@ impl Storage {
                 }
                 None => {
                     record.header.cas += 1;
+                    record.header.timestamp = self.timer.secs();
                     let cas = record.header.cas;
                     self.memory.insert(key, record);
                     Ok(SetStatus { cas })
@@ -146,6 +148,7 @@ impl Storage {
         } else {
             let cas = self.get_cas_id();
             record.header.cas = cas;
+            record.header.timestamp = self.timer.secs();
             self.memory.insert(key, record);
             Ok(SetStatus { cas })
         }

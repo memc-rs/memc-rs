@@ -77,6 +77,7 @@ impl BinaryHandler {
                 Some(response)
             },
             binary_codec::BinaryRequest::Version(_version_request) => {
+                response_header.body_length = MEMCRS_VERSION.len() as u32;
                 Some(binary_codec::BinaryResponse::Version(binary::VersionResponse{
                     header: response_header,
                     version: String::from(MEMCRS_VERSION)

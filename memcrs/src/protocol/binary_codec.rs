@@ -272,8 +272,18 @@ impl MemcacheBinaryCodec {
                 header: self.header,
                 key,
             })))
+        } else if self.header.opcode == binary::Command::GetQuiet as u8 {
+            Ok(Some(BinaryRequest::GetQuietly(binary::GetQuietRequest {
+                header: self.header,
+                key,
+            })))
+        } else if self.header.opcode == binary::Command::GetKey as u8 {
+            Ok(Some(BinaryRequest::GetKey(binary::GetKeyRequest {
+                header: self.header,
+                key,
+            })))
         } else {
-            Ok(Some(BinaryRequest::Get(binary::GetQuietRequest {
+            Ok(Some(BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest {
                 header: self.header,
                 key,
             })))
@@ -308,9 +318,15 @@ impl MemcacheBinaryCodec {
                 "Incorrect Noop request",
             ));
         }
-        Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
-            header: self.header,
-        })))
+        if self.header.opcode == binary::Command::Version as u8 {
+            Ok(Some(BinaryRequest::Version(binary::VersionRequest {
+                header: self.header,
+            })))
+        } else {
+            Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
+                header: self.header,
+            })))
+        }
 
     }
 
@@ -517,9 +533,9 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::Replace(response)
             | BinaryResponse::Add(response)
             | BinaryResponse::Append(response)
-            | BinaryResponse::Prepend(response) => dst.put_u64(response.header.cas),
+            | BinaryResponse::Prepend(response) => {},
             BinaryResponse::Version(response) => {
-                dst.put(response.version.as_bytes());
+                dst.put_slice(response.version.as_bytes());
             },
             BinaryResponse::Noop(_response) => {
             },
