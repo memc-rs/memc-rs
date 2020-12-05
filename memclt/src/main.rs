@@ -4,10 +4,10 @@ use std::str;
 
 fn main() {
     let mut client = memcache::Client::connect(
-        "memcache://127.0.0.1:11211?timeout=10&tcp_nodelay=true&protocol=binary",
+        "memcache://127.0.0.1:11211?timeout=120&tcp_nodelay=true&protocol=binary",
     )
     .unwrap();
-    client.set("foo", "test", 50).unwrap();
+    client.set("foo", "test", 600).unwrap();
 
     let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
 
@@ -54,4 +54,6 @@ fn main() {
     client.flush_with_delay(100).unwrap();
 
     client.flush().unwrap();
+    let version = client.version().unwrap();
+    println!("Version: {:?}", version);
 }
