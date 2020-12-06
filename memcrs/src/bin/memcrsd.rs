@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use log::info;
 use tokio::io;
+use tracing_subscriber;
 
 extern crate memcrs;
 extern crate clap;
@@ -46,15 +47,31 @@ async fn main() -> io::Result<()> {
             info: None,
         };
         clap_error.exit()
-    });
-    
+    });    
+
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
     match matches.occurrences_of("v") {
-        0 => println!("No verbose info"),
-        1 => println!("Some verbose info"),
-        2 => println!("Tons of verbose info"),
-        3 | _ => println!("Don't be crazy"),
+        0 => {
+            tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::WARN)
+                .init();
+        },
+        1 => {
+            tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::INFO)
+                .init();
+        },
+        2 => {
+            tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::DEBUG)
+                .init();
+        },
+        3 | _ => {
+            tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::TRACE)
+                .init();
+        },
     }
 
     info!("Listen address: {}", matches.value_of("listen").unwrap());

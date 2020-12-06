@@ -101,7 +101,7 @@ impl TcpServer {
                 },
                 _ = interval.tick() => {
                     self.timer.add_second();
-                    debug!("Timer tick: {}", self.timer.secs());
+                    debug!("Server tick: {}", self.timer.secs());
                 },
             }
         }
