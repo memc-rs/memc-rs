@@ -11,7 +11,7 @@ use clap::{Arg, App, value_t, Error};
 async fn main() -> io::Result<()> {
     let app = App::new("memcrsd");
     let matches = app
-                          .version(memcrs::memcache::version::MEMCRS_VERSION)
+                          .version(memcrs::memcrs::version::MEMCRS_VERSION)
                           .author("Dariusz Ostolski <dariusz.ostolski@gmail.com>")
                           .about("Rust memcache compatible server implementation")
                           .arg(Arg::with_name("port")
@@ -79,6 +79,6 @@ async fn main() -> io::Result<()> {
     info!("Connection limit: {}", matches.value_of("conn-limit").unwrap());
     
     let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server = memcrs::memcache::server::TcpServer::new(60, connection_limit);
+    let mut tcp_server = memcrs::memcrs::server::TcpServer::new(60, connection_limit);
     tcp_server.run(addr).await
 }

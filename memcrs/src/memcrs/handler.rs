@@ -1,6 +1,6 @@
 use super::storage;
-use crate::memcache::error;
-use crate::memcache::version::MEMCRS_VERSION;
+use crate::memcrs::error;
+use crate::memcrs::version::MEMCRS_VERSION;
 use crate::protocol::{binary, binary_codec};
 use std::sync::Arc;
 
