@@ -26,18 +26,6 @@ pub struct TcpServer {
     connection_limit: u32,
 }
 
-impl Default for TcpServer {
-    fn default() -> Self {
-        let timer = Arc::new(timer::SystemTimer::new());
-        TcpServer {
-            connection_limit: 8192,
-            timeout_secs: 60,
-            timer: timer.clone(),
-            storage: Arc::new(storage::Storage::new(timer)),
-        }
-    }
-}
-
 struct Client {
     store: Arc<storage::Storage>,
     socket: TcpStream,
@@ -68,8 +56,15 @@ impl Client {
 }
 
 impl TcpServer {
-    pub fn new() -> TcpServer {
-        Default::default()
+    pub fn new(timeout_secs: u64,
+              connection_limit: u32) -> TcpServer {
+        let timer = Arc::new(timer::SystemTimer::new());
+        TcpServer {
+            connection_limit,
+            timeout_secs,
+            timer: timer.clone(),
+            storage: Arc::new(storage::Storage::new(timer)),
+        }        
     }
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
