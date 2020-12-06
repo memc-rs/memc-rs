@@ -308,8 +308,8 @@ mod tests {
     use super::binary;
     use super::binary_codec;
     use super::*;
-    use crate::memcache::error;
-    use crate::memcache::mock::mock_server::create_storage;
+    use crate::memcrs::error;
+    use crate::memcrs::mock::mock_server::create_storage;
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {

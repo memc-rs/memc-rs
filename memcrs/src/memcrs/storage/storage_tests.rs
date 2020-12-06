@@ -1,5 +1,5 @@
 use super::*;
-use crate::memcache::mock::mock_server::{create_server, SetableTimer};
+use crate::memcrs::mock::mock_server::{create_server, SetableTimer};
 
 #[test]
 fn if_not_defined_cas_should_be_1() {
