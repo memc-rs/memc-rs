@@ -1,1 +1,3 @@
-pub static MEMCRS_VERSION: &str = "0.0.1";
+use clap::{crate_version};
+
+pub static MEMCRS_VERSION: &str = crate_version!();
