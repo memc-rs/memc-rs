@@ -12,7 +12,10 @@ impl Into<storage::Meta> for binary::RequestHeader {
     }
 }
 
-fn storage_error_to_response(err: error::StorageError, response_header: &mut binary::ResponseHeader) -> binary_codec::BinaryResponse {
+fn storage_error_to_response(
+    err: error::StorageError,
+    response_header: &mut binary::ResponseHeader,
+) -> binary_codec::BinaryResponse {
     let message = err.to_string();
     response_header.status = err as u16;
     response_header.body_length = message.len() as u32;
@@ -22,7 +25,7 @@ fn storage_error_to_response(err: error::StorageError, response_header: &mut bin
     })
 }
 
-fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {        
+fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
         if response.header.status == error::StorageError::NotFound as u16 {
             return None;
@@ -30,7 +33,6 @@ fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::Bi
     }
     Some(response)
 }
-
 
 pub struct BinaryHandler {
     storage: Arc<storage::Storage>,
@@ -65,7 +67,7 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req)
             | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
-                into_quiet(self.get(get_quiet_req, &mut response_header))                
+                into_quiet(self.get(get_quiet_req, &mut response_header))
             }
             binary_codec::BinaryRequest::Increment(inc_request) => {
                 Some(self.increment(inc_request, &mut response_header))
@@ -126,16 +128,14 @@ impl BinaryHandler {
         };
 
         match result {
-            Ok(command_status) => { 
-                response_header.cas = command_status.cas; 
+            Ok(command_status) => {
+                response_header.cas = command_status.cas;
                 binary_codec::BinaryResponse::Set(binary::SetResponse {
                     header: *response_header,
                 })
-            },
-            Err(err) => { 
-                storage_error_to_response(err, response_header)
-            },
-        }       
+            }
+            Err(err) => storage_error_to_response(err, response_header),
+        }
     }
 
     fn is_add_command(&self, opcode: u8) -> bool {
@@ -160,10 +160,8 @@ impl BinaryHandler {
                 binary_codec::BinaryResponse::Append(binary::AppendResponse {
                     header: *response_header,
                 })
-            },
-            Err(err) => {
-                storage_error_to_response(err, response_header)
             }
+            Err(err) => storage_error_to_response(err, response_header),
         }
     }
 
@@ -182,19 +180,16 @@ impl BinaryHandler {
             set_req.flags,
             set_req.expiration,
         );
-        
+
         match self.storage.set(set_req.key, record) {
             Ok(status) => {
                 response_header.cas = status.cas;
                 binary_codec::BinaryResponse::Set(binary::SetResponse {
                     header: *response_header,
                 })
-            },
-            Err(err) => {
-                storage_error_to_response(err, response_header)
             }
+            Err(err) => storage_error_to_response(err, response_header),
         }
-        
     }
 
     fn delete(
@@ -209,9 +204,7 @@ impl BinaryHandler {
             Ok(_record) => binary_codec::BinaryResponse::Delete(binary::DeleteResponse {
                 header: *response_header,
             }),
-            Err(err) => {
-                storage_error_to_response(err, response_header)
-            }
+            Err(err) => storage_error_to_response(err, response_header),
         }
     }
 
@@ -241,9 +234,7 @@ impl BinaryHandler {
                     value: record.value,
                 })
             }
-            Err(err) => {
-                storage_error_to_response(err, response_header)
-            }
+            Err(err) => storage_error_to_response(err, response_header),
         }
     }
 
@@ -283,9 +274,7 @@ impl BinaryHandler {
                     value: delta_result.value,
                 })
             }
-            Err(err) => {
-                storage_error_to_response(err, response_header)
-            }
+            Err(err) => storage_error_to_response(err, response_header),
         }
     }
 
@@ -309,9 +298,7 @@ impl BinaryHandler {
                     value: delta_result.value,
                 })
             }
-            Err(err) => {
-                storage_error_to_response(err, response_header)
-            }
+            Err(err) => storage_error_to_response(err, response_header),
         }
     }
 }

@@ -56,15 +56,14 @@ impl Client {
 }
 
 impl TcpServer {
-    pub fn new(timeout_secs: u64,
-              connection_limit: u32) -> TcpServer {
+    pub fn new(timeout_secs: u64, connection_limit: u32) -> TcpServer {
         let timer = Arc::new(timer::SystemTimer::new());
         TcpServer {
             connection_limit,
             timeout_secs,
             timer: timer.clone(),
             storage: Arc::new(storage::Storage::new(timer)),
-        }        
+        }
     }
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
