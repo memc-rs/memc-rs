@@ -107,7 +107,7 @@ impl TcpServer {
     }
 
     async fn handle_client(mut client: Client) {
-        info!("New client connected: {}", client.addr);
+        debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store);
         //
         let (rx, tx) = client.socket.split();
@@ -124,7 +124,7 @@ impl TcpServer {
                     match req_or_none {
                         Some(req_or_error) => match req_or_error {
                             Ok(request) => {
-                                debug!("Got request {:?}", request);
+                                debug!("Got request {:?}", request.get_header());
                                 let response = handler.handle_request(request);
                                 if let Some(response) = response {
                                     debug!("Response sent {:?}", response);
@@ -140,13 +140,13 @@ impl TcpServer {
                         },
                         None => {
                             // The connection will be closed at this point as `lines.next()` has returned `None`.
-                            info!("Conneciton closed: {}", client.addr);
+                            debug!("Conneciton closed: {}", client.addr);
                             return;
                         }
                     }
                 }
                 Err(err) => {
-                    info!(
+                    debug!(
                         "Timeout {}s elapsed, disconecting client: {}, error: {}",
                         client.rx_timeout_secs, client.addr, err
                     );

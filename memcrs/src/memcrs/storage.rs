@@ -77,7 +77,7 @@ impl Storage {
     }
 
     pub fn get(&self, key: &[u8]) -> StorageResult<Record> {
-        info!("Get: {:?}", str::from_utf8(key));
+        trace!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
 
@@ -122,7 +122,7 @@ impl Storage {
      * check_cas and insert
      */
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
-        info!("Set: {:?}", &record.header);
+        trace!("Set: {:?}", &record.header);
 
         if record.header.cas > 0 {
             match self.memory.get_mut(&key) {

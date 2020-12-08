@@ -13,7 +13,7 @@ async fn main() -> io::Result<()> {
     let matches = app
         .version(memcrs::memcrs::version::MEMCRS_VERSION)
         .author("Dariusz Ostolski <dariusz.ostolski@gmail.com>")
-        .about("Rust memcache compatible server implementation")
+        .about("Rust memcached compatible server implementation")
         .arg(
             Arg::with_name("port")
                 .short("p")
@@ -67,20 +67,25 @@ async fn main() -> io::Result<()> {
     match matches.occurrences_of("v") {
         0 => {
             tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::WARN)
+                .with_max_level(tracing::Level::ERROR)
                 .init();
         }
         1 => {
             tracing_subscriber::fmt()
-                .with_max_level(tracing::Level::INFO)
+                .with_max_level(tracing::Level::WARN)
                 .init();
         }
         2 => {
             tracing_subscriber::fmt()
+                .with_max_level(tracing::Level::INFO)
+                .init();
+        }
+        3 => {
+            tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::DEBUG)
                 .init();
         }
-        3 | _ => {
+        _ => {
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::TRACE)
                 .init();
