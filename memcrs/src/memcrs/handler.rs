@@ -17,7 +17,7 @@ fn storage_error_to_response(
     response_header: &mut binary::ResponseHeader,
 ) -> binary_codec::BinaryResponse {
     let message = err.to_static_string();
-    response_header.status = err.clone() as u16;
+    response_header.status = err as u16;
     response_header.body_length = message.len() as u32;
     binary_codec::BinaryResponse::Error(binary::ErrorResponse {
         header: *response_header,

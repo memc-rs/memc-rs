@@ -1,6 +1,6 @@
 extern crate failure;
 
-#[derive(Debug, PartialEq, Copy)]
+#[derive(Debug, PartialEq)]
 pub enum StorageError {
     NotFound = 0x01,
     KeyExists = 0x02,
