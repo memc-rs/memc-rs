@@ -4,6 +4,7 @@ version = "0.0.1"
 authors = ["Dariusz Ostolski <dariusz.ostolski@gmail.com>"]
 edition = "2018"
 
+
 [lib]
 name = "memcrs"
 path = "src/lib.rs"
@@ -17,7 +18,7 @@ failure_derive = { version = "0.1.8" }
 futures = "0.3.8"
 futures-util = "0.3.8"
 clap = "2.33.3"
-tokio = { version = "0.2.22", features = ["full"] }
+tokio = { version = "0.2.23", features = ["full"] }
 tokio-util = { version = "0.3.1", features = ["full"] }
 bytes = "0.5.6"
 serde = "1.0.117"
