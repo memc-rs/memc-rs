@@ -1,31 +1,38 @@
 extern crate failure;
 
-#[derive(Debug, Fail, PartialEq)]
+#[derive(Debug, PartialEq, Copy)]
 pub enum StorageError {
-    #[fail(display = "Key not found")]
     NotFound = 0x01,
-    #[fail(display = "Key exists")]
     KeyExists = 0x02,
-    #[fail(display = "Value too large")]
     ValueTooLarge = 0x03,
-    #[fail(display = "Invalid arguments")]
     InvalidArguments = 0x04,
-    #[fail(display = "Item not stored")]
     ItemNotStored = 0x05,
-    #[fail(display = "Incr/Decr on non numeric value")]
     ArithOnNonNumeric = 0x06,
-    #[fail(display = "Invalid command")]
     UnkownCommand = 0x81,
-    #[fail(display = "Out of memory")]
     OutOfMemory = 0x82,
-    #[fail(display = "Not supported")]
     NotSupported = 0x83,
-    #[fail(display = "Internal error")]
     InternalError = 0x84,
-    #[fail(display = "Busy")]
     Busy = 0x85,
-    #[fail(display = "Temporary failure")]
     TemporaryFailure = 0x86,
+}
+
+impl StorageError {
+    pub fn to_static_string(&self) -> String {
+        match self {
+            StorageError::NotFound => String::from("Key not found"),
+            StorageError::KeyExists => String::from("Key exists"),
+            StorageError::ValueTooLarge => String::from("Value too large"),
+            StorageError::InvalidArguments => String::from("Invalid arguments"),
+            StorageError::ItemNotStored => String::from("Item not stored"),
+            StorageError::ArithOnNonNumeric => String::from("Incr/Decr on non numeric value"),
+            StorageError::UnkownCommand => String::from("Invalid command"),
+            StorageError::OutOfMemory => String::from("Out of memory"),
+            StorageError::NotSupported => String::from("Not supported"),
+            StorageError::InternalError => String::from("Internal error"),
+            StorageError::Busy => String::from("Busy"),
+            StorageError::TemporaryFailure => String::from("Temporary failure"),
+        }
+    }
 }
 
 pub type StorageResult<T> = std::result::Result<T, StorageError>;
