@@ -59,7 +59,7 @@ impl BinaryRequest {
 }
 
 /// Server response
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub enum BinaryResponse {
     Error(binary::ErrorResponse),
     Get(binary::GetResponse),
