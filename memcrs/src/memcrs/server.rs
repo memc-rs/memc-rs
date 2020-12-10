@@ -30,7 +30,7 @@ struct Client {
     store: Arc<storage::Storage>,
     socket: TcpStream,
     addr: SocketAddr,
-    _token: async_listen::backpressure::Token,
+    _token: u32,
     rx_timeout_secs: u64,
     wx_timeout_secs: u64,
 }
@@ -40,7 +40,7 @@ impl Client {
         store: Arc<storage::Storage>,
         socket: TcpStream,
         addr: SocketAddr,
-        token: async_listen::backpressure::Token,
+        token: u32,
         rx_timeout_secs: u64,
         wx_timeout_secs: u64,
     ) -> Self {
@@ -69,26 +69,27 @@ impl TcpServer {
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         let mut listener = TcpListener::bind(addr).await?;
         // TODO: limit number of accepted connections just like memcache
-        let mut incoming = listener
+        /*let mut incoming = listener
             .incoming()
             .log_warnings(log_accept_error)
             .handle_errors(Duration::from_millis(500)) // 1
-            .backpressure(self.connection_limit as usize);
+            .backpressure(self.connection_limit as usize);*/
 
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
         loop {
             tokio::select! {
-                connection = incoming.next() => {
-                    if let Some((token, socket)) = connection {
-                        let peer_addr = socket.peer_addr().unwrap();
+                connection = listener.accept() => {
+                    match connection {
+                    Ok((socket, addr)) => {
+                        let peer_addr = addr;
                         socket.set_nodelay(true)?;
                         socket.set_linger(None)?;
                         let client = Client::new(
                             self.storage.clone(),
                             socket,
                             peer_addr,
-                            token,
+                            0,
                             self.timeout_secs,
                             self.timeout_secs,
                         );
@@ -96,7 +97,12 @@ impl TcpServer {
                         // runs concurrently with all other clients. The `move` keyword is used
                         // here to move ownership of our db handle into the async closure.
                         tokio::spawn(async move { TcpServer::handle_client(client).await });
+                    },
+                    Err(err) => {
+                        error!("{}", err);
                     }
+                }
+                    
                 },
                 _ = interval.tick() => {
                     self.timer.add_second();
