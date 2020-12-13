@@ -117,12 +117,13 @@ impl Storage {
     fn touch_record(&self, _record: &mut Record) {
         let _timer = self.timer.secs();
     }
+
     /**
      * FIXME: Make it atomic operation based on CAS, now there is a race between
      * check_cas and insert
      */
     pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
-        trace!("Set: {:?}", &record.header);
+        //trace!("Set: {:?}", &record.header);
 
         if record.header.cas > 0 {
             match self.memory.get_mut(&key) {

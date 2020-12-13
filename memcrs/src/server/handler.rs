@@ -1,14 +1,14 @@
-use super::storage;
-use crate::memcrs::error;
-use crate::memcrs::version::MEMCRS_VERSION;
+use crate::storage::store;
+use crate::storage::error;
+use crate::version::MEMCRS_VERSION;
 use crate::protocol::{binary, binary_codec};
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
-impl Into<storage::Meta> for binary::RequestHeader {
-    fn into(self) -> storage::Meta {
-        storage::Meta::new(self.cas, self.opaque, 0)
+impl Into<store::Meta> for binary::RequestHeader {
+    fn into(self) -> store::Meta {
+        store::Meta::new(self.cas, self.opaque, 0)
     }
 }
 
@@ -35,11 +35,11 @@ fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::Bi
 }
 
 pub struct BinaryHandler {
-    storage: Arc<storage::Storage>,
+    storage: Arc<store::Storage>,
 }
 
 impl BinaryHandler {
-    pub fn new(store: Arc<storage::Storage>) -> BinaryHandler {
+    pub fn new(store: Arc<store::Storage>) -> BinaryHandler {
         BinaryHandler { storage: store }
     }
 
@@ -115,7 +115,7 @@ impl BinaryHandler {
         request: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = storage::Record::new(
+        let record = store::Record::new(
             request.value,
             request.header.cas,
             request.flags,
@@ -147,7 +147,7 @@ impl BinaryHandler {
         append_req: binary::AppendRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = storage::Record::new(append_req.value, append_req.header.cas, 0, 0);
+        let record = store::Record::new(append_req.value, append_req.header.cas, 0, 0);
         let result = if self.is_append(append_req.header.opcode) {
             self.storage.append(append_req.key, record)
         } else {
@@ -174,7 +174,7 @@ impl BinaryHandler {
         set_req: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = storage::Record::new(
+        let record = store::Record::new(
             set_req.value,
             set_req.header.cas,
             set_req.flags,
@@ -247,7 +247,7 @@ impl BinaryHandler {
         flush_request: binary::FlushRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let meta: storage::Meta = storage::Meta::new(0, 0, flush_request.expiration);
+        let meta: store::Meta = store::Meta::new(0, 0, flush_request.expiration);
         self.storage.flush(meta);
         binary_codec::BinaryResponse::Flush(binary::FlushResponse {
             header: *response_header,
@@ -259,7 +259,7 @@ impl BinaryHandler {
         inc_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let delta = storage::IncrementParam {
+        let delta = store::IncrementParam {
             delta: inc_request.delta,
             value: inc_request.initial,
         };
@@ -283,7 +283,7 @@ impl BinaryHandler {
         dec_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let delta = storage::IncrementParam {
+        let delta = store::IncrementParam {
             delta: dec_request.delta,
             value: dec_request.initial,
         };
@@ -308,8 +308,8 @@ mod tests {
     use super::binary;
     use super::binary_codec;
     use super::*;
-    use crate::memcrs::error;
-    use crate::memcrs::mock::mock_server::create_storage;
+    use crate::storage::error;
+    use crate::mock::mock_server::create_storage;
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {
@@ -380,7 +380,7 @@ mod tests {
         let header = create_header(binary::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = String::from("value").into_bytes();
-        let record = storage::Record::new(value.clone(), 0, FLAGS, 0);
+        let record = store::Record::new(value.clone(), 0, FLAGS, 0);
 
         let set_result = handler.storage.set(key.clone(), record);
         assert!(set_result.is_ok());

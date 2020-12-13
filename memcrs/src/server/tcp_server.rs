@@ -12,9 +12,9 @@ use tracing::{debug, error, info};
 //use tracing_attributes::instrument;
 
 use super::handler;
-use super::storage;
-use super::timer;
-use super::timer::{SetableTimer, Timer};
+use crate::storage::store as storage;
+use crate::storage::timer;
+use crate::storage::timer::{SetableTimer, Timer};
 use crate::protocol::binary_codec;
 
 //extern crate flame;

@@ -11,7 +11,7 @@ use clap::{value_t, App, Arg, Error};
 async fn main() -> io::Result<()> {
     let app = App::new("memcrsd");
     let matches = app
-        .version(memcrs::memcrs::version::MEMCRS_VERSION)
+        .version(memcrs::version::MEMCRS_VERSION)
         .author("Dariusz Ostolski <dariusz.ostolski@gmail.com>")
         .about("Rust memcached compatible server implementation")
         .arg(
@@ -100,6 +100,6 @@ async fn main() -> io::Result<()> {
     );
 
     let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server = memcrs::memcrs::server::TcpServer::new(60, connection_limit);
+    let mut tcp_server = memcrs::server::tcp_server::TcpServer::new(60, connection_limit);
     tcp_server.run(addr).await
 }

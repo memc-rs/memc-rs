@@ -1,5 +1,5 @@
-use crate::memcrs::storage::Storage;
-use crate::memcrs::timer;
+use crate::storage::store::Storage;
+use crate::storage::timer as timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
