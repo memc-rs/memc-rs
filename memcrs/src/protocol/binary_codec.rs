@@ -564,4 +564,4 @@ impl Encoder<BinaryResponse> for MemcacheBinaryCodec {
 }
 
 #[cfg(test)]
-mod binary_codec_tests;
+mod binary_decoder_tests;
