@@ -113,12 +113,6 @@ pub struct MemcacheBinaryCodec {
     state: RequestParserState,
 }
 
-impl Default for MemcacheBinaryCodec {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl MemcacheBinaryCodec {
     pub fn new() -> MemcacheBinaryCodec {
         MemcacheBinaryCodec {
@@ -516,29 +510,19 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
             }
-            BinaryResponse::Get(response) => {
+            BinaryResponse::Get(response) 
+            | BinaryResponse::GetKey(response) 
+            | BinaryResponse::GetKeyQuietly(response)
+            | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
                 dst.put_slice(&response.key[..]);
                 dst.put_slice(&response.value[..]);
-            }
-            BinaryResponse::GetKey(response) => {
-                dst.put_u32(response.flags);
-                dst.put_slice(&response.key[..]);
-            }
-            BinaryResponse::GetKeyQuietly(response) => {
-                dst.put_u32(response.flags);
-                dst.put_slice(&response.key[..]);
-            }
-            BinaryResponse::GetQuietly(response) => {
-                dst.put_u32(response.flags);
-                dst.put_slice(&response.key[..]);
-                dst.put_slice(&response.value[..]);
-            }
-            BinaryResponse::Set(response)
-            | BinaryResponse::Replace(response)
-            | BinaryResponse::Add(response)
-            | BinaryResponse::Append(response)
-            | BinaryResponse::Prepend(response) => {}
+            }            
+            BinaryResponse::Set(_response)
+            | BinaryResponse::Replace(_response)
+            | BinaryResponse::Add(_response)
+            | BinaryResponse::Append(_response)
+            | BinaryResponse::Prepend(_response) => {}
             BinaryResponse::Version(response) => {
                 dst.put_slice(response.version.as_bytes());
             }
