@@ -1,4 +1,5 @@
 use super::*;
+use crate::storage::error;
 
 #[cfg(test)]
 mod tests {
@@ -198,6 +199,24 @@ mod tests {
         let response = BinaryResponse::Version(binary::VersionResponse {
             header,
             version: String::from("1.6.2"),
+        });
+        test_encode(&expected_result, response);
+    }
+
+    #[test]
+    fn encode_error_response() {
+        let expected_result: [u8; 33] = [
+            0x81, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x4e, 0x6f, 0x74, 0x20,
+            0x66, 0x6f, 0x75, 0x6e, 0x64
+        ];
+        let mut header = create_response_header(binary::Command::Get, 0, 0);
+        header.body_length = "Not found".len() as u32;
+        let err = error::StorageError::NotFound;
+        header.status = error::StorageError::NotFound as u16;
+        let response = BinaryResponse::Error(binary::ErrorResponse {
+            header,
+            error: err.to_static_string(),
         });
         test_encode(&expected_result, response);
     }
