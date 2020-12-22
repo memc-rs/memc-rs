@@ -1,7 +1,7 @@
-use crate::storage::store;
-use crate::storage::error;
-use crate::version::MEMCRS_VERSION;
 use crate::protocol::{binary, binary_codec};
+use crate::storage::error;
+use crate::storage::store;
+use crate::version::MEMCRS_VERSION;
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
@@ -308,8 +308,8 @@ mod tests {
     use super::binary;
     use super::binary_codec;
     use super::*;
-    use crate::storage::error;
     use crate::mock::mock_server::create_storage;
+    use crate::storage::error;
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {

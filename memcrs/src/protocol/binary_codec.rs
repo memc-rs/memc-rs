@@ -510,14 +510,14 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
             }
-            BinaryResponse::Get(response) 
-            | BinaryResponse::GetKey(response) 
+            BinaryResponse::Get(response)
+            | BinaryResponse::GetKey(response)
             | BinaryResponse::GetKeyQuietly(response)
             | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
                 dst.put_slice(&response.key[..]);
                 dst.put_slice(&response.value[..]);
-            }            
+            }
             BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
             | BinaryResponse::Add(_response)

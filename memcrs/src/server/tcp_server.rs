@@ -12,10 +12,10 @@ use tracing::{debug, error, info};
 //use tracing_attributes::instrument;
 
 use super::handler;
+use crate::protocol::binary_codec;
 use crate::storage::store as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
-use crate::protocol::binary_codec;
 
 //extern crate flame;
 
@@ -70,10 +70,10 @@ impl TcpServer {
         let mut listener = TcpListener::bind(addr).await?;
         // TODO: limit number of accepted connections just like memcache
         /*let mut incoming = listener
-            .incoming()
-            .log_warnings(log_accept_error)
-            .handle_errors(Duration::from_millis(500)) // 1
-            .backpressure(self.connection_limit as usize);*/
+        .incoming()
+        .log_warnings(log_accept_error)
+        .handle_errors(Duration::from_millis(500)) // 1
+        .backpressure(self.connection_limit as usize);*/
 
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
@@ -102,7 +102,7 @@ impl TcpServer {
                         error!("{}", err);
                     }
                 }
-                    
+
                 },
                 _ = interval.tick() => {
                     self.timer.add_second();
