@@ -363,7 +363,7 @@ mod tests {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.status, error::StorageError::NotFound as u16);
-                    assert_eq!(response.error, "Key not found");
+                    assert_eq!(response.error, "Not found");
                     assert_eq!(response.header.body_length, response.error.len() as u32);
                 } else {
                     unreachable!();

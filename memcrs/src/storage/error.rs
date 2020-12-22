@@ -19,7 +19,7 @@ pub enum StorageError {
 impl StorageError {
     pub fn to_static_string(&self) -> String {
         match self {
-            StorageError::NotFound => String::from("Key not found"),
+            StorageError::NotFound => String::from("Not found"),
             StorageError::KeyExists => String::from("Key exists"),
             StorageError::ValueTooLarge => String::from("Value too large"),
             StorageError::InvalidArguments => String::from("Invalid arguments"),
