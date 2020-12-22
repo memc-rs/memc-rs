@@ -122,6 +122,30 @@ mod tests {
     }
 
     #[test]
+    fn encode_get_response() {
+        let expected_result = [
+            0x81, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00, 0x33, 0x30, 0x35, 0x30
+        ];
+        let mut header = create_response_header(binary::Command::Get, 0, 13);
+        header.key_length = 0;
+        header.extras_length = 4;
+        header.body_length = "3050".len() as u32 + header.extras_length as u32;
+        let response = BinaryResponse::Get(binary::GetResponse {
+            header,
+            flags: 0,
+            key: Vec::new(),
+            value: vec![b'3', b'0', b'5', b'0'],
+        });
+        let encode_result = encode_packet(response);
+        match encode_result {
+            Ok(buf) => {
+                assert_eq!(&buf[..], expected_result);
+            }
+            Err(_) => unreachable!(),
+        }
+    }
+
+    #[test]
     fn encode_noop_response() {
         let header = create_response_header(binary::Command::Noop, 0, 0);
         let expected_result: [u8; 24] = [
