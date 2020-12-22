@@ -16,6 +16,4 @@ cd ~/projects/memix
 cargo flamegraph
 cargo flamegraph --bin memcrsd
 
-
-
 ```
