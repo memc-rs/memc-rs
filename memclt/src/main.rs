@@ -40,7 +40,7 @@ fn main() {
     client.decrement("foo", 50).unwrap();
 
 
-    client.delete("foo").unwrap();
+    
 
     let result: Result<Option<String>, MemcacheError> = client.get("foo");
     match result {
@@ -56,6 +56,8 @@ fn main() {
     }
 
 
+    client.delete("foo").unwrap();
+    
     client.flush_with_delay(100).unwrap();
 
     client.flush().unwrap();
