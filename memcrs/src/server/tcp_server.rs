@@ -1,4 +1,3 @@
-use async_listen::{backpressure::Token, error_hint, ListenExt};
 use futures::sink::SinkExt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
@@ -164,5 +163,5 @@ impl MemcacheTcpServer {
 }
 
 fn log_accept_error(e: &io::Error) {
-    error!("Error: {}. Listener paused for 0.5s. {}", e, error_hint(e)); // 3
+    error!("Error: {}. Listener paused for 0.5s.", e); // 3
 }
