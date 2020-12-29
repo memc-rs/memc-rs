@@ -1,3 +1,4 @@
+use bytes::Bytes;
 use num_derive::{FromPrimitive, ToPrimitive};
 use serde_derive::{Deserialize, Serialize};
 
@@ -147,12 +148,12 @@ pub type GetQuietRequest = GetRequest;
 pub type GetKeyRequest = GetRequest;
 pub type GetKeyQuietRequest = GetRequest;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct GetResponse {
     pub(crate) header: ResponseHeader,
     pub(crate) flags: u32,
     pub(crate) key: Vec<u8>,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Bytes,
 }
 
 pub type DeleteRequest = GetRequest;
@@ -162,23 +163,23 @@ pub type GetQuietlyResponse = GetResponse;
 pub type GetKeyResponse = GetResponse;
 pub type GetKeyQuietlyResponse = GetResponse;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct SetRequest {
     pub(crate) header: RequestHeader,
     pub(crate) flags: u32,
     pub(crate) expiration: u32,
     pub(crate) key: Vec<u8>,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Bytes,
 }
 
 pub type AddRequest = SetRequest;
 pub type ReplaceRequest = SetRequest;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct AppendRequest {
     pub(crate) header: RequestHeader,
     pub(crate) key: Vec<u8>,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Bytes,
 }
 
 pub type PrependRequest = AppendRequest;

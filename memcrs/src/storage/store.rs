@@ -1,5 +1,6 @@
 use super::error::{StorageError, StorageResult};
 use super::timer;
+use bytes::Bytes;
 use dashmap::DashMap;
 use std::str;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -30,11 +31,11 @@ impl Meta {
 #[derive(Clone, Debug)]
 pub struct Record {
     pub(crate) header: Meta,
-    pub(crate) value: Vec<u8>,
+    pub(crate) value: Bytes,
 }
 
 impl Record {
-    pub fn new(value: Vec<u8>, cas: u64, flags: u32, expiration: u32) -> Record {
+    pub fn new(value: Bytes, cas: u64, flags: u32, expiration: u32) -> Record {
         let header = Meta::new(cas, flags, expiration);
         Record { header, value }
     }

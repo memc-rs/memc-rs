@@ -8,7 +8,7 @@ use std::io::{Error, ErrorKind};
 use tokio_util::codec::{Decoder, Encoder};
 
 /// Client request
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub enum BinaryRequest {
     Delete(binary::DeleteRequest),
     DeleteQuiet(binary::DeleteRequest),
@@ -359,7 +359,7 @@ impl MemcacheBinaryCodec {
         let append_request = binary::AppendRequest {
             header: self.header,
             key: src.split_to(self.header.key_length as usize).to_vec(),
-            value: src.split_to(value_len as usize).to_vec(),
+            value: src.split_to(value_len as usize).freeze(),
         };
 
         if self.header.opcode == binary::Command::Append as u8
@@ -410,7 +410,7 @@ impl MemcacheBinaryCodec {
             flags: src.get_u32(),
             expiration: src.get_u32(),
             key: src.split_to(self.header.key_length as usize).to_vec(),
-            value: src.split_to(value_len as usize).to_vec(),
+            value: src.split_to(value_len as usize).freeze(),
         };
 
         if self.header.opcode == binary::Command::Replace as u8

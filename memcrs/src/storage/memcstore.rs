@@ -1,3 +1,5 @@
+use bytes::{BytesMut, Bytes};
+
 use super::error::{StorageError, StorageResult};
 use super::store::{KVStore, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus};
 use super::timer;
@@ -66,8 +68,10 @@ impl MemcStore {
         match self.get(&key) {
             Ok(mut record) => {
                 record.header.cas = new_record.header.cas;
-                record.value.reserve(new_record.value.len());
-                record.value.append(&mut new_record.value);
+                let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());            
+                value.extend_from_slice(&record.value);
+                value.extend_from_slice(&new_record.value);
+                record.value = value.freeze();
                 self.store.set(key, record)
             }
             Err(_err) => Err(StorageError::NotFound),
@@ -76,13 +80,13 @@ impl MemcStore {
 
     pub fn prepend(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
-            Ok(mut record) => {
-                let cas = new_record.header.cas;
-                new_record.value.reserve(record.value.len());
-                new_record.value.append(&mut record.value);
-                new_record.header = record.header;
-                new_record.header.cas = cas;
-                self.store.set(key, new_record)
+            Ok(mut record) => {                
+                let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());
+                value.extend_from_slice(&new_record.value);
+                value.extend_from_slice(&record.value);                
+                record.value = value.freeze();
+                record.header.cas = new_record.header.cas;                
+                self.store.set(key, record)
             }
             Err(_err) => Err(StorageError::NotFound),
         }
@@ -134,7 +138,7 @@ impl MemcStore {
                         } else {
                             value -= delta.delta;
                         }
-                        record.value = value.to_string().as_bytes().to_vec();
+                        record.value = Bytes::from(value.to_string());
                         record.header = header;
                         self.store.set(key, record).map(|result| DeltaResult {
                             cas: result.cas,
@@ -149,7 +153,7 @@ impl MemcStore {
             Err(_err) => {
                 if header.get_expiration() != 0xffffffff {
                     let record = Record::new(
-                        delta.value.to_string().as_bytes().to_vec(),
+                        Bytes::from(delta.value.to_string()),
                         0,
                         0,
                         header.get_expiration(),
