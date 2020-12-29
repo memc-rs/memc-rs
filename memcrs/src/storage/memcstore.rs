@@ -1,13 +1,12 @@
 use super::error::{StorageError, StorageResult};
+use super::store::{KVStore, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus};
 use super::timer;
-use super::store::{KVStore, Record as KVRecord, Meta as KVMeta, SetStatus as KVSetStatus};
 use std::str;
 use std::sync::Arc;
 
 pub type Record = KVRecord;
 pub type Meta = KVMeta;
-pub type SetStatus = KVSetStatus; 
-
+pub type SetStatus = KVSetStatus;
 
 #[derive(Clone)]
 pub struct DeltaParam {
@@ -17,14 +16,13 @@ pub struct DeltaParam {
 pub type IncrementParam = DeltaParam;
 pub type DecrementParam = IncrementParam;
 
-
 #[derive(Debug)]
 pub struct DeltaResult {
     pub cas: u64,
     pub value: u64,
 }
 /**
- * Implements Memcache commands based 
+ * Implements Memcache commands based
  * on Key Value Store
  */
 pub struct MemcStore {
@@ -34,14 +32,14 @@ pub struct MemcStore {
 impl MemcStore {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> MemcStore {
         MemcStore {
-            store: KVStore::new(timer)
+            store: KVStore::new(timer),
         }
     }
 
-    pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus>  {
+    pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
         self.store.set(key, record)
     }
-    
+
     pub fn get(&self, key: &[u8]) -> StorageResult<Record> {
         self.store.get(key)
     }
@@ -49,7 +47,7 @@ impl MemcStore {
     fn touch_record(&self, _record: &mut Record) {
         //let _timer = self.timer.secs();
     }
-    
+
     pub fn add(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(_record) => Err(StorageError::KeyExists),
@@ -149,12 +147,12 @@ impl MemcStore {
                     })
             }
             Err(_err) => {
-                if header.expiration != 0xffffffff {
+                if header.get_expiration() != 0xffffffff {
                     let record = Record::new(
                         delta.value.to_string().as_bytes().to_vec(),
                         0,
                         0,
-                        header.expiration,
+                        header.get_expiration(),
                     );
                     return self.store.set(key, record).map(|result| DeltaResult {
                         cas: result.cas,

@@ -39,25 +39,19 @@ fn main() {
 
     client.decrement("foo", 50).unwrap();
 
-
-    
-
     let result: Result<Option<String>, MemcacheError> = client.get("foo");
     match result {
-        Ok(val) => {
-            match val {
-                Some(value) => println!("Server returned: {}", value),
-                None => println!("Server none"),
-            }
+        Ok(val) => match val {
+            Some(value) => println!("Server returned: {}", value),
+            None => println!("Server none"),
         },
         Err(err) => {
             println!("Error returned: {:?}", err);
         }
     }
 
-
     client.delete("foo").unwrap();
-    
+
     client.flush_with_delay(100).unwrap();
 
     client.flush().unwrap();

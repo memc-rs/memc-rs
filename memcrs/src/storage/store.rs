@@ -1,16 +1,15 @@
-use super::timer;
 use super::error::{StorageError, StorageResult};
+use super::timer;
 use dashmap::DashMap;
 use std::str;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-
 #[derive(Clone, Debug)]
 pub struct Meta {
     pub(self) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
-    pub(crate) expiration: u32,
+    pub(self) expiration: u32,
 }
 
 impl Meta {
@@ -21,6 +20,10 @@ impl Meta {
             flags,
             expiration,
         }
+    }
+
+    pub fn get_expiration(&self) -> u32 {
+        self.expiration
     }
 }
 
@@ -99,7 +102,7 @@ impl KVStore {
             Some(_) => true,
             None => true,
         }
-    }   
+    }
 
     /**
      * FIXME: Make it atomic operation based on CAS, now there is a race between
