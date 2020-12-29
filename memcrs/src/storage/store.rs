@@ -1,5 +1,5 @@
-use super::error::{StorageError, StorageResult};
 use super::timer;
+use super::error::{StorageError, StorageResult};
 use dashmap::DashMap;
 use std::str;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,7 +10,7 @@ pub struct Meta {
     pub(self) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
-    expiration: u32,
+    pub(crate) expiration: u32,
 }
 
 impl Meta {
@@ -43,33 +43,20 @@ impl PartialEq for Record {
     }
 }
 
-#[derive(Clone)]
-pub struct DeltaParam {
-    pub(crate) delta: u64,
-    pub(crate) value: u64,
-}
-pub type IncrementParam = DeltaParam;
-pub type DecrementParam = IncrementParam;
-
-pub struct Storage {
-    memory: DashMap<Vec<u8>, Record>,
-    timer: Arc<dyn timer::Timer + Send + Sync>,
-    cas_id: AtomicU64,
-}
-#[derive(Debug)]
-pub struct DeltaResult {
-    pub cas: u64,
-    pub value: u64,
-}
-
 #[derive(Debug)]
 pub struct SetStatus {
     pub cas: u64,
 }
 
-impl Storage {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> Storage {
-        Storage {
+pub struct KVStore {
+    memory: DashMap<Vec<u8>, Record>,
+    timer: Arc<dyn timer::Timer + Send + Sync>,
+    cas_id: AtomicU64,
+}
+
+impl KVStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> KVStore {
+        KVStore {
             memory: DashMap::new(),
             timer,
             cas_id: AtomicU64::new(1),
@@ -112,11 +99,7 @@ impl Storage {
             Some(_) => true,
             None => true,
         }
-    }
-
-    fn touch_record(&self, _record: &mut Record) {
-        let _timer = self.timer.secs();
-    }
+    }   
 
     /**
      * FIXME: Make it atomic operation based on CAS, now there is a race between
@@ -159,122 +142,6 @@ impl Storage {
         self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
     }
 
-    pub fn add(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
-        match self.get_by_key(&key) {
-            Ok(_record) => Err(StorageError::KeyExists),
-            Err(_err) => self.set(key, record),
-        }
-    }
-
-    pub fn replace(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
-        match self.get_by_key(&key) {
-            Ok(_record) => self.set(key, record),
-            Err(_err) => Err(StorageError::NotFound),
-        }
-    }
-
-    pub fn append(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
-        match self.get_by_key(&key) {
-            Ok(mut record) => {
-                record.header.cas = new_record.header.cas;
-                record.value.reserve(new_record.value.len());
-                record.value.append(&mut new_record.value);
-                self.set(key, record)
-            }
-            Err(_err) => Err(StorageError::NotFound),
-        }
-    }
-
-    pub fn prepend(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
-        match self.get_by_key(&key) {
-            Ok(mut record) => {
-                let cas = new_record.header.cas;
-                new_record.value.reserve(record.value.len());
-                new_record.value.append(&mut record.value);
-                new_record.header = record.header;
-                new_record.header.cas = cas;
-                self.set(key, new_record)
-            }
-            Err(_err) => Err(StorageError::NotFound),
-        }
-    }
-
-    pub fn increment(
-        &self,
-        header: Meta,
-        key: Vec<u8>,
-        increment: IncrementParam,
-    ) -> StorageResult<DeltaResult> {
-        self.add_delta(header, key, increment, true)
-    }
-
-    pub fn decrement(
-        &self,
-        header: Meta,
-        key: Vec<u8>,
-        decrement: DecrementParam,
-    ) -> StorageResult<DeltaResult> {
-        self.add_delta(header, key, decrement, false)
-    }
-
-    fn add_delta(
-        &self,
-        header: Meta,
-        key: Vec<u8>,
-        delta: DeltaParam,
-        increment: bool,
-    ) -> StorageResult<DeltaResult> {
-        match self.get_by_key(&key) {
-            Ok(mut record) => {
-                str::from_utf8(&record.value)
-                    .map(|value: &str| {
-                        value
-                            .parse::<u64>()
-                            .map_err(|_err| StorageError::ArithOnNonNumeric)
-                    })
-                    .map_err(|_err| StorageError::ArithOnNonNumeric)
-                    .and_then(|value: std::result::Result<u64, StorageError>| {
-                        //flatten result
-                        value
-                    })
-                    .map(|mut value: u64| {
-                        if increment {
-                            value += delta.delta;
-                        } else if delta.delta > value {
-                            value = 0;
-                        } else {
-                            value -= delta.delta;
-                        }
-                        record.value = value.to_string().as_bytes().to_vec();
-                        record.header = header;
-                        self.set(key, record).map(|result| DeltaResult {
-                            cas: result.cas,
-                            value,
-                        })
-                    })
-                    .and_then(|result: std::result::Result<DeltaResult, StorageError>| {
-                        //flatten result
-                        result
-                    })
-            }
-            Err(_err) => {
-                if header.expiration != 0xffffffff {
-                    let record = Record::new(
-                        delta.value.to_string().as_bytes().to_vec(),
-                        0,
-                        0,
-                        header.expiration,
-                    );
-                    return self.set(key, record).map(|result| DeltaResult {
-                        cas: result.cas,
-                        value: delta.value,
-                    });
-                }
-                Err(StorageError::NotFound)
-            }
-        }
-    }
-
     pub fn delete(&self, key: Vec<u8>, header: Meta) -> StorageResult<()> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
@@ -301,6 +168,3 @@ impl Storage {
         }
     }
 }
-
-#[cfg(test)]
-mod storage_tests;

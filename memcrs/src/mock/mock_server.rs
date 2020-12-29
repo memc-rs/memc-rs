@@ -1,4 +1,4 @@
-use crate::storage::store::Storage;
+use crate::storage::memcstore::MemcStore;
 use crate::storage::timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -33,7 +33,7 @@ impl SetableTimer for MockSystemTimer {
 
 pub struct MockServer {
     pub timer: Arc<MockSystemTimer>,
-    pub storage: Storage,
+    pub storage: MemcStore,
 }
 
 impl MockServer {
@@ -41,7 +41,7 @@ impl MockServer {
         let timer = Arc::new(MockSystemTimer::new());
         MockServer {
             timer: timer.clone(),
-            storage: Storage::new(timer),
+            storage: MemcStore::new(timer),
         }
     }
 }
@@ -50,7 +50,7 @@ pub fn create_server() -> MockServer {
     MockServer::new()
 }
 
-pub fn create_storage() -> Arc<Storage> {
+pub fn create_storage() -> Arc<MemcStore> {
     let timer = Arc::new(MockSystemTimer::new());
-    Arc::new(Storage::new(timer))
+    Arc::new(MemcStore::new(timer))
 }

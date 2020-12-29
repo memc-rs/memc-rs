@@ -13,21 +13,21 @@ use tracing::{debug, error, info};
 
 use super::handler;
 use crate::protocol::binary_codec;
-use crate::storage::store as storage;
+use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
 
 //extern crate flame;
 
-pub struct TcpServer {
+pub struct MemcacheTcpServer {
     timer: Arc<timer::SystemTimer>,
-    storage: Arc<storage::Storage>,
+    storage: Arc<storage::MemcStore>,
     timeout_secs: u64,
     connection_limit: u32,
 }
 
 struct Client {
-    store: Arc<storage::Storage>,
+    store: Arc<storage::MemcStore>,
     socket: TcpStream,
     addr: SocketAddr,
     _token: u32,
@@ -37,7 +37,7 @@ struct Client {
 
 impl Client {
     pub fn new(
-        store: Arc<storage::Storage>,
+        store: Arc<storage::MemcStore>,
         socket: TcpStream,
         addr: SocketAddr,
         token: u32,
@@ -55,14 +55,14 @@ impl Client {
     }
 }
 
-impl TcpServer {
-    pub fn new(timeout_secs: u64, connection_limit: u32) -> TcpServer {
+impl MemcacheTcpServer {
+    pub fn new(timeout_secs: u64, connection_limit: u32) -> MemcacheTcpServer {
         let timer = Arc::new(timer::SystemTimer::new());
-        TcpServer {
+        MemcacheTcpServer {
             connection_limit,
             timeout_secs,
             timer: timer.clone(),
-            storage: Arc::new(storage::Storage::new(timer)),
+            storage: Arc::new(storage::MemcStore::new(timer)),
         }
     }
 
@@ -96,7 +96,7 @@ impl TcpServer {
                         // Like with other small servers, we'll `spawn` this client to ensure it
                         // runs concurrently with all other clients. The `move` keyword is used
                         // here to move ownership of our db handle into the async closure.
-                        tokio::spawn(async move { TcpServer::handle_client(client).await });
+                        tokio::spawn(async move { MemcacheTcpServer::handle_client(client).await });
                     },
                     Err(err) => {
                         error!("{}", err);
