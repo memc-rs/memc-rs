@@ -1,7 +1,7 @@
 use bytes::{BytesMut, Bytes};
 
 use super::error::{StorageError, StorageResult};
-use super::store::{KVStore, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus};
+use super::store::{KVStore, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus, KeyType as KVKeyType};
 use super::timer;
 use std::str;
 use std::sync::Arc;
@@ -9,6 +9,7 @@ use std::sync::Arc;
 pub type Record = KVRecord;
 pub type Meta = KVMeta;
 pub type SetStatus = KVSetStatus;
+pub type KeyType = KVKeyType;
 
 #[derive(Clone)]
 pub struct DeltaParam {
@@ -38,11 +39,11 @@ impl MemcStore {
         }
     }
 
-    pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
+    pub fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
         self.store.set(key, record)
     }
 
-    pub fn get(&self, key: &[u8]) -> StorageResult<Record> {
+    pub fn get(&self, key: &KeyType) -> StorageResult<Record> {
         self.store.get(key)
     }
 
@@ -50,21 +51,21 @@ impl MemcStore {
         //let _timer = self.timer.secs();
     }
 
-    pub fn add(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
+    pub fn add(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(_record) => Err(StorageError::KeyExists),
             Err(_err) => self.store.set(key, record),
         }
     }
 
-    pub fn replace(&self, key: Vec<u8>, record: Record) -> StorageResult<SetStatus> {
+    pub fn replace(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(_record) => self.store.set(key, record),
             Err(_err) => Err(StorageError::NotFound),
         }
     }
 
-    pub fn append(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
+    pub fn append(&self, key: KeyType, mut new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {
                 record.header.cas = new_record.header.cas;
@@ -78,7 +79,7 @@ impl MemcStore {
         }
     }
 
-    pub fn prepend(&self, key: Vec<u8>, mut new_record: Record) -> StorageResult<SetStatus> {
+    pub fn prepend(&self, key: KeyType, mut new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {                
                 let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());
@@ -95,7 +96,7 @@ impl MemcStore {
     pub fn increment(
         &self,
         header: Meta,
-        key: Vec<u8>,
+        key: KeyType,
         increment: IncrementParam,
     ) -> StorageResult<DeltaResult> {
         self.add_delta(header, key, increment, true)
@@ -104,7 +105,7 @@ impl MemcStore {
     pub fn decrement(
         &self,
         header: Meta,
-        key: Vec<u8>,
+        key: KeyType,
         decrement: DecrementParam,
     ) -> StorageResult<DeltaResult> {
         self.add_delta(header, key, decrement, false)
@@ -113,7 +114,7 @@ impl MemcStore {
     fn add_delta(
         &self,
         header: Meta,
-        key: Vec<u8>,
+        key: KeyType,
         delta: DeltaParam,
         increment: bool,
     ) -> StorageResult<DeltaResult> {
@@ -168,7 +169,7 @@ impl MemcStore {
         }
     }
 
-    pub fn delete(&self, key: Vec<u8>, header: Meta) -> StorageResult<()> {
+    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()> {
         self.store.delete(key, header)
     }
 

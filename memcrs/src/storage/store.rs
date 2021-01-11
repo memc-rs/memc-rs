@@ -52,8 +52,10 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
+pub type KeyType = Vec<u8>;
+
 pub struct KVStore {
-    memory: DashMap<Vec<u8>, Record>,
+    memory: DashMap<KeyType, Record>,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
 }
@@ -67,12 +69,12 @@ impl KVStore {
         }
     }
 
-    pub fn get(&self, key: &[u8]) -> StorageResult<Record> {
+    pub fn get(&self, key: &KeyType) -> StorageResult<Record> {
         trace!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
 
-    fn get_by_key(&self, key: &[u8]) -> StorageResult<Record> {
+    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
         let result = match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
             None => Err(StorageError::NotFound),
@@ -89,7 +91,7 @@ impl KVStore {
         }
     }
 
-    fn check_if_expired(&self, key: &[u8], record: &Record) -> bool {
+    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
         let current_time = self.timer.secs();
 
         if record.header.expiration == 0 {
@@ -109,7 +111,7 @@ impl KVStore {
      * FIXME: Make it atomic operation based on CAS, now there is a race between
      * check_cas and insert
      */
-    pub fn set(&self, key: Vec<u8>, mut record: Record) -> StorageResult<SetStatus> {
+    pub fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
         //trace!("Set: {:?}", &record.header);
 
         if record.header.cas > 0 {
@@ -146,7 +148,7 @@ impl KVStore {
         self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
     }
 
-    pub fn delete(&self, key: Vec<u8>, header: Meta) -> StorageResult<()> {
+    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
             let result = header.cas == 0 || record.header.cas == header.cas;
