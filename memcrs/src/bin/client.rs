@@ -1,6 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::net::TcpStream;
-use tokio::prelude::*;
 extern crate memcrs;
 
 #[tokio::main]
@@ -9,6 +8,6 @@ async fn main() {
     let mut stream = TcpStream::connect(addr).await.unwrap();
     println!("created stream");
 
-    let result = stream.write(b"hello world\n").await;
-    println!("wrote to stream; success={:?}", result.is_ok());
+    // let result = stream.write(b"hello world\n").await;
+    // println!("wrote to stream; success={:?}", result.is_ok());
 }

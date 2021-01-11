@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
-use tokio::stream::StreamExt as TokioStreamExt;
+use futures::StreamExt;
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error, info};
