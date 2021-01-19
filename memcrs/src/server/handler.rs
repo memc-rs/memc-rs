@@ -309,7 +309,9 @@ mod tests {
     use super::binary_codec;
     use super::*;
     use crate::mock::mock_server::create_storage;
+    use crate::mock::value::from_string;
     use crate::storage::error;
+    use bytes::{Buf, BufMut, BytesMut};
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {
@@ -379,7 +381,7 @@ mod tests {
         let key = String::from("key").into_bytes();
         let header = create_header(binary::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
-        let value = String::from("value").into_bytes();
+        let value = from_string("value");
         let record = memcstore::Record::new(value.clone(), 0, FLAGS, 0);
 
         let set_result = handler.storage.set(key.clone(), record);
@@ -416,13 +418,13 @@ mod tests {
         let key = String::from("key").into_bytes();
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
-        let value = String::from("value").into_bytes();
+        let value = from_string("value");
         let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
             key,
-            value,
+            value: value,
         });
         let result = handler.handle_request(request);
         match result {
@@ -443,8 +445,9 @@ mod tests {
         let handler = create_handler();
         let key = String::from("key").into_bytes();
         let mut header = create_header(binary::Command::Set, &key);
-        const FLAGS: u32 = 0xDEAD_BEEF;
-        let value = String::from("value").into_bytes();
+        const FLAGS: u32 = 0xDEAD_BEEF;        
+        let value = from_string("value");
+        
         let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
             header,
             flags: FLAGS,
@@ -471,7 +474,7 @@ mod tests {
             flags: FLAGS,
             expiration: 0,
             key,
-            value,
+            value: value,
         });
 
         let result = handler.handle_request(request);

@@ -4,6 +4,7 @@ use crate::storage::error;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::mock::value::from_string;
 
     fn create_response_header(
         cmd: binary::Command,
@@ -110,7 +111,7 @@ mod tests {
             header,
             flags: 0,
             key: vec![b'f', b'o', b'o'],
-            value: vec![b't', b'e', b's', b't'],
+            value: from_string("test"),
         });
         let encode_result = encode_packet(response);
         match encode_result {
@@ -136,7 +137,7 @@ mod tests {
             header,
             flags: 0,
             key: Vec::new(),
-            value: vec![b'3', b'0', b'5', b'0'],
+            value: from_string("3050"),
         });
         let encode_result = encode_packet(response);
         match encode_result {

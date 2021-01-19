@@ -51,7 +51,7 @@ mod tests {
                             assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
                             assert_eq!(req.key, [b'f', b'o', b'o']);
-                            assert_eq!(req.value, [b't', b'e', b's', b't']);
+                            assert_eq!(req.value[..], [b't', b'e', b's', b't']);
                         }
                         _ => unreachable!(),
                     }
@@ -93,7 +93,7 @@ mod tests {
                             assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
                             assert_eq!(req.key, [b'f', b'o', b'o']);
-                            assert_eq!(req.value, [b't', b'e', b's', b't']);
+                            assert_eq!(req.value[..], [b't', b'e', b's', b't']);
                         }
                         _ => unreachable!(),
                     }
@@ -124,7 +124,7 @@ mod tests {
                             assert_eq!(req.flags, 0);
                             assert_eq!(req.expiration, 100);
                             assert_eq!(req.key, [b'f', b'o', b'o']);
-                            assert_eq!(req.value, [b'b', b'a', b'r']);
+                            assert_eq!(req.value[..], [b'b', b'a', b'r']);
                         }
                         _ => unreachable!(),
                     }
@@ -529,7 +529,7 @@ mod tests {
                     match request {
                         BinaryRequest::Append(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
-                            assert_eq!(req.value, [b'b', b'a', b's']);
+                            assert_eq!(req.value[..], [b'b', b'a', b's']);
                         }
                         _ => unreachable!(),
                     }
@@ -575,7 +575,7 @@ mod tests {
                     match request {
                         BinaryRequest::Prepend(req) => {
                             assert_eq!(req.key, [b'f', b'o', b'o']);
-                            assert_eq!(req.value, [b'b', b'i', b's']);
+                            assert_eq!(req.value[..], [b'b', b'i', b's']);
                         }
                         _ => unreachable!(),
                     }

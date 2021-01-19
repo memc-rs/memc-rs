@@ -28,10 +28,13 @@ impl Meta {
     }
 }
 
+pub type ValueType = Bytes;
+
+
 #[derive(Clone, Debug)]
 pub struct Record {
     pub(crate) header: Meta,
-    pub(crate) value: Bytes,
+    pub(crate) value: ValueType,
 }
 
 impl Record {
@@ -53,6 +56,7 @@ pub struct SetStatus {
 }
 
 pub type KeyType = Vec<u8>;
+
 
 pub struct KVStore {
     memory: DashMap<KeyType, Record>,
