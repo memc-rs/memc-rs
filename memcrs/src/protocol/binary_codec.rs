@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, u8};
 
 use crate::protocol::binary;
 use bytes::{Buf, BufMut, BytesMut};
@@ -413,17 +413,24 @@ impl MemcacheBinaryCodec {
             value: src.split_to(value_len as usize).freeze(),
         };
 
-        if self.header.opcode == binary::Command::Replace as u8
-            || self.header.opcode == binary::Command::ReplaceQuiet as u8
-        {
-            Ok(Some(BinaryRequest::Replace(set_request)))
-        } else if self.header.opcode == binary::Command::Add as u8
-            || self.header.opcode == binary::Command::AddQuiet as u8
-        {
-            Ok(Some(BinaryRequest::Add(set_request)))
-        } else {
-            Ok(Some(BinaryRequest::Set(set_request)))
-        }
+        let result = match FromPrimitive::from_u8(self.header.opcode) {
+            Some(binary::Command::Set)
+            | Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::Set(set_request))),
+            | Some(binary::Command::Add)
+            | Some(binary::Command::AddQuiet) => Ok(Some(BinaryRequest::Add(set_request))),
+            | Some(binary::Command::Replace)            
+            | Some(binary::Command::ReplaceQuiet) => Ok(Some(BinaryRequest::Replace(set_request))),
+            None => {
+                // println!("Cannot parse command opcode {:?}", self.header);
+                error!("Cannot parse set command opcode: {:?}", self.header.opcode);
+                Err(Error::new(ErrorKind::InvalidData, "Incorrect op code"))
+            }
+            _ => {
+                error!("Cannot parse set command opcode: {:?}", self.header.opcode);
+                Err(Error::new(ErrorKind::InvalidData, "Incorrect op code"))
+            }
+        };
+        result        
     }
 
     fn request_valid(&self, _src: &mut BytesMut) -> bool {
@@ -516,7 +523,7 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
                 dst.put_slice(&response.key[..]);
-                dst.put_slice(&response.value[..]);
+                dst.put(response.value.clone());
             }
             BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
