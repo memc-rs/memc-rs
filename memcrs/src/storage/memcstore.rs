@@ -54,13 +54,13 @@ impl MemcStore {
     pub fn add(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(_record) => Err(StorageError::KeyExists),
-            Err(_err) => self.store.set(key, record),
+            Err(_err) => self.set(key, record),
         }
     }
 
     pub fn replace(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
-            Ok(_record) => self.store.set(key, record),
+            Ok(_record) => self.set(key, record),
             Err(_err) => Err(StorageError::NotFound),
         }
     }
@@ -73,7 +73,7 @@ impl MemcStore {
                 value.extend_from_slice(&record.value);
                 value.extend_from_slice(&new_record.value);
                 record.value = value.freeze();
-                self.store.set(key, record)
+                self.set(key, record)
             }
             Err(_err) => Err(StorageError::NotFound),
         }
@@ -87,7 +87,7 @@ impl MemcStore {
                 value.extend_from_slice(&record.value);                
                 record.value = value.freeze();
                 record.header.cas = new_record.header.cas;                
-                self.store.set(key, record)
+                self.set(key, record)
             }
             Err(_err) => Err(StorageError::NotFound),
         }
@@ -141,7 +141,7 @@ impl MemcStore {
                         }
                         record.value = Bytes::from(value.to_string());
                         record.header = header;
-                        self.store.set(key, record).map(|result| DeltaResult {
+                        self.set(key, record).map(|result| DeltaResult {
                             cas: result.cas,
                             value,
                         })
@@ -159,7 +159,7 @@ impl MemcStore {
                         0,
                         header.get_expiration(),
                     );
-                    return self.store.set(key, record).map(|result| DeltaResult {
+                    return self.set(key, record).map(|result| DeltaResult {
                         cas: result.cas,
                         value: delta.value,
                     });

@@ -17,6 +17,10 @@ use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
 
 //extern crate flame;
+pub struct MemcacheServerConfig {
+    connection_limit: u32,
+    memory_limit: u32, 
+}
 
 pub struct MemcacheTcpServer {
     timer: Arc<timer::SystemTimer>,

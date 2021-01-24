@@ -100,6 +100,6 @@ async fn main() -> io::Result<()> {
     );
 
     let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server = memcrs::server::tcp_server::MemcacheTcpServer::new(60, connection_limit);
+    let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(60, connection_limit);
     tcp_server.run(addr).await
 }
