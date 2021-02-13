@@ -19,10 +19,11 @@ pub struct DeltaParam {
 pub type IncrementParam = DeltaParam;
 pub type DecrementParam = IncrementParam;
 
+pub type DeltaResultValueType = u64;
 #[derive(Debug)]
 pub struct DeltaResult {
     pub cas: u64,
-    pub value: u64,
+    pub value: DeltaResultValueType,
 }
 /**
  * Implements Memcache commands based

@@ -9,7 +9,7 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/memcrsd",
-            "args": [],        
+            "args": ["-vvv"],        
             "cwd": "${workspaceFolder}"                    
         }
     ]

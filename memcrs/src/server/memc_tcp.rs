@@ -149,7 +149,7 @@ impl MemcacheTcpServer {
                         },
                         None => {
                             // The connection will be closed at this point as `lines.next()` has returned `None`.
-                            debug!("Conneciton closed: {}", client.addr);
+                            debug!("Connection closed: {}", client.addr);
                             return;
                         }
                     }

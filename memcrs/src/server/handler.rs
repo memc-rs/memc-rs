@@ -269,6 +269,8 @@ impl BinaryHandler {
             .increment(inc_request.header.into(), inc_request.key, delta);
         match result {
             Ok(delta_result) => {
+                response_header.body_length = std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Increment(binary::IncrementResponse {
                     header: *response_header,
                     value: delta_result.value,
@@ -293,6 +295,8 @@ impl BinaryHandler {
             .decrement(dec_request.header.into(), dec_request.key, delta);
         match result {
             Ok(delta_result) => {
+                response_header.body_length = std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Decrement(binary::DecrementResponse {
                     header: *response_header,
                     value: delta_result.value,
@@ -341,6 +345,7 @@ mod tests {
         data_type: u8,
         status: u16,
         body_length: u32,
+        value: Option<binary_codec::BinaryResponse>
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
@@ -403,6 +408,7 @@ mod tests {
                         0,
                         0,
                         value.len() as u32 + EXTRAS_LENGTH as u32,
+                        None
                     );
                 } else {
                     unreachable!();
@@ -431,7 +437,7 @@ mod tests {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0, None);
                 } else {
                     unreachable!();
                 }
@@ -457,11 +463,14 @@ mod tests {
         });
 
         let result = handler.handle_request(request);
+        
         match result {
             Some(resp) => {
+                
                 if let binary_codec::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                    // FIXME: this test should check 
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0, None);
                 } else {
                     unreachable!();
                 }
@@ -490,6 +499,7 @@ mod tests {
                         0,
                         error::StorageError::KeyExists as u16,
                         response.error.len() as u32,
+                        None
                     );
                 } else {
                     unreachable!();

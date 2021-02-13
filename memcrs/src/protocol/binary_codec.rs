@@ -387,7 +387,7 @@ impl MemcacheBinaryCodec {
             key: src.split_to(self.header.key_length as usize).to_vec(),
         };
 
-        if self.header.opcode == binary::Command::Increment as u8 {
+        let response = if self.header.opcode == binary::Command::Increment as u8 {
             Ok(Some(BinaryRequest::Increment(request)))
         } else if self.header.opcode == binary::Command::IncrementQuiet as u8 {
             Ok(Some(BinaryRequest::IncrementQuiet(request)))
@@ -395,7 +395,8 @@ impl MemcacheBinaryCodec {
             Ok(Some(BinaryRequest::Decrement(request)))
         } else {
             Ok(Some(BinaryRequest::DecrementQuiet(request)))
-        }
+        };
+        response
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {

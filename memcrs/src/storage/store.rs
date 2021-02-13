@@ -168,7 +168,7 @@ impl KVStore {
     }
 
     pub fn flush(&self, header: Meta) {
-        if header.expiration == 0 {
+        if header.expiration > 0 {
             self.memory.alter_all(|_key, mut value| {
                 value.header.expiration = header.expiration;
                 value
