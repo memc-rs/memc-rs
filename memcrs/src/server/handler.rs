@@ -35,7 +35,7 @@ fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec
 }
 
 fn into_quiet_mutation(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
-    if let binary_codec::BinaryResponse::Error(resp) = &response {
+    if let binary_codec::BinaryResponse::Error(_resp) = &response {
         return Some(response);
     }
     None
@@ -104,10 +104,18 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
             }
+            binary_codec::BinaryRequest::AddQuietly(req) | binary_codec::BinaryRequest::ReplaceQuietly(req) => {
+                into_quiet_mutation(self.add_replace(req, &mut response_header))
+            }
             binary_codec::BinaryRequest::Append(append_req)
             | binary_codec::BinaryRequest::Prepend(append_req) => {
                 let response = self.append_prepend(append_req, &mut response_header);
                 Some(response)
+            }
+            binary_codec::BinaryRequest::AppendQuietly(append_req)
+            | binary_codec::BinaryRequest::PrependQuietly(append_req) => {
+                let response = self.append_prepend(append_req, &mut response_header);
+                into_quiet_mutation(response)
             }
             binary_codec::BinaryRequest::Version(_version_request) => {
                 response_header.body_length = MEMCRS_VERSION.len() as u32;

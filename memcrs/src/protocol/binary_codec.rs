@@ -17,10 +17,15 @@ pub enum BinaryRequest {
     GetKey(binary::GetKeyRequest),
     GetKeyQuietly(binary::GetKeyQuietRequest),
     Set(binary::SetRequest),
+    SetQuietly(binary::SetRequest),
     Append(binary::AppendRequest),
+    AppendQuietly(binary::AppendRequest),
     Prepend(binary::PrependRequest),
+    PrependQuietly(binary::PrependRequest),
     Add(binary::AddRequest),
+    AddQuietly(binary::AddRequest),
     Replace(binary::ReplaceRequest),
+    ReplaceQuietly(binary::ReplaceRequest),
     Increment(binary::IncrementRequest),
     IncrementQuiet(binary::IncrementRequest),
     Decrement(binary::DecrementRequest),
@@ -41,10 +46,16 @@ impl BinaryRequest {
             | BinaryRequest::GetQuietly(request) => &request.header,
 
             BinaryRequest::Set(request)
+            | BinaryRequest::SetQuietly(request)
             | BinaryRequest::Replace(request)
-            | BinaryRequest::Add(request) => &request.header,
+            | BinaryRequest::ReplaceQuietly(request)
+            | BinaryRequest::Add(request) 
+            | BinaryRequest::AddQuietly(request) => &request.header,
 
-            BinaryRequest::Prepend(request) | BinaryRequest::Append(request) => &request.header,
+            BinaryRequest::Prepend(request) 
+            | BinaryRequest::PrependQuietly(request) 
+            | BinaryRequest::Append(request) 
+            | BinaryRequest::AppendQuietly(request) => &request.header,
 
             BinaryRequest::Increment(request)
             | BinaryRequest::IncrementQuiet(request)
@@ -87,7 +98,7 @@ impl BinaryResponse {
             BinaryResponse::GetKey(response) => &response.header,
             BinaryResponse::GetKeyQuietly(response) => &response.header,
             BinaryResponse::GetQuietly(response) => &response.header,
-            BinaryResponse::Set(response) => &response.header,
+            BinaryResponse::Set(response) => &response.header,            
             BinaryResponse::Replace(response) => &response.header,
             BinaryResponse::Add(response) => &response.header,
             BinaryResponse::Append(response) => &response.header,
@@ -362,13 +373,16 @@ impl MemcacheBinaryCodec {
             value: src.split_to(value_len as usize).freeze(),
         };
 
-        if self.header.opcode == binary::Command::Append as u8
-            || self.header.opcode == binary::Command::AppendQuiet as u8
-        {
+        let response = if self.header.opcode == binary::Command::Append as u8 {
             Ok(Some(BinaryRequest::Append(append_request)))
-        } else {
+        } else if self.header.opcode == binary::Command::AppendQuiet as u8 {
+            Ok(Some(BinaryRequest::AppendQuietly(append_request)))
+        } else if self.header.opcode == binary::Command::Prepend as u8 {
             Ok(Some(BinaryRequest::Prepend(append_request)))
-        }
+        } else {
+            Ok(Some(BinaryRequest::PrependQuietly(append_request)))
+        };
+        response
     }
 
     fn parse_inc_dec_request(
@@ -415,12 +429,12 @@ impl MemcacheBinaryCodec {
         };
 
         let result = match FromPrimitive::from_u8(self.header.opcode) {
-            Some(binary::Command::Set)
-            | Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::Set(set_request))),
-            | Some(binary::Command::Add)
-            | Some(binary::Command::AddQuiet) => Ok(Some(BinaryRequest::Add(set_request))),
-            | Some(binary::Command::Replace)            
-            | Some(binary::Command::ReplaceQuiet) => Ok(Some(BinaryRequest::Replace(set_request))),
+            Some(binary::Command::Set) => Ok(Some(BinaryRequest::Set(set_request))),
+            Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::SetQuietly(set_request))),
+            Some(binary::Command::Add) => Ok(Some(BinaryRequest::Add(set_request))),
+            Some(binary::Command::AddQuiet) => Ok(Some(BinaryRequest::AddQuietly(set_request))),
+            Some(binary::Command::Replace) =>  Ok(Some(BinaryRequest::Replace(set_request))),
+            | Some(binary::Command::ReplaceQuiet) => Ok(Some(BinaryRequest::ReplaceQuietly(set_request))),
             None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
                 error!("Cannot parse set command opcode: {:?}", self.header.opcode);
@@ -526,7 +540,7 @@ impl MemcacheBinaryCodec {
                 dst.put_slice(&response.key[..]);
                 dst.put(response.value.clone());
             }
-            BinaryResponse::Set(_response)
+            BinaryResponse::Set(_response)            
             | BinaryResponse::Replace(_response)
             | BinaryResponse::Add(_response)
             | BinaryResponse::Append(_response)
