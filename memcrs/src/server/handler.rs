@@ -68,6 +68,9 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::Flush(flush_request) => {
                 Some(self.flush(flush_request, &mut response_header))
             }
+            binary_codec::BinaryRequest::FlushQuietly(flush_request) => {
+                into_quiet_mutation(self.flush(flush_request, &mut response_header))
+            }
             binary_codec::BinaryRequest::Get(get_request)
             | binary_codec::BinaryRequest::GetKey(get_request) => {
                 Some(self.get(get_request, &mut response_header))

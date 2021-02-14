@@ -32,6 +32,7 @@ pub enum BinaryRequest {
     DecrementQuiet(binary::DecrementRequest),
     Noop(binary::NoopRequest),
     Flush(binary::FlushRequest),
+    FlushQuietly(binary::FlushRequest),
     Version(binary::VersionRequest),
 }
 
@@ -64,7 +65,7 @@ impl BinaryRequest {
 
             BinaryRequest::Noop(request) | BinaryRequest::Version(request) => &request.header,
 
-            BinaryRequest::Flush(request) => &request.header,
+            BinaryRequest::Flush(request) | BinaryRequest::FlushQuietly(request) => &request.header,
         }
     }
 }
@@ -350,10 +351,19 @@ impl MemcacheBinaryCodec {
         if self.header.extras_length == 4 {
             expiration = src.get_u32();
         }
-        Ok(Some(BinaryRequest::Flush(binary::FlushRequest {
-            header: self.header,
-            expiration,
-        })))
+        if self.header.opcode == binary::Command::Flush as u8 {
+            Ok(Some(BinaryRequest::Flush(binary::FlushRequest {
+                header: self.header,
+                expiration,
+            })))
+        }
+        else {
+            Ok(Some(BinaryRequest::FlushQuietly(binary::FlushRequest {
+                header: self.header,
+                expiration,
+            })))
+        }
+        
     }
 
     fn parse_append_prepend_request(
