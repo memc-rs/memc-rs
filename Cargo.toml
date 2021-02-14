@@ -5,6 +5,3 @@ members = [
     "memcrs",
     "memclt"
 ]
-
-[profile.release.memcrs]
-debug = true
