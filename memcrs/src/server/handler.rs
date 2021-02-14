@@ -25,13 +25,20 @@ fn storage_error_to_response(
     })
 }
 
-fn into_quiet(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
+fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
         if response.header.status == error::StorageError::NotFound as u16 {
             return None;
         }
     }
     Some(response)
+}
+
+fn into_quiet_mutation(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
+    if let binary_codec::BinaryResponse::Error(resp) = &response {
+        return Some(response);
+    }
+    None
 }
 
 pub struct BinaryHandler {
@@ -56,7 +63,7 @@ impl BinaryHandler {
                 Some(self.delete(delete_request, &mut response_header))
             }
             binary_codec::BinaryRequest::DeleteQuiet(delete_request) => {
-                into_quiet(self.delete(delete_request, &mut response_header))
+                into_quiet_mutation(self.delete(delete_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Flush(flush_request) => {
                 Some(self.flush(flush_request, &mut response_header))
@@ -67,19 +74,19 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::GetQuietly(get_quiet_req)
             | binary_codec::BinaryRequest::GetKeyQuietly(get_quiet_req) => {
-                into_quiet(self.get(get_quiet_req, &mut response_header))
+                into_quiet_get(self.get(get_quiet_req, &mut response_header))
             }
             binary_codec::BinaryRequest::Increment(inc_request) => {
                 Some(self.increment(inc_request, &mut response_header))
             }
             binary_codec::BinaryRequest::IncrementQuiet(inc_request) => {
-                into_quiet(self.increment(inc_request, &mut response_header))
+                into_quiet_mutation(self.increment(inc_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Decrement(dec_request) => {
                 Some(self.decrement(dec_request, &mut response_header))
             }
             binary_codec::BinaryRequest::DecrementQuiet(dec_request) => {
-                into_quiet(self.decrement(dec_request, &mut response_header))
+                into_quiet_mutation(self.decrement(dec_request, &mut response_header))
             }
             binary_codec::BinaryRequest::Noop(_noop_request) => {
                 Some(binary_codec::BinaryResponse::Noop(binary::NoopResponse {
@@ -87,8 +94,12 @@ impl BinaryHandler {
                 }))
             }
             binary_codec::BinaryRequest::Set(set_req) => {
-                let response = self.set(set_req, &mut response_header);
+                let response = self.set(set_req, &mut response_header);             
                 Some(response)
+            }
+            binary_codec::BinaryRequest::SetQuietly(set_req) => {
+                let response = self.set(set_req, &mut response_header);
+                into_quiet_mutation(response)
             }
             binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
