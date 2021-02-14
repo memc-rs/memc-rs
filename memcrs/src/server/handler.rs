@@ -1,3 +1,5 @@
+use binary::QuitResponse;
+
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error;
 use crate::storage::memcstore;
@@ -93,6 +95,11 @@ impl BinaryHandler {
             }
             binary_codec::BinaryRequest::Noop(_noop_request) => {
                 Some(binary_codec::BinaryResponse::Noop(binary::NoopResponse {
+                    header: response_header,
+                }))
+            }
+            binary_codec::BinaryRequest::Quit(_quit_req) => {
+                Some(binary_codec::BinaryResponse::Quit(binary::QuitResponse {
                     header: response_header,
                 }))
             }

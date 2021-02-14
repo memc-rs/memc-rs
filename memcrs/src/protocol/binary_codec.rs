@@ -1,6 +1,7 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
+use binary::QuitResponse;
 use bytes::{Buf, BufMut, BytesMut};
 use num_traits::FromPrimitive;
 use serde_derive::{Deserialize, Serialize};
@@ -34,6 +35,8 @@ pub enum BinaryRequest {
     Flush(binary::FlushRequest),
     FlushQuietly(binary::FlushRequest),
     Version(binary::VersionRequest),
+    Quit(binary::QuitRequest),
+    QuitQuietly(binary::QuitRequest),
 }
 
 impl BinaryRequest {
@@ -66,6 +69,8 @@ impl BinaryRequest {
             BinaryRequest::Noop(request) | BinaryRequest::Version(request) => &request.header,
 
             BinaryRequest::Flush(request) | BinaryRequest::FlushQuietly(request) => &request.header,
+
+            BinaryRequest::Quit(request) | BinaryRequest::QuitQuietly(request) => &request.header,
         }
     }
 }
@@ -89,6 +94,7 @@ pub enum BinaryResponse {
     Flush(binary::FlushResponse),
     Increment(binary::IncrementResponse),
     Decrement(binary::DecrementResponse),
+    Quit(binary::QuitResponse),
 }
 
 impl BinaryResponse {
@@ -110,6 +116,7 @@ impl BinaryResponse {
             BinaryResponse::Flush(response) => &response.header,
             BinaryResponse::Increment(response) => &response.header,
             BinaryResponse::Decrement(response) => &response.header,
+            BinaryResponse::Quit(response) => &response.header,
         }
     }
 }
@@ -226,11 +233,12 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Increment)
             | Some(binary::Command::Decrement)
             | Some(binary::Command::IncrementQuiet)
-            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),
+            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),            
 
-            Some(binary::Command::Quit) | Some(binary::Command::QuitQuiet) => Ok(None),
-
-            Some(binary::Command::Noop) | Some(binary::Command::Version) => {
+            Some(binary::Command::Noop) 
+            | Some(binary::Command::Quit)
+            | Some(binary::Command::QuitQuiet)
+            | Some(binary::Command::Version) => {
                 self.parse_header_only_request(src)
             }
             Some(binary::Command::Stat) => Ok(None),
@@ -329,12 +337,20 @@ impl MemcacheBinaryCodec {
         if !self.request_valid(src) {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect Noop request"));
         }
-        if self.header.opcode == binary::Command::Version as u8 {
-            Ok(Some(BinaryRequest::Version(binary::VersionRequest {
+        if self.header.opcode == binary::Command::Noop as u8 {
+            Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
+                header: self.header,
+            })))
+        } else if self.header.opcode == binary::Command::Quit as u8 {
+            Ok(Some(BinaryRequest::Quit(binary::QuitRequest {
+                header: self.header,
+            })))
+        } else if self.header.opcode == binary::Command::QuitQuiet as u8 {
+            Ok(Some(BinaryRequest::QuitQuietly(binary::QuitRequest {
                 header: self.header,
             })))
         } else {
-            Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
+            Ok(Some(BinaryRequest::Version(binary::VersionRequest {
                 header: self.header,
             })))
         }
@@ -561,6 +577,7 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Noop(_response) => {}
             BinaryResponse::Delete(_response) => {}
             BinaryResponse::Flush(_response) => {}
+            BinaryResponse::Quit(_response) => {}
             BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
                 dst.put_u64(response.value);
             }
@@ -582,3 +599,4 @@ impl Encoder<BinaryResponse> for MemcacheBinaryCodec {
 #[cfg(test)]
 mod binary_decoder_tests;
 mod binary_encoder_tests;
+
