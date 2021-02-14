@@ -1,4 +1,5 @@
 use futures::sink::SinkExt;
+use io::AsyncWriteExt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
@@ -11,7 +12,7 @@ use tracing::{debug, error, info};
 //use tracing_attributes::instrument;
 
 use super::handler;
-use crate::protocol::binary_codec;
+use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec};
 use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
@@ -121,8 +122,8 @@ impl MemcacheTcpServer {
         //
         let (rx, tx) = client.socket.split();
 
-        let mut reader = FramedRead::new(rx, binary_codec::MemcacheBinaryCodec::new());
-        let mut writer = FramedWrite::new(tx, binary_codec::MemcacheBinaryCodec::new());
+        let mut reader = FramedRead::new(rx, MemcacheBinaryCodec::new());
+        let mut writer = FramedWrite::new(tx, MemcacheBinaryCodec::new());
 
         // Here for every packet we get back from the `Framed` decoder,
         // we parse the request, and if it's valid we generate a response
@@ -134,13 +135,33 @@ impl MemcacheTcpServer {
                         Some(req_or_error) => match req_or_error {
                             Ok(request) => {
                                 debug!("Got request {:?}", request.get_header());
+
+                                if let BinaryRequest::QuitQuietly(_req) = request {
+                                    debug!("Closing client socket quit quietly");
+                                    client.socket.shutdown();
+                                    return;
+                                }
+                                
                                 let response = handler.handle_request(request);
+
                                 if let Some(response) = response {
-                                    debug!("Response sent {:?}", response);
+                                    let mut socketClose = false;
+                                    if let BinaryResponse::Quit(_resp) = &response {
+                                        socketClose = true;                                    
+                                    }
+
+                                    debug!("Sending response {:?}", response);
                                     if let Err(e) = writer.send(response).await {
                                         error!("error on sending response; error = {:?}", e);
                                         return;
                                     }
+
+                                    if socketClose {
+                                        debug!("Closing client socket quit command");
+                                        client.socket.shutdown();
+                                        return;
+                                    }
+                                    
                                 }
                             }
                             Err(e) => {

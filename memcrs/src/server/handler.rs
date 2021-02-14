@@ -103,6 +103,11 @@ impl BinaryHandler {
                     header: response_header,
                 }))
             }
+            binary_codec::BinaryRequest::QuitQuietly(_quit_req) => {
+                into_quiet_mutation(binary_codec::BinaryResponse::Quit(binary::QuitResponse {
+                    header: response_header,
+                }))
+            }
             binary_codec::BinaryRequest::Set(set_req) => {
                 let response = self.set(set_req, &mut response_header);             
                 Some(response)
