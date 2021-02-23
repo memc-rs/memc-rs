@@ -138,7 +138,9 @@ impl MemcacheTcpServer {
 
                                 if let BinaryRequest::QuitQuietly(_req) = request {
                                     debug!("Closing client socket quit quietly");
-                                    client.socket.shutdown();
+                                    client.socket.shutdown().await.map_err(|err|  {
+                                        error!("Shutdown on socket caused an error: {:?}", err);
+                                    });
                                     return;
                                 }
                                 
@@ -158,7 +160,9 @@ impl MemcacheTcpServer {
 
                                     if socketClose {
                                         debug!("Closing client socket quit command");
-                                        client.socket.shutdown();
+                                        client.socket.shutdown().await.map_err(|err|  {
+                                            error!("Shutdown on socket caused an error: {:?}", err);
+                                        } );
                                         return;
                                     }
                                     
