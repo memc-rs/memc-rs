@@ -145,9 +145,9 @@ impl MemcacheTcpServer {
                                 let response = handler.handle_request(request);
 
                                 if let Some(response) = response {
-                                    let mut socketClose = false;
+                                    let mut socket_close = false;
                                     if let BinaryResponse::Quit(_resp) = &response {
-                                        socketClose = true;
+                                        socket_close = true;
                                     }
 
                                     debug!("Sending response {:?}", response);
@@ -156,7 +156,7 @@ impl MemcacheTcpServer {
                                         return;
                                     }
 
-                                    if socketClose {
+                                    if socket_close {
                                         debug!("Closing client socket quit command");
                                         client.socket.shutdown().await.map_err(log_error).unwrap();
                                         return;

@@ -68,7 +68,7 @@ impl MemcStore {
         }
     }
 
-    pub fn append(&self, key: KeyType, mut new_record: Record) -> StorageResult<SetStatus> {
+    pub fn append(&self, key: KeyType, new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {
                 record.header.cas = new_record.header.cas;

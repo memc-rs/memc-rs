@@ -1,9 +1,9 @@
-use memcache::{Client, MemcacheError};
+use memcache::{MemcacheError};
 use std::collections::HashMap;
 use std::str;
 
 fn main() {
-    let mut client = memcache::Client::connect(
+    let client = memcache::Client::connect(
         "memcache://127.0.0.1:11211?timeout=120&tcp_nodelay=true&protocol=binary",
     )
     .unwrap();
