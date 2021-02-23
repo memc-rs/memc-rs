@@ -381,8 +381,7 @@ mod tests {
         extras_length: u8,
         data_type: u8,
         status: u16,
-        body_length: u32,
-        _value: Option<binary_codec::BinaryResponse>,
+        body_length: u32       
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
@@ -391,7 +390,7 @@ mod tests {
         assert_eq!(response.data_type, data_type);
         assert_eq!(response.status, status);
         assert_eq!(response.body_length, body_length);
-        assert_eq!(response.opaque, OPAQUE_VALUE);
+        assert_eq!(response.opaque, OPAQUE_VALUE);       
     }
 
     #[test]
@@ -444,8 +443,7 @@ mod tests {
                         EXTRAS_LENGTH,
                         0,
                         0,
-                        value.len() as u32 + EXTRAS_LENGTH as u32,
-                        None,
+                        value.len() as u32 + EXTRAS_LENGTH as u32
                     );
                 } else {
                     unreachable!();
@@ -504,9 +502,8 @@ mod tests {
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Set(response) = resp {
-                    assert_ne!(response.header.cas, 0);
-                    // FIXME: this test should check
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0, None);
+                    assert_ne!(response.header.cas, 0);                    
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -534,8 +531,7 @@ mod tests {
                         0,
                         0,
                         error::StorageError::KeyExists as u16,
-                        response.error.len() as u32,
-                        None,
+                        response.error.len() as u32
                     );
                 } else {
                     unreachable!();
