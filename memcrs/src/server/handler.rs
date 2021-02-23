@@ -472,7 +472,7 @@ mod tests {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0, None);
+                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
