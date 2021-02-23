@@ -7,8 +7,10 @@ use std::time::Duration;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::time::{interval_at, timeout, Instant};
+use tokio::sync::{Semaphore};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error};
+
 //use tracing_attributes::instrument;
 
 use super::handler;
@@ -28,6 +30,7 @@ pub struct MemcacheTcpServer {
     storage: Arc<storage::MemcStore>,
     timeout_secs: u64,
     connection_limit: u32,
+    limit_connections: Arc<Semaphore>,
 }
 
 struct Client {
@@ -37,6 +40,13 @@ struct Client {
     _token: u32,
     rx_timeout_secs: u64,
     wx_timeout_secs: u64,
+
+    /// Max connection semaphore.
+    ///
+    /// When the handler is dropped, a permit is returned to this semaphore. If
+    /// the listener is waiting for connections to close, it will be notified of
+    /// the newly available permit and resume accepting connections.
+    limit_connections: Arc<Semaphore>,
 }
 
 impl Client {
@@ -47,6 +57,7 @@ impl Client {
         token: u32,
         rx_timeout_secs: u64,
         wx_timeout_secs: u64,
+        limit_connections: Arc<Semaphore>
     ) -> Self {
         Client {
             store,
@@ -55,7 +66,24 @@ impl Client {
             _token: token,
             rx_timeout_secs,
             wx_timeout_secs,
+            limit_connections
         }
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        // Add a permit back to the semaphore.
+        //
+        // Doing so unblocks the listener if the max number of
+        // connections has been reached.
+        //
+        // This is done in a `Drop` implementation in order to guarantee that
+        // the permit is added even if the task handling the connection panics.
+        // If `add_permit` was called at the end of the `run` function and some
+        // bug causes a panic. The permit would never be returned to the
+        // semaphore.
+        self.limit_connections.add_permits(1);
     }
 }
 
@@ -67,6 +95,7 @@ impl MemcacheTcpServer {
             timeout_secs,
             timer: timer.clone(),
             storage: Arc::new(storage::MemcStore::new(timer)),
+            limit_connections: Arc::new(Semaphore::new(connection_limit as usize ))
         }
     }
 
@@ -96,7 +125,10 @@ impl MemcacheTcpServer {
                             0,
                             self.timeout_secs,
                             self.timeout_secs,
+                            self.limit_connections.clone()
                         );
+
+                        self.limit_connections.acquire().await.unwrap().forget();
                         // Like with other small servers, we'll `spawn` this client to ensure it
                         // runs concurrently with all other clients. The `move` keyword is used
                         // here to move ownership of our db handle into the async closure.
@@ -118,7 +150,7 @@ impl MemcacheTcpServer {
 
     async fn handle_client(mut client: Client) {
         debug!("New client connected: {}", client.addr);
-        let handler = handler::BinaryHandler::new(client.store);
+        let handler = handler::BinaryHandler::new(client.store.clone());
         //
         let (rx, tx) = client.socket.split();
 
