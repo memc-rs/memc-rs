@@ -101,12 +101,6 @@ impl MemcacheTcpServer {
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         let listener = TcpListener::bind(addr).await?;
-        // TODO: limit number of accepted connections just like memcache
-        /*let mut incoming = listener
-        .incoming()
-        .log_warnings(log_accept_error)
-        .handle_errors(Duration::from_millis(500)) // 1
-        .backpressure(self.connection_limit as usize);*/
 
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
@@ -170,7 +164,8 @@ impl MemcacheTcpServer {
 
                                 if let BinaryRequest::QuitQuietly(_req) = request {
                                     debug!("Closing client socket quit quietly");
-                                    client.socket.shutdown().await.map_err(log_error).unwrap();
+                                    if let Err(_e) = client.socket.shutdown().await.map_err(log_error) {                                            
+                                    }
                                     return;
                                 }
 
@@ -190,7 +185,8 @@ impl MemcacheTcpServer {
 
                                     if socket_close {
                                         debug!("Closing client socket quit command");
-                                        client.socket.shutdown().await.map_err(log_error).unwrap();
+                                        if let Err(_e) = client.socket.shutdown().await.map_err(log_error) {
+                                        }
                                         return;
                                     }
                                 }
