@@ -1,8 +1,8 @@
-use std::{str};
-use crate::storage::store::{ValueType};
+use crate::storage::store::ValueType;
 use bytes::{BufMut, Bytes, BytesMut};
+use std::str;
 
-pub fn from_string(val: &str) -> ValueType  {    
+pub fn from_string(val: &str) -> ValueType {
     let mut value = BytesMut::with_capacity(val.as_bytes().len());
     value.put_slice(val.as_bytes());
     value.freeze()

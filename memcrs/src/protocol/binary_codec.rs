@@ -51,12 +51,12 @@ impl BinaryRequest {
             | BinaryRequest::SetQuietly(request)
             | BinaryRequest::Replace(request)
             | BinaryRequest::ReplaceQuietly(request)
-            | BinaryRequest::Add(request) 
+            | BinaryRequest::Add(request)
             | BinaryRequest::AddQuietly(request) => &request.header,
 
-            BinaryRequest::Prepend(request) 
-            | BinaryRequest::PrependQuietly(request) 
-            | BinaryRequest::Append(request) 
+            BinaryRequest::Prepend(request)
+            | BinaryRequest::PrependQuietly(request)
+            | BinaryRequest::Append(request)
             | BinaryRequest::AppendQuietly(request) => &request.header,
 
             BinaryRequest::Increment(request)
@@ -103,7 +103,7 @@ impl BinaryResponse {
             BinaryResponse::GetKey(response) => &response.header,
             BinaryResponse::GetKeyQuietly(response) => &response.header,
             BinaryResponse::GetQuietly(response) => &response.header,
-            BinaryResponse::Set(response) => &response.header,            
+            BinaryResponse::Set(response) => &response.header,
             BinaryResponse::Replace(response) => &response.header,
             BinaryResponse::Add(response) => &response.header,
             BinaryResponse::Append(response) => &response.header,
@@ -231,14 +231,12 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Increment)
             | Some(binary::Command::Decrement)
             | Some(binary::Command::IncrementQuiet)
-            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),            
+            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),
 
-            Some(binary::Command::Noop) 
+            Some(binary::Command::Noop)
             | Some(binary::Command::Quit)
             | Some(binary::Command::QuitQuiet)
-            | Some(binary::Command::Version) => {
-                self.parse_header_only_request(src)
-            }
+            | Some(binary::Command::Version) => self.parse_header_only_request(src),
             Some(binary::Command::Stat) => Ok(None),
 
             Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
@@ -370,14 +368,12 @@ impl MemcacheBinaryCodec {
                 header: self.header,
                 expiration,
             })))
-        }
-        else {
+        } else {
             Ok(Some(BinaryRequest::FlushQuietly(binary::FlushRequest {
                 header: self.header,
                 expiration,
             })))
         }
-        
     }
 
     fn parse_append_prepend_request(
@@ -457,8 +453,10 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::SetQuietly(set_request))),
             Some(binary::Command::Add) => Ok(Some(BinaryRequest::Add(set_request))),
             Some(binary::Command::AddQuiet) => Ok(Some(BinaryRequest::AddQuietly(set_request))),
-            Some(binary::Command::Replace) =>  Ok(Some(BinaryRequest::Replace(set_request))),
-            | Some(binary::Command::ReplaceQuiet) => Ok(Some(BinaryRequest::ReplaceQuietly(set_request))),
+            Some(binary::Command::Replace) => Ok(Some(BinaryRequest::Replace(set_request))),
+            Some(binary::Command::ReplaceQuiet) => {
+                Ok(Some(BinaryRequest::ReplaceQuietly(set_request)))
+            }
             None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
                 error!("Cannot parse set command opcode: {:?}", self.header.opcode);
@@ -469,7 +467,7 @@ impl MemcacheBinaryCodec {
                 Err(Error::new(ErrorKind::InvalidData, "Incorrect op code"))
             }
         };
-        result        
+        result
     }
 
     fn request_valid(&self, _src: &mut BytesMut) -> bool {
@@ -564,7 +562,7 @@ impl MemcacheBinaryCodec {
                 dst.put_slice(&response.key[..]);
                 dst.put(response.value.clone());
             }
-            BinaryResponse::Set(_response)            
+            BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
             | BinaryResponse::Add(_response)
             | BinaryResponse::Append(_response)
@@ -597,4 +595,3 @@ impl Encoder<BinaryResponse> for MemcacheBinaryCodec {
 #[cfg(test)]
 mod binary_decoder_tests;
 mod binary_encoder_tests;
-

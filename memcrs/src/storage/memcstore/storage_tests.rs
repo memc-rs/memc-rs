@@ -1,6 +1,6 @@
 use super::*;
 use crate::mock::mock_server::{create_server, SetableTimer};
-use crate::mock::value::{from_string, from_slice};
+use crate::mock::value::{from_slice, from_string};
 
 #[test]
 fn if_not_defined_cas_should_be_1() {

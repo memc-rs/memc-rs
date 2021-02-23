@@ -1,11 +1,11 @@
 use futures::sink::SinkExt;
+use futures::StreamExt;
 use io::AsyncWriteExt;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
-use futures::StreamExt;
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error};
@@ -20,7 +20,7 @@ use crate::storage::timer::{SetableTimer, Timer};
 //extern crate flame;
 pub struct MemcacheServerConfig {
     connection_limit: u32,
-    memory_limit: u32, 
+    memory_limit: u32,
 }
 
 pub struct MemcacheTcpServer {
@@ -141,13 +141,13 @@ impl MemcacheTcpServer {
                                     client.socket.shutdown().await.map_err(log_error).unwrap();
                                     return;
                                 }
-                                
+
                                 let response = handler.handle_request(request);
 
                                 if let Some(response) = response {
                                     let mut socketClose = false;
                                     if let BinaryResponse::Quit(_resp) = &response {
-                                        socketClose = true;                                    
+                                        socketClose = true;
                                     }
 
                                     debug!("Sending response {:?}", response);
@@ -161,7 +161,6 @@ impl MemcacheTcpServer {
                                         client.socket.shutdown().await.map_err(log_error).unwrap();
                                         return;
                                     }
-                                    
                                 }
                             }
                             Err(e) => {
@@ -188,5 +187,5 @@ impl MemcacheTcpServer {
 }
 
 fn log_error(e: io::Error) {
-    error!("Error: {}", e); 
+    error!("Error: {}", e);
 }

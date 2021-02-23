@@ -1,7 +1,9 @@
-use bytes::{BytesMut, Bytes};
+use bytes::{Bytes, BytesMut};
 
 use super::error::{StorageError, StorageResult};
-use super::store::{KVStore, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus, KeyType as KVKeyType};
+use super::store::{
+    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+};
 use super::timer;
 use std::str;
 use std::sync::Arc;
@@ -70,7 +72,8 @@ impl MemcStore {
         match self.get(&key) {
             Ok(mut record) => {
                 record.header.cas = new_record.header.cas;
-                let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());            
+                let mut value =
+                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
                 value.extend_from_slice(&record.value);
                 value.extend_from_slice(&new_record.value);
                 record.value = value.freeze();
@@ -82,12 +85,13 @@ impl MemcStore {
 
     pub fn prepend(&self, key: KeyType, new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
-            Ok(mut record) => {                
-                let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());
+            Ok(mut record) => {
+                let mut value =
+                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
                 value.extend_from_slice(&new_record.value);
-                value.extend_from_slice(&record.value);                
+                value.extend_from_slice(&record.value);
                 record.value = value.freeze();
-                record.header.cas = new_record.header.cas;                
+                record.header.cas = new_record.header.cas;
                 self.set(key, record)
             }
             Err(_err) => Err(StorageError::NotFound),

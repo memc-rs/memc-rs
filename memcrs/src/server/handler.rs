@@ -1,4 +1,3 @@
-
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error;
 use crate::storage::memcstore;
@@ -35,7 +34,9 @@ fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec
     Some(response)
 }
 
-fn into_quiet_mutation(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
+fn into_quiet_mutation(
+    response: binary_codec::BinaryResponse,
+) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(_resp) = &response {
         return Some(response);
     }
@@ -108,7 +109,7 @@ impl BinaryHandler {
                 }))
             }
             binary_codec::BinaryRequest::Set(set_req) => {
-                let response = self.set(set_req, &mut response_header);             
+                let response = self.set(set_req, &mut response_header);
                 Some(response)
             }
             binary_codec::BinaryRequest::SetQuietly(set_req) => {
@@ -118,7 +119,8 @@ impl BinaryHandler {
             binary_codec::BinaryRequest::Add(req) | binary_codec::BinaryRequest::Replace(req) => {
                 Some(self.add_replace(req, &mut response_header))
             }
-            binary_codec::BinaryRequest::AddQuietly(req) | binary_codec::BinaryRequest::ReplaceQuietly(req) => {
+            binary_codec::BinaryRequest::AddQuietly(req)
+            | binary_codec::BinaryRequest::ReplaceQuietly(req) => {
                 into_quiet_mutation(self.add_replace(req, &mut response_header))
             }
             binary_codec::BinaryRequest::Append(append_req)
@@ -302,7 +304,8 @@ impl BinaryHandler {
             .increment(inc_request.header.into(), inc_request.key, delta);
         match result {
             Ok(delta_result) => {
-                response_header.body_length = std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                response_header.body_length =
+                    std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Increment(binary::IncrementResponse {
                     header: *response_header,
@@ -328,7 +331,8 @@ impl BinaryHandler {
             .decrement(dec_request.header.into(), dec_request.key, delta);
         match result {
             Ok(delta_result) => {
-                response_header.body_length = std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                response_header.body_length =
+                    std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Decrement(binary::DecrementResponse {
                     header: *response_header,
@@ -378,7 +382,7 @@ mod tests {
         data_type: u8,
         status: u16,
         body_length: u32,
-        value: Option<binary_codec::BinaryResponse>
+        value: Option<binary_codec::BinaryResponse>,
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
@@ -441,7 +445,7 @@ mod tests {
                         0,
                         0,
                         value.len() as u32 + EXTRAS_LENGTH as u32,
-                        None
+                        None,
                     );
                 } else {
                     unreachable!();
@@ -484,9 +488,9 @@ mod tests {
         let handler = create_handler();
         let key = String::from("key").into_bytes();
         let mut header = create_header(binary::Command::Set, &key);
-        const FLAGS: u32 = 0xDEAD_BEEF;        
+        const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
-        
+
         let request = binary_codec::BinaryRequest::Set(binary::SetRequest {
             header,
             flags: FLAGS,
@@ -496,13 +500,12 @@ mod tests {
         });
 
         let result = handler.handle_request(request);
-        
+
         match result {
             Some(resp) => {
-                
                 if let binary_codec::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    // FIXME: this test should check 
+                    // FIXME: this test should check
                     check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0, None);
                 } else {
                     unreachable!();
@@ -532,7 +535,7 @@ mod tests {
                         0,
                         error::StorageError::KeyExists as u16,
                         response.error.len() as u32,
-                        None
+                        None,
                     );
                 } else {
                     unreachable!();

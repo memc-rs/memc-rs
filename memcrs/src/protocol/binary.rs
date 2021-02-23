@@ -221,7 +221,6 @@ pub struct FlushRequest {
 }
 pub type FlushResponse = Response;
 
-
 pub type QuitRequest = Request;
 pub type QuitResponse = Response;
 
