@@ -1,5 +1,5 @@
 use crate::storage::store::ValueType;
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, BytesMut};
 use std::str;
 
 pub fn from_string(val: &str) -> ValueType {

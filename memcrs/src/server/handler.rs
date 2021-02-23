@@ -352,7 +352,7 @@ mod tests {
     use crate::mock::mock_server::create_storage;
     use crate::mock::value::from_string;
     use crate::storage::error;
-    use bytes::{Buf, BufMut, BytesMut};
+    
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {
@@ -382,7 +382,7 @@ mod tests {
         data_type: u8,
         status: u16,
         body_length: u32,
-        value: Option<binary_codec::BinaryResponse>,
+        _value: Option<binary_codec::BinaryResponse>,
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
