@@ -13,7 +13,7 @@ async fn main() -> io::Result<()> {
     let matches = app
         .version(memcrs::version::MEMCRS_VERSION)
         .author("Dariusz Ostolski <dariusz.ostolski@gmail.com>")
-        .about("Rust memcached compatible server implementation")
+        .about("memcrsd - memcached compatible server implementation in Rust")
         .arg(
             Arg::with_name("port")
                 .short("p")
