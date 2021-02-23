@@ -1,10 +1,8 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
-use binary::QuitResponse;
 use bytes::{Buf, BufMut, BytesMut};
 use num_traits::FromPrimitive;
-use serde_derive::{Deserialize, Serialize};
 use std::io::{Error, ErrorKind};
 use tokio_util::codec::{Decoder, Encoder};
 

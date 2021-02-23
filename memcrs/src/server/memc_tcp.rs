@@ -8,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use futures::StreamExt;
 use tokio::time::{interval_at, timeout, Instant};
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 //use tracing_attributes::instrument;
 
 use super::handler;
@@ -71,7 +71,7 @@ impl MemcacheTcpServer {
     }
 
     pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
-        let mut listener = TcpListener::bind(addr).await?;
+        let listener = TcpListener::bind(addr).await?;
         // TODO: limit number of accepted connections just like memcache
         /*let mut incoming = listener
         .incoming()
@@ -138,9 +138,7 @@ impl MemcacheTcpServer {
 
                                 if let BinaryRequest::QuitQuietly(_req) = request {
                                     debug!("Closing client socket quit quietly");
-                                    client.socket.shutdown().await.map_err(|err|  {
-                                        error!("Shutdown on socket caused an error: {:?}", err);
-                                    });
+                                    client.socket.shutdown().await.map_err(log_error).unwrap();
                                     return;
                                 }
                                 
@@ -160,9 +158,7 @@ impl MemcacheTcpServer {
 
                                     if socketClose {
                                         debug!("Closing client socket quit command");
-                                        client.socket.shutdown().await.map_err(|err|  {
-                                            error!("Shutdown on socket caused an error: {:?}", err);
-                                        } );
+                                        client.socket.shutdown().await.map_err(log_error).unwrap();
                                         return;
                                     }
                                     
@@ -191,6 +187,6 @@ impl MemcacheTcpServer {
     }
 }
 
-fn log_accept_error(e: &io::Error) {
-    error!("Error: {}. Listener paused for 0.5s.", e); // 3
+fn log_error(e: io::Error) {
+    error!("Error: {}", e); 
 }

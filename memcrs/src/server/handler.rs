@@ -1,4 +1,3 @@
-use binary::QuitResponse;
 
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error;

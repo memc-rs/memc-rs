@@ -1,11 +1,11 @@
 use log::info;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, SocketAddr};
 use tokio::io;
 use tracing_subscriber;
 
 extern crate clap;
 extern crate memcrs;
-use clap::{value_t, App, Arg, Error};
+use clap::{value_t, App, Arg};
 
 #[tokio::main]
 async fn main() -> io::Result<()> {

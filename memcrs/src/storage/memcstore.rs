@@ -40,7 +40,7 @@ impl MemcStore {
         }
     }
 
-    pub fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
+    pub fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         self.store.set(key, record)
     }
 
@@ -80,7 +80,7 @@ impl MemcStore {
         }
     }
 
-    pub fn prepend(&self, key: KeyType, mut new_record: Record) -> StorageResult<SetStatus> {
+    pub fn prepend(&self, key: KeyType, new_record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {                
                 let mut value = BytesMut::with_capacity(record.value.len()+new_record.value.len());
