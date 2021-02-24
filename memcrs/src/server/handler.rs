@@ -934,4 +934,166 @@ mod tests {
             None => unreachable!(),
         }
     }
+
+    #[test]
+    fn flush_should_remove_all() {
+        let handler = create_handler();
+        let value = from_string("test value");
+        for key_suffix in 0..100 {
+            let key = (String::from("test_key") + &key_suffix.to_string()).into_bytes();
+            insert_value(&handler, key.clone(), value.clone());
+        }
+        
+        let key = String::from("").into_bytes();
+        let header = create_header(binary::Command::Flush, &key);
+        let request = binary_codec::BinaryRequest::Flush(binary::FlushRequest { header, expiration: 0 });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Flush(response) = resp {                                        
+                    check_header(
+                        &response.header,
+                        binary::Command::Flush,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    );                    
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }        
+    }
+
+    #[test]
+    fn delete_should_remove_from_store() {
+        let handler = create_handler();
+        let value = from_string("test value");     
+        let key = String::from("test_key").into_bytes();
+        insert_value(&handler, key.clone(), value.clone());
+        
+        let header = create_header(binary::Command::Delete, &key);
+        let request = binary_codec::BinaryRequest::Delete(binary::DeleteRequest { header, key: key.clone() });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Delete(response) = resp {                                        
+                    check_header(
+                        &response.header,
+                        binary::Command::Delete,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    );                    
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn delete_should_return_error_if_not_exists() {
+        let handler = create_handler();        
+        let key = String::from("test_key").into_bytes();        
+        
+        let header = create_header(binary::Command::DeleteQuiet, &key);
+        let request = binary_codec::BinaryRequest::DeleteQuiet(binary::DeleteRequest { header, key: key.clone() });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {                                        
+                    check_header(
+                        &response.header,
+                        binary::Command::DeleteQuiet,
+                        0,
+                        0,
+                        0,
+                        binary::ResponseStatus::KeyNotExists as u16,
+                        response.error.len() as u32
+                    );                    
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn noop_request() {
+        let handler = create_handler();        
+        let key = String::from("").into_bytes();  
+        
+        let header = create_header(binary::Command::Noop, &key);
+        let request = binary_codec::BinaryRequest::Noop(binary::NoopRequest { header });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Noop(response) = resp {                                        
+                    check_header(
+                        &response.header,
+                        binary::Command::Noop,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    );                    
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn quit_request() {
+        let handler = create_handler();        
+        let key = String::from("").into_bytes();  
+        
+        let header = create_header(binary::Command::Quit, &key);
+        let request = binary_codec::BinaryRequest::Quit(binary::QuitRequest { header });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Quit(response) = resp {                                        
+                    check_header(
+                        &response.header,
+                        binary::Command::Quit,
+                        0,
+                        0,
+                        0,
+                        0,
+                        0
+                    );                    
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn quit_quiet_request() {
+        let handler = create_handler();        
+        let key = String::from("").into_bytes();  
+        
+        let header = create_header(binary::Command::QuitQuiet, &key);
+        let request = binary_codec::BinaryRequest::QuitQuietly(binary::QuitRequest { header });
+        let result = handler.handle_request(request);
+        match result {
+            Some(_resp) => unreachable!(),            
+            None => {},
+        }
+    }
 }
