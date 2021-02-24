@@ -717,4 +717,112 @@ mod tests {
         let expected_value = from_string("101");
         assert_eq!(incremented_value[..], expected_value[..]);
     }
+
+
+    #[test]
+    fn decrement_request_should_return_cas() {
+        const EXPECTED_VALUE: u64 = 1;
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let header = create_header(binary::Command::Decrement, &key);        
+        let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Decrement(response) = resp {
+                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Decrement,
+                        0,
+                        0,
+                        0,
+                        0,
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                    );
+                    assert_eq!(response.value, EXPECTED_VALUE);
+                    assert_ne!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+   
+    #[test]
+    fn decrement_request_should_decrement_value() {
+        const EXPECTED_VALUE: u64 = 99;
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let value = from_string("100");
+        insert_value(&handler, key.clone(), value);
+
+        let header = create_header(binary::Command::Decrement, &key);        
+        let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Decrement(response) = resp {                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Decrement,
+                        0,
+                        0,
+                        0,
+                        0,
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                    );
+                    assert_eq!(response.value, EXPECTED_VALUE);
+                    assert_ne!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }        
+    }
+
+    #[test]
+    fn decrement_quiet_should_increment_value() {        
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let value = from_string("100");
+        insert_value(&handler, key.clone(), value);
+
+        let header = create_header(binary::Command::DecrementQuiet, &key);        
+        let request = binary_codec::BinaryRequest::DecrementQuiet(binary::DecrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key: key.clone()
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(_resp) => unreachable!(),
+            None => {                
+            },
+        }
+        let dec_value = get_value(&handler, key.clone());
+        let expected_value = from_string("99");
+        assert_eq!(dec_value[..], expected_value[..]);
+    }
 }
