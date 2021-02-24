@@ -861,4 +861,42 @@ mod tests {
             None => unreachable!(),
         }
     }
+
+    #[test]
+    fn decrement_request_should_error_when_expiration_is_ffffffff() {
+        
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let header = create_header(binary::Command::Decrement, &key);
+        let request = binary_codec::BinaryRequest::Increment(binary::DecrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 0xffffffff,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Decrement,
+                        0,
+                        0,
+                        0,
+                        binary::ResponseStatus::KeyNotExists as u16,
+                        response.error.len() as u32
+                    );                    
+                    assert_eq!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
 }
