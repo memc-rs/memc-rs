@@ -454,6 +454,41 @@ mod tests {
     }
 
     #[test]
+    fn get_key_request_should_return_key_and_record() {
+        let handler = create_handler();        
+        let key = String::from("test_key").into_bytes();
+        let value = from_string("test value");
+
+        insert_value(&handler, key.clone(), value.clone());
+        
+        let header = create_header(binary::Command::GetKey, &key);
+        let request = binary_codec::BinaryRequest::GetKey(binary::GetKeyRequest { header, key: key.clone() });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Get(response) = resp {                    
+                    assert_ne!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::GetKey,
+                        key.len() as u16,
+                        EXTRAS_LENGTH,
+                        0,
+                        0,
+                        key.len() as u32 + value.len() as u32 + EXTRAS_LENGTH as u32
+                    );
+                    assert_eq!(response.key[..], key[..]);
+                    assert_eq!(response.value[..], value[..]);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
     fn get_request_should_return_record() {
         let handler = create_handler();
         let key = String::from("key").into_bytes();
@@ -868,7 +903,7 @@ mod tests {
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
         let header = create_header(binary::Command::Decrement, &key);
-        let request = binary_codec::BinaryRequest::Increment(binary::DecrementRequest {
+        let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
             header,            
             delta: 1,
             initial: 1,
