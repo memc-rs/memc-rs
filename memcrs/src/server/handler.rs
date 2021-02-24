@@ -6,10 +6,9 @@ use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
-impl Into<memcstore::Meta> for binary::RequestHeader {
-    fn into(self) -> memcstore::Meta {
-        memcstore::Meta::new(self.cas, self.opaque, 0)
-    }
+
+fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> memcstore::Meta {
+    memcstore::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
 
 fn storage_error_to_response(
@@ -234,7 +233,7 @@ impl BinaryHandler {
     ) -> binary_codec::BinaryResponse {
         let result = self
             .storage
-            .delete(delete_request.key, delete_request.header.into());
+            .delete(delete_request.key, into_record_meta(&delete_request.header, 0));
         match result {
             Ok(_record) => binary_codec::BinaryResponse::Delete(binary::DeleteResponse {
                 header: *response_header,
@@ -301,7 +300,7 @@ impl BinaryHandler {
 
         let result = self
             .storage
-            .increment(inc_request.header.into(), inc_request.key, delta);
+            .increment(into_record_meta(&inc_request.header, inc_request.expiration), inc_request.key, delta);
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
@@ -328,7 +327,7 @@ impl BinaryHandler {
 
         let result = self
             .storage
-            .decrement(dec_request.header.into(), dec_request.key, delta);
+            .decrement(into_record_meta(&dec_request.header, dec_request.expiration), dec_request.key, delta);
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
@@ -718,7 +717,6 @@ mod tests {
         assert_eq!(incremented_value[..], expected_value[..]);
     }
 
-
     #[test]
     fn decrement_request_should_return_cas() {
         const EXPECTED_VALUE: u64 = 1;
@@ -824,5 +822,43 @@ mod tests {
         let dec_value = get_value(&handler, key.clone());
         let expected_value = from_string("99");
         assert_eq!(dec_value[..], expected_value[..]);
+    }
+
+    #[test]
+    fn increment_request_should_error_when_expiration_is_ffffffff() {
+        
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let header = create_header(binary::Command::Increment, &key);
+        let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 0xffffffff,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Increment,
+                        0,
+                        0,
+                        0,
+                        binary::ResponseStatus::KeyNotExists as u16,
+                        response.error.len() as u32
+                    );                    
+                    assert_eq!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
     }
 }
