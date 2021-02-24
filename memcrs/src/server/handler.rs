@@ -346,6 +346,7 @@ impl BinaryHandler {
 
 #[cfg(test)]
 mod tests {
+    use bytes::Bytes;
     use super::binary;
     use super::binary_codec;
     use super::*;
@@ -372,6 +373,43 @@ mod tests {
             cas: 0,
         }
     }
+
+    fn get_value(handler: &BinaryHandler, key: Vec<u8>) -> Bytes {                
+        let header = create_header(binary::Command::Get, &key);                        
+        let request = binary_codec::BinaryRequest::Get(binary::GetRequest { header, key });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Get(response) = resp {         
+                    assert_ne!(response.header.cas, 0);
+                    return response.value;
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    fn insert_value(handler: &BinaryHandler, key: Vec<u8>, value: Bytes) {
+        let header = create_header(binary::Command::Set, &key);      
+        const FLAGS: u32 = 0xDEAD_BEEF;  
+        let request = binary_codec::BinaryRequest::SetQuietly(binary::SetRequest {
+            header,                    
+            key,
+            flags: FLAGS,
+            expiration: 0,
+            value: value.clone(),
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(_rest) => unreachable!(),
+            None => {},
+        }
+    }
+
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn check_header(
@@ -539,5 +577,144 @@ mod tests {
             }
             None => unreachable!(),
         }
+    }
+
+    #[test]
+    fn version_request_should_return_version() {
+        let handler = create_handler();
+        let key = String::from("").into_bytes();
+        let header = create_header(binary::Command::Version, &key);        
+        let request = binary_codec::BinaryRequest::Version(binary::VersionRequest {
+            header,            
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Version(response) = resp {
+                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Version,
+                        0,
+                        0,
+                        0,
+                        0,
+                        MEMCRS_VERSION.len() as u32
+                    );
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn increment_request_should_return_cas() {
+        const EXPECTED_VALUE: u64 = 1;
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let header = create_header(binary::Command::Increment, &key);        
+        let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Increment(response) = resp {
+                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Increment,
+                        0,
+                        0,
+                        0,
+                        0,
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                    );
+                    assert_eq!(response.value, EXPECTED_VALUE);
+                    assert_ne!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+   
+    #[test]
+    fn increment_request_should_increment_value() {
+        const EXPECTED_VALUE: u64 = 101;
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let value = from_string("100");
+        insert_value(&handler, key.clone(), value);
+
+        let header = create_header(binary::Command::Increment, &key);        
+        let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Increment(response) = resp {                    
+                    check_header(
+                        &response.header,
+                        binary::Command::Increment,
+                        0,
+                        0,
+                        0,
+                        0,
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                    );
+                    assert_eq!(response.value, EXPECTED_VALUE);
+                    assert_ne!(response.header.cas, 0);
+
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }        
+    }
+
+    #[test]
+    fn increment_quiet_should_increment_value() {        
+        let handler = create_handler();
+        let key = String::from("counter").into_bytes();
+        let value = from_string("100");
+        insert_value(&handler, key.clone(), value);
+
+        let header = create_header(binary::Command::IncrementQuiet, &key);        
+        let request = binary_codec::BinaryRequest::IncrementQuiet(binary::IncrementRequest {
+            header,            
+            delta: 1,
+            initial: 1,
+            expiration: 1,
+            key: key.clone()
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(_resp) => unreachable!(),
+            None => {                
+            },
+        }
+        let incremented_value = get_value(&handler, key.clone());
+        let expected_value = from_string("101");
+        assert_eq!(incremented_value[..], expected_value[..]);
     }
 }
