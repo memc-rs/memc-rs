@@ -1,0 +1,47 @@
+--- memcached
+
+./memtier_benchmark --random-data --data-size-range=2048-10048510 --data-size-pattern=S --key-minimum=1 --key-maximum=400000 --key-pattern=G:G --key-stddev=10 --key-median=200000 -P memcache_binary  --hide-histogram --show-config -c 1 -t 1  -n 100000  -R --randomize -p 11211
+
+
+Writing results to stdout
+[RUN #1] Preparing benchmark client...
+[RUN #1] Launching threads now...
+[RUN #1 100%, 180 secs]  0 threads:      100000 ops,     544 (avg:     552) ops/sec, 239.62MB/sec (avg: 240.84MB/sec),  1.82 (avg:  1.79) msec latency
+
+1         Threads
+1         Connections per thread
+100000    Requests per client
+
+
+ALL STATS
+============================================================================================================================
+Type         Ops/sec     Hits/sec   Misses/sec    Avg. Latency     p50 Latency     p99 Latency   p99.9 Latency       KB/sec 
+----------------------------------------------------------------------------------------------------------------------------
+Sets           50.25          ---          ---         2.30529         2.30300         2.59100         3.32700    246597.19 
+Gets          502.48       497.97         4.52         1.74095         1.75900         1.90300         2.49500        18.65 
+Waits           0.00          ---          ---             ---             ---             ---             ---          --- 
+Totals        552.73       497.97         4.52         1.79225         1.75900         2.43100         2.76700    246615.84 
+
+
+
+
+--- memix
+
+Writing results to stdout
+[RUN #1] Preparing benchmark client...
+[RUN #1] Launching threads now...
+[RUN #1 100%, 222 secs]  0 threads:      100000 ops,     443 (avg:     449) ops/sec, 191.70MB/sec (avg: 196.05MB/sec),  2.24 (avg:  2.21) msec latency
+
+1         Threads
+1         Connections per thread
+100000    Requests per client
+
+
+ALL STATS
+============================================================================================================================
+Type         Ops/sec     Hits/sec   Misses/sec    Avg. Latency     p50 Latency     p99 Latency   p99.9 Latency       KB/sec 
+----------------------------------------------------------------------------------------------------------------------------
+Sets           40.90          ---          ---         2.27633         2.30300         2.73500         3.48700    200738.84 
+Gets          409.04       405.71         3.33         2.19848         2.22300         2.39900         3.26300        15.18 
+Waits           0.00          ---          ---             ---             ---             ---             ---          --- 
+Totals        449.94       405.71         3.33         2.20556         2.22300         2.44700         3.34300    200754.02 
