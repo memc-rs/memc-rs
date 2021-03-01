@@ -5,6 +5,8 @@ use bytes::{Buf, BufMut, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
 use tokio_util::codec::{Decoder, Encoder};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
+use tokio::net::TcpStream;
 
 /// Client request
 #[derive(Debug)]
@@ -128,14 +130,54 @@ enum RequestParserState {
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
+    pub(crate) stream: TcpStream,
+    // The buffer for reading frames.
+    buffer: BytesMut,
 }
 
 impl MemcacheBinaryCodec {
-    pub fn new() -> MemcacheBinaryCodec {
+    pub fn new(socket: TcpStream) -> MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
             state: RequestParserState::None,
+            stream: socket,
+            buffer: BytesMut::with_capacity(512)
         }
+    }
+
+    pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
+        let mut buffer = BytesMut::with_capacity(24);
+        loop {            
+            // Attempt to parse a frame from the buffered data. If enough data
+            // has been buffered, the frame is returned.
+            if let Some(frame) = self.decode_frame(&mut buffer)? {
+                return Ok(Some(frame));
+            }
+
+            // There is not enough buffered data to read a frame. Attempt to
+            // read more data from the socket.
+            //
+            // On success, the number of bytes is returned. `0` indicates "end
+            // of stream".
+            if 0 == self.stream.read_buf(&mut buffer).await? {
+                // The remote closed the connection. For this to be a clean
+                // shutdown, there should be no data in the read buffer. If
+                // there is, this means that the peer closed the socket while
+                // sending a frame.
+                if self.buffer.is_empty() {
+                    return Ok(None);
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::ConnectionReset,
+                        "Connection reset by peer",
+                    ));
+                }
+            }
+        }
+    }
+
+    fn decode_frame(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {        
+        self.decode(src)
     }
 
     fn init_parser(&mut self) {
@@ -493,11 +535,10 @@ impl MemcacheBinaryCodec {
     const HEADER_LEN: usize = 24;
 }
 
-impl Decoder for MemcacheBinaryCodec {
-    type Item = BinaryRequest;
-    type Error = io::Error;
+impl MemcacheBinaryCodec {
+    
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state == RequestParserState::None {
             if src.len() < MemcacheBinaryCodec::HEADER_LEN {
                 return Ok(None);
@@ -530,6 +571,13 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec::RESPONSE_HEADER_LEN
             + (header.body_length as usize)
             + (header.extras_length as usize)
+    }
+
+    pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
+        let mut dst = BytesMut::with_capacity(self.get_length(&msg));        
+        self.write_header(self.get_header(msg), &mut dst);
+        self.write_data_to_stream(msg, &mut dst).await?;
+        Ok(())
     }
 
     fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
@@ -578,6 +626,50 @@ impl MemcacheBinaryCodec {
                 dst.put_u64(response.value);
             }
         }
+    }
+
+    async fn write_data_to_stream(&mut self, msg: &BinaryResponse, dst: &mut BytesMut) -> io::Result<()> {
+        match msg {
+            BinaryResponse::Error(response) => {
+                dst.put(response.error.as_bytes());
+            }
+            BinaryResponse::Get(response)
+            | BinaryResponse::GetKey(response)
+            | BinaryResponse::GetKeyQuietly(response)
+            | BinaryResponse::GetQuietly(response) => {
+                dst.put_u32(response.flags);                
+            }
+            BinaryResponse::Set(_response)
+            | BinaryResponse::Replace(_response)
+            | BinaryResponse::Add(_response)
+            | BinaryResponse::Append(_response)
+            | BinaryResponse::Prepend(_response) => {}
+            BinaryResponse::Version(response) => {
+                dst.put_slice(response.version.as_bytes());                
+            }
+            BinaryResponse::Noop(_response) => {}
+            BinaryResponse::Delete(_response) => {}
+            BinaryResponse::Flush(_response) => {}
+            BinaryResponse::Quit(_response) => {}
+            BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
+                dst.put_u64(response.value);
+            }
+        }
+        self.stream.write_all(&dst[..]).await?;
+        match msg {
+            BinaryResponse::Get(response)
+            | BinaryResponse::GetKey(response)
+            | BinaryResponse::GetKeyQuietly(response)
+            | BinaryResponse::GetQuietly(response) => {                
+                if response.key.len() > 0 {
+                    self.stream.write_all(&response.key).await?;
+                }
+                self.stream.write_all(&response.value).await?;                
+            }            
+            _ => {                
+            }
+        }
+        Ok(())        
     }
 }
 

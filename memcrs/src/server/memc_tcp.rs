@@ -10,6 +10,7 @@ use tokio::time::{interval_at, timeout, Instant};
 use tokio::sync::{Semaphore};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error};
+use tokio::io::{BufWriter};
 
 //use tracing_attributes::instrument;
 
@@ -44,7 +45,7 @@ pub struct MemcacheTcpServer {
 
 struct Client {
     store: Arc<storage::MemcStore>,
-    socket: TcpStream,
+    stream: MemcacheBinaryCodec,
     addr: SocketAddr,
     _token: u32,
     rx_timeout_secs: u32,
@@ -70,7 +71,7 @@ impl Client {
     ) -> Self {
         Client {
             store,
-            socket,
+            stream: MemcacheBinaryCodec::new(socket),
             addr,
             _token: token,
             rx_timeout_secs,
@@ -153,59 +154,58 @@ impl MemcacheTcpServer {
     async fn handle_client(mut client: Client) {
         debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store.clone());
-        //
-        let (rx, tx) = client.socket.split();
-
-        let mut reader = FramedRead::new(rx, MemcacheBinaryCodec::new());
-        let mut writer = FramedWrite::new(tx, MemcacheBinaryCodec::new());
-
+                
         // Here for every packet we get back from the `Framed` decoder,
         // we parse the request, and if it's valid we generate a response
         // based on the values in the storage.
         loop {
-            match timeout(Duration::from_secs(client.rx_timeout_secs as u64), reader.next()).await {
+            match timeout(Duration::from_secs(client.rx_timeout_secs as u64), client.stream.read_frame()).await {
                 Ok(req_or_none) => {
                     match req_or_none {
-                        Some(req_or_error) => match req_or_error {
-                            Ok(request) => {
-                                debug!("Got request {:?}", request.get_header());
+                        Ok(re) => {
+                            match re {
+                                Some(request) => {
+                                    debug!("Got request {:?}", request.get_header());
 
-                                if let BinaryRequest::QuitQuietly(_req) = request {
-                                    debug!("Closing client socket quit quietly");
-                                    if let Err(_e) = client.socket.shutdown().await.map_err(log_error) {                                            
-                                    }
-                                    return;
-                                }
-
-                                let response = handler.handle_request(request);
-
-                                if let Some(response) = response {
-                                    let mut socket_close = false;
-                                    if let BinaryResponse::Quit(_resp) = &response {
-                                        socket_close = true;
-                                    }
-
-                                    debug!("Sending response {:?}", response);
-                                    if let Err(e) = writer.send(response).await {
-                                        error!("error on sending response; error = {:?}", e);
-                                        return;
-                                    }
-
-                                    if socket_close {
-                                        debug!("Closing client socket quit command");
-                                        if let Err(_e) = client.socket.shutdown().await.map_err(log_error) {
+                                    if let BinaryRequest::QuitQuietly(_req) = request {
+                                        debug!("Closing client socket quit quietly");
+                                        if let Err(_e) = client.stream.stream.shutdown().await.map_err(log_error) {                                            
                                         }
                                         return;
                                     }
+    
+                                    let response = handler.handle_request(request);
+    
+                                    if let Some(response) = response {
+                                        let mut socket_close = false;
+                                        if let BinaryResponse::Quit(_resp) = &response {
+                                            socket_close = true;
+                                        }
+    
+                                        debug!("Sending response {:?}", response);
+                                        if let Err(e) = client.stream.write(&response).await {
+                                            error!("error on sending response; error = {:?}", e);
+                                            return;
+                                        }
+    
+                                        if socket_close {
+                                            debug!("Closing client socket quit command");
+                                            if let Err(_e) = client.stream.stream.shutdown().await.map_err(log_error) {
+                                            }
+                                            return;
+                                        }
+                                    }
+
+                                },
+                                None => {
+                                     // The connection will be closed at this point as `lines.next()` has returned `None`.
+                                    debug!("Connection closed: {}", client.addr);
+                                    return;
                                 }
                             }
-                            Err(e) => {
-                                error!("Error decoding msg from socket; error = {:?}", e);
-                            }
                         },
-                        None => {
-                            // The connection will be closed at this point as `lines.next()` has returned `None`.
-                            debug!("Connection closed: {}", client.addr);
+                        Err(err) => {
+                            error!("error when reading frame; error = {:?}", err);
                             return;
                         }
                     }
