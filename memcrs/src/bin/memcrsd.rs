@@ -2,13 +2,15 @@ use log::info;
 use std::net::{IpAddr, SocketAddr};
 use tokio::io;
 use tracing_subscriber;
+use tokio::runtime::Builder;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate clap;
 extern crate memcrs;
 use clap::{value_t, App, Arg};
 
-#[tokio::main]
-async fn main() -> io::Result<()> {
+
+fn main() {
     let app = App::new("memcrsd");
     let matches = app
         .version(memcrs::version::MEMCRS_VERSION)
@@ -26,7 +28,7 @@ async fn main() -> io::Result<()> {
             Arg::with_name("listen")
                 .short("l")
                 .long("listen")
-                .default_value("0.0.0.0")
+                .default_value("127.0.0.1")
                 .help("interface to listen on")
                 .takes_value(true),
         )
@@ -44,11 +46,33 @@ async fn main() -> io::Result<()> {
                 .multiple(true)
                 .help("Sets the level of verbosity"),
         )
+        .arg(
+            Arg::with_name("memory-limit")
+                .short("m")
+                .long("memory-limit")
+                .default_value("64")
+                .help("item memory in megabytes")
+                .takes_value(true),                
+        )
+        .arg(
+            Arg::with_name("threads")
+                .short("t")
+                .long("threads")
+                .default_value("4")
+                .help("number of threads to use")
+                .takes_value(true),                
+        )
         .get_matches();
-
+    
     let port: u16 = value_t!(matches.value_of("port"), u16).unwrap_or_else(|e| e.exit());
     let connection_limit: u32 =
         value_t!(matches.value_of("conn-limit"), u32).unwrap_or_else(|e| e.exit());
+    let memory_limit: u32 =
+        value_t!(matches.value_of("memory-limit"), u32).unwrap_or_else(|e| e.exit());
+
+    let threads: u32 =
+        value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
+
     let listen_address = matches
         .value_of("listen")
         .unwrap()
@@ -98,8 +122,22 @@ async fn main() -> io::Result<()> {
         "Connection limit: {}",
         matches.value_of("conn-limit").unwrap()
     );
-
+    let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(60, connection_limit, memory_limit);
     let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(60, connection_limit);
-    tcp_server.run(addr).await
+    let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
+
+    let runtime = Builder::new_multi_thread()
+            .worker_threads(threads as usize)
+            .thread_name_fn(|| {
+                static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+                let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+                let str  = format!("memcrsd-wrk-{}", id);
+                str
+             })
+            .max_blocking_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+
+    runtime.block_on(tcp_server.run(addr)).unwrap();
 }

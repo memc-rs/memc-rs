@@ -19,18 +19,27 @@ use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
 
-//extern crate flame;
+
 pub struct MemcacheServerConfig {
+    timeout_secs: u32,
     connection_limit: u32,
     memory_limit: u32,
 }
 
+impl MemcacheServerConfig {
+    pub fn new(timeout_secs: u32, connection_limit: u32, memory_limit: u32) -> Self {
+        MemcacheServerConfig {
+            timeout_secs,
+            connection_limit,
+            memory_limit
+        }
+    }
+}
 pub struct MemcacheTcpServer {
     timer: Arc<timer::SystemTimer>,
-    storage: Arc<storage::MemcStore>,
-    timeout_secs: u64,
-    connection_limit: u32,
+    storage: Arc<storage::MemcStore>,    
     limit_connections: Arc<Semaphore>,
+    config: MemcacheServerConfig,
 }
 
 struct Client {
@@ -38,8 +47,8 @@ struct Client {
     socket: TcpStream,
     addr: SocketAddr,
     _token: u32,
-    rx_timeout_secs: u64,
-    wx_timeout_secs: u64,
+    rx_timeout_secs: u32,
+    wx_timeout_secs: u32,
 
     /// Max connection semaphore.
     ///
@@ -55,8 +64,8 @@ impl Client {
         socket: TcpStream,
         addr: SocketAddr,
         token: u32,
-        rx_timeout_secs: u64,
-        wx_timeout_secs: u64,
+        rx_timeout_secs: u32,
+        wx_timeout_secs: u32,
         limit_connections: Arc<Semaphore>
     ) -> Self {
         Client {
@@ -88,14 +97,13 @@ impl Drop for Client {
 }
 
 impl MemcacheTcpServer {
-    pub fn new(timeout_secs: u64, connection_limit: u32) -> MemcacheTcpServer {
+    pub fn new(config: MemcacheServerConfig) -> MemcacheTcpServer {
         let timer = Arc::new(timer::SystemTimer::new());
         MemcacheTcpServer {
-            connection_limit,
-            timeout_secs,
             timer: timer.clone(),
             storage: Arc::new(storage::MemcStore::new(timer)),
-            limit_connections: Arc::new(Semaphore::new(connection_limit as usize ))
+            limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize )),
+            config: config
         }
     }
 
@@ -117,15 +125,15 @@ impl MemcacheTcpServer {
                             socket,
                             peer_addr,
                             0,
-                            self.timeout_secs,
-                            self.timeout_secs,
+                            self.config.timeout_secs,
+                            self.config.timeout_secs,
                             self.limit_connections.clone()
                         );
 
                         self.limit_connections.acquire().await.unwrap().forget();
                         // Like with other small servers, we'll `spawn` this client to ensure it
                         // runs concurrently with all other clients. The `move` keyword is used
-                        // here to move ownership of our db handle into the async closure.
+                        // here to move ownership of our store handle into the async closure.
                         tokio::spawn(async move { MemcacheTcpServer::handle_client(client).await });
                     },
                     Err(err) => {
@@ -155,7 +163,7 @@ impl MemcacheTcpServer {
         // we parse the request, and if it's valid we generate a response
         // based on the values in the storage.
         loop {
-            match timeout(Duration::from_secs(client.rx_timeout_secs), reader.next()).await {
+            match timeout(Duration::from_secs(client.rx_timeout_secs as u64), reader.next()).await {
                 Ok(req_or_none) => {
                     match req_or_none {
                         Some(req_or_error) => match req_or_error {
