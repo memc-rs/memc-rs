@@ -151,6 +151,7 @@ impl MemcacheBinaryCodec {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
             if let Some(frame) = self.decode_frame(&mut buffer)? {
+                buffer.clear();
                 return Ok(Some(frame));
             }
 

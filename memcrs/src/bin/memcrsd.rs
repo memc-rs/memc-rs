@@ -1,8 +1,8 @@
 use log::info;
 use std::net::{IpAddr, SocketAddr};
-use tokio::io;
 use tracing_subscriber;
 use tokio::runtime::Builder;
+use num_cpus;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate clap;
@@ -11,6 +11,9 @@ use clap::{value_t, App, Arg};
 
 
 fn main() {
+
+    let cpus = (num_cpus::get_physical()+1).to_string();
+
     let app = App::new("memcrsd");
     let matches = app
         .version(memcrs::version::MEMCRS_VERSION)
@@ -58,7 +61,7 @@ fn main() {
             Arg::with_name("threads")
                 .short("t")
                 .long("threads")
-                .default_value("4")
+                .default_value(&cpus)
                 .help("number of threads to use")
                 .takes_value(true),                
         )
@@ -121,6 +124,10 @@ fn main() {
     info!(
         "Connection limit: {}",
         matches.value_of("conn-limit").unwrap()
+    );
+    info!(
+        "Number of threads: {}",
+        matches.value_of("threads").unwrap()
     );
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(60, connection_limit, memory_limit);
     let addr = SocketAddr::new(listen_address, port);

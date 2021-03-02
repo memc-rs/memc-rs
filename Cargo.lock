@@ -456,6 +456,7 @@ dependencies = [
  "log",
  "num-derive",
  "num-traits",
+ "num_cpus",
  "serde",
  "serde_derive",
  "tokio",
