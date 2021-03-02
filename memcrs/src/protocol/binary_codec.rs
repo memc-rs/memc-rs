@@ -130,7 +130,7 @@ enum RequestParserState {
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
-    pub(crate) stream: TcpStream,
+    pub(crate) stream: BufWriter<TcpStream>,
     // The buffer for reading frames.
     buffer: BytesMut,
 }
@@ -140,7 +140,7 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
             state: RequestParserState::None,
-            stream: socket,
+            stream: BufWriter::new(socket),
             buffer: BytesMut::with_capacity(512)
         }
     }
@@ -669,6 +669,7 @@ impl MemcacheBinaryCodec {
             _ => {                
             }
         }
+        self.stream.flush().await?;
         Ok(())        
     }
 }

@@ -1,5 +1,5 @@
 --- memcached
-
+-- /memcached --protocol=binary -p 11211 -c 1024 -m 8000 -M --max-item-size=100m
 ./memtier_benchmark --random-data --data-size-range=2048-10048510 --data-size-pattern=S --key-minimum=1 --key-maximum=400000 --key-pattern=G:G --key-stddev=10 --key-median=200000 -P memcache_binary  --hide-histogram --show-config -c 1 -t 1  -n 100000  -R --randomize -p 11211
 
 
@@ -45,3 +45,25 @@ Sets           40.90          ---          ---         2.27633         2.30300  
 Gets          409.04       405.71         3.33         2.19848         2.22300         2.39900         3.26300        15.18 
 Waits           0.00          ---          ---             ---             ---             ---             ---          --- 
 Totals        449.94       405.71         3.33         2.20556         2.22300         2.44700         3.34300    200754.02 
+
+-- memix after improving writes
+
+===================================================
+Writing results to stdout
+[RUN #1] Preparing benchmark client...
+[RUN #1] Launching threads now...
+[RUN #1 100%, 186 secs]  0 threads:      100000 ops,     493 (avg:     535) ops/sec, 215.66MB/sec (avg: 233.42MB/sec),  2.01 (avg:  1.85) msec latency
+
+1         Threads
+1         Connections per thread
+100000    Requests per client
+
+
+ALL STATS
+============================================================================================================================
+Type         Ops/sec     Hits/sec   Misses/sec    Avg. Latency     p50 Latency     p99 Latency   p99.9 Latency       KB/sec 
+----------------------------------------------------------------------------------------------------------------------------
+Sets           48.70          ---          ---         2.30850         2.35100         3.37500         4.25500    239001.16 
+Gets          487.00       483.04         3.96         1.80277         1.83100         2.70300         3.50300        18.07 
+Waits           0.00          ---          ---             ---             ---             ---             ---          --- 
+Totals        535.71       483.04         3.96         1.84874         1.83900         2.86300         3.69500    239019.24 
