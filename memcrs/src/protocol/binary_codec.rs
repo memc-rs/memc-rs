@@ -671,7 +671,7 @@ impl MemcacheBinaryCodec {
             _ => {                
             }
         }
-        self.stream.flush().await?;
+        //self.stream.flush().await?;
         Ok(())        
     }
 }
