@@ -130,7 +130,7 @@ enum RequestParserState {
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
-    pub(crate) stream: BufWriter<TcpStream>,
+    pub(crate) stream: TcpStream,
     // The buffer for reading frames.
     buffer: BytesMut,
 }
@@ -140,7 +140,7 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
             state: RequestParserState::None,
-            stream: BufWriter::new(socket),
+            stream: socket,
             buffer: BytesMut::with_capacity(512)
         }
     }
@@ -535,8 +535,9 @@ impl MemcacheBinaryCodec {
     const HEADER_LEN: usize = 24;
 }
 
-impl MemcacheBinaryCodec {
-    
+impl Decoder for MemcacheBinaryCodec {
+    type Item = BinaryRequest;
+    type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state == RequestParserState::None {
