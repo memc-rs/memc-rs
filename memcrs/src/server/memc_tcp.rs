@@ -15,7 +15,8 @@ use tokio::io::{BufWriter};
 //use tracing_attributes::instrument;
 
 use super::handler;
-use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec};
+use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse};
+use crate::protocol::binary_connection::MemcacheBinaryConnection;
 use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
@@ -45,7 +46,7 @@ pub struct MemcacheTcpServer {
 
 struct Client {
     store: Arc<storage::MemcStore>,
-    stream: MemcacheBinaryCodec,
+    stream: MemcacheBinaryConnection,
     addr: SocketAddr,
     _token: u32,
     rx_timeout_secs: u32,
@@ -71,7 +72,7 @@ impl Client {
     ) -> Self {
         Client {
             store,
-            stream: MemcacheBinaryCodec::new(socket),
+            stream: MemcacheBinaryConnection::new(socket),
             addr,
             _token: token,
             rx_timeout_secs,
