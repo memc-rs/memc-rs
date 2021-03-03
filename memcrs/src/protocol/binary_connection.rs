@@ -1,4 +1,4 @@
-use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec, Message};
+use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage};
 use bytes::{BufMut, BytesMut};
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -52,21 +52,20 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
-        let mut dst = BytesMut::with_capacity(0);
-        let message = self.codec.encode_message(msg, &mut dst);
-        self.write_data_to_stream( &mut dst, message).await?;
+        
+        let message = self.codec.encode_message(msg);
+        self.write_data_to_stream( message).await?;
         Ok(())
     }
 
     async fn write_data_to_stream(
         &mut self,        
-        dst: &mut BytesMut,
-        msg: Option<Message>
+        msg: ResponseMessage
     ) -> io::Result<()> {
-        self.stream.write_all(&dst[..]).await?;
-        match msg {
-            Some(response) => {                
-                self.stream.write_all(&response.value).await?;            
+        self.stream.write_all(&msg.data[..]).await?;
+        match msg.value {
+            Some(value) => {                
+                self.stream.write_all(&value).await?;            
             }
             None => {}
         }

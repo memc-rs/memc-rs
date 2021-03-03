@@ -517,8 +517,12 @@ impl Decoder for MemcacheBinaryCodec {
     }
 }
 
-pub struct Message {    
-    pub(crate) value: Bytes,
+pub struct ResponseMessage {
+    // If small enough header+key?+value?
+    pub(crate) data: Bytes,
+    // if value is large to avoid copying into data 
+    // it is returned as Option<Bytes>
+    pub(crate) value: Option<Bytes>,
 }
 
 
@@ -540,21 +544,24 @@ impl MemcacheBinaryCodec {
             + (header.extras_length as usize)
     }
     
-    ///
-
-    pub fn encode_message(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
+    /// 
+    /// Encodes a msg into a dst
+    // if msg value is big to avoid double buffering
+    // it is returned as  Option<Bytes> so there are no
+    // necessary copies made into dst and can be 
+    // written into socket directly.
+    // 
+    pub fn encode_message(&self, msg: &BinaryResponse) -> ResponseMessage {
+        let mut dst = BytesMut::with_capacity(320);
         let len = self.get_length(msg);
         if len < MemcacheBinaryCodec::SOCKET_BUFFER {
             dst.reserve(len);
-        } else {
-            // header ~28 + key ~250
-            dst.reserve(320);
         }        
-        self.write_header_impl(self.get_header(msg), dst);
+        self.write_header_impl(self.get_header(msg), &mut dst);
         self.encode_data(msg, dst)
     }
 
-    fn encode_data(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
+    fn encode_data(&self, msg: &BinaryResponse, mut dst: BytesMut) -> ResponseMessage {
         let buffered = self.get_length(msg) < MemcacheBinaryCodec::SOCKET_BUFFER;
         match msg {
             BinaryResponse::Error(response) => {
@@ -571,9 +578,10 @@ impl MemcacheBinaryCodec {
                 if buffered {                    
                     dst.put(response.value.clone());
                 } else {
-                    return Some(Message {                        
-                        value: response.value.clone()
-                    });
+                    return ResponseMessage {
+                        data: dst.freeze(),        
+                        value: Some(response.value.clone()),
+                    };
                 }                
             }
             BinaryResponse::Set(_response)
@@ -592,7 +600,10 @@ impl MemcacheBinaryCodec {
                 dst.put_u64(response.value);
             }
         }
-        None
+        ResponseMessage {
+            data: dst.freeze(),
+            value: None
+        }
     }
 
     fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
