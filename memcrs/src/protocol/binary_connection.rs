@@ -1,3 +1,4 @@
+use futures_util::__private::async_await;
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
 use tokio_util::codec::{Decoder, Encoder};
@@ -114,4 +115,8 @@ impl  MemcacheBinaryConnection  {
         Ok(())        
     }
 
+    pub async fn shutdown(&mut self) -> io::Result<()> {
+        self.stream.shutdown().await?;  
+        Ok(())      
+    }
 }

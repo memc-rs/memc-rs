@@ -170,7 +170,7 @@ impl MemcacheTcpServer {
 
                                     if let BinaryRequest::QuitQuietly(_req) = request {
                                         debug!("Closing client socket quit quietly");
-                                        if let Err(_e) = client.stream.stream.shutdown().await.map_err(log_error) {                                            
+                                        if let Err(_e) = client.stream.shutdown().await.map_err(log_error) {                                            
                                         }
                                         return;
                                     }
@@ -191,7 +191,7 @@ impl MemcacheTcpServer {
     
                                         if socket_close {
                                             debug!("Closing client socket quit command");
-                                            if let Err(_e) = client.stream.stream.shutdown().await.map_err(log_error) {
+                                            if let Err(_e) = client.stream.shutdown().await.map_err(log_error) {
                                             }
                                             return;
                                         }
