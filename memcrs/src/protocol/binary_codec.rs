@@ -528,7 +528,8 @@ pub struct ResponseMessage {
 
 impl MemcacheBinaryCodec {
     const RESPONSE_HEADER_LEN: usize = 24;
-    const SOCKET_BUFFER: usize = 1024;
+    const SOCKET_BUFFER: usize = 4096;
+    const DEFAULT_BUFFER_CAPACITY: usize = 512;
 
     pub fn get_length(&self, msg: &BinaryResponse) -> usize {
         self.get_len_from_header(self.get_header(msg))
@@ -546,13 +547,13 @@ impl MemcacheBinaryCodec {
     
     /// 
     /// Encodes a msg into a dst
-    // if msg value is big to avoid double buffering
+    // if msg value is large i.e. bigger than SOCKET_BUFFER to avoid double buffering
     // it is returned as  Option<Bytes> so there are no
     // necessary copies made into dst and can be 
     // written into socket directly.
     // 
     pub fn encode_message(&self, msg: &BinaryResponse) -> ResponseMessage {
-        let mut dst = BytesMut::with_capacity(320);
+        let mut dst = BytesMut::with_capacity(MemcacheBinaryCodec::DEFAULT_BUFFER_CAPACITY);
         let len = self.get_length(msg);
         if len < MemcacheBinaryCodec::SOCKET_BUFFER {
             dst.reserve(len);
