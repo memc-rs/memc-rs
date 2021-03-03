@@ -517,15 +517,14 @@ impl Decoder for MemcacheBinaryCodec {
     }
 }
 
-pub struct Message {
-    pub(crate) key: Vec<u8>,
+pub struct Message {    
     pub(crate) value: Bytes,
 }
 
 
 impl MemcacheBinaryCodec {
     const RESPONSE_HEADER_LEN: usize = 24;
-    const SOCKET_BUFFER: usize = 4096;
+    const SOCKET_BUFFER: usize = 1024;
 
     pub fn get_length(&self, msg: &BinaryResponse) -> usize {
         self.get_len_from_header(self.get_header(msg))
@@ -544,12 +543,19 @@ impl MemcacheBinaryCodec {
     ///
 
     pub fn encode_message(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
+        let len = self.get_length(msg);
+        if len < MemcacheBinaryCodec::SOCKET_BUFFER {
+            dst.reserve(len);
+        } else {
+            // header ~28 + key ~250
+            dst.reserve(320);
+        }        
         self.write_header_impl(self.get_header(msg), dst);
         self.encode_data(msg, dst)
     }
 
     fn encode_data(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
-        let buffered = self.get_length(msg) > MemcacheBinaryCodec::SOCKET_BUFFER;
+        let buffered = self.get_length(msg) < MemcacheBinaryCodec::SOCKET_BUFFER;
         match msg {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
@@ -559,12 +565,13 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::GetKeyQuietly(response)
             | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
-                if buffered {
+                if response.key.len() >0 {
                     dst.put_slice(&response.key[..]);
+                }            
+                if buffered {                    
                     dst.put(response.value.clone());
                 } else {
-                    return Some(Message {
-                        key: response.key.clone(),
+                    return Some(Message {                        
                         value: response.value.clone()
                     });
                 }                

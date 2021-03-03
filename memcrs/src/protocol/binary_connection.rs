@@ -11,8 +11,7 @@ pub struct MemcacheBinaryConnection {
     codec: MemcacheBinaryCodec,
 }
 
-impl MemcacheBinaryConnection {
-    const SOCKET_BUFFER: usize = 4096;
+impl MemcacheBinaryConnection {    
     pub fn new(socket: TcpStream) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
@@ -53,7 +52,7 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
-        let mut dst = BytesMut::with_capacity(self.codec.get_length(&msg));
+        let mut dst = BytesMut::with_capacity(0);
         let message = self.codec.encode_message(msg, &mut dst);
         self.write_data_to_stream( &mut dst, message).await?;
         Ok(())
@@ -63,13 +62,10 @@ impl MemcacheBinaryConnection {
         &mut self,        
         dst: &mut BytesMut,
         msg: Option<Message>
-    ) -> io::Result<()> {            
+    ) -> io::Result<()> {
         self.stream.write_all(&dst[..]).await?;
         match msg {
-            Some(response) => {            
-                if response.key.len() > 0 {
-                    self.stream.write_all(&response.key).await?;
-                }
+            Some(response) => {                
                 self.stream.write_all(&response.value).await?;            
             }
             None => {}
