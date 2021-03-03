@@ -1,7 +1,7 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{Buf, BufMut, BytesMut, Bytes};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
@@ -517,8 +517,15 @@ impl Decoder for MemcacheBinaryCodec {
     }
 }
 
+pub struct Message {
+    pub(crate) key: Vec<u8>,
+    pub(crate) value: Bytes,
+}
+
+
 impl MemcacheBinaryCodec {
     const RESPONSE_HEADER_LEN: usize = 24;
+    const SOCKET_BUFFER: usize = 4096;
 
     pub fn get_length(&self, msg: &BinaryResponse) -> usize {
         self.get_len_from_header(self.get_header(msg))
@@ -532,6 +539,53 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec::RESPONSE_HEADER_LEN
             + (header.body_length as usize)
             + (header.extras_length as usize)
+    }
+    
+    ///
+
+    pub fn encode_message(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
+        self.write_header_impl(self.get_header(msg), dst);
+        self.encode_data(msg, dst)
+    }
+
+    fn encode_data(&self, msg: &BinaryResponse, dst: &mut BytesMut) -> Option<Message> {
+        let buffered = self.get_length(msg) > MemcacheBinaryCodec::SOCKET_BUFFER;
+        match msg {
+            BinaryResponse::Error(response) => {
+                dst.put(response.error.as_bytes());
+            }
+            BinaryResponse::Get(response)
+            | BinaryResponse::GetKey(response)
+            | BinaryResponse::GetKeyQuietly(response)
+            | BinaryResponse::GetQuietly(response) => {
+                dst.put_u32(response.flags);
+                if buffered {
+                    dst.put_slice(&response.key[..]);
+                    dst.put(response.value.clone());
+                } else {
+                    return Some(Message {
+                        key: response.key.clone(),
+                        value: response.value.clone()
+                    });
+                }                
+            }
+            BinaryResponse::Set(_response)
+            | BinaryResponse::Replace(_response)
+            | BinaryResponse::Add(_response)
+            | BinaryResponse::Append(_response)
+            | BinaryResponse::Prepend(_response) => {}
+            BinaryResponse::Version(response) => {
+                dst.put_slice(response.version.as_bytes());
+            }
+            BinaryResponse::Noop(_response) => {}
+            BinaryResponse::Delete(_response) => {}
+            BinaryResponse::Flush(_response) => {}
+            BinaryResponse::Quit(_response) => {}
+            BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
+                dst.put_u64(response.value);
+            }
+        }
+        None
     }
 
     fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {

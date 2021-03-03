@@ -1,4 +1,4 @@
-use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec};
+use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec, Message};
 use bytes::{BufMut, BytesMut};
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -54,64 +54,25 @@ impl MemcacheBinaryConnection {
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
         let mut dst = BytesMut::with_capacity(self.codec.get_length(&msg));
-        self.codec.write_header(msg, &mut dst);
-        self.write_data_to_stream(msg, &mut dst).await?;
+        let message = self.codec.encode_message(msg, &mut dst);
+        self.write_data_to_stream( &mut dst, message).await?;
         Ok(())
     }
 
     async fn write_data_to_stream(
-        &mut self,
-        msg: &BinaryResponse,
+        &mut self,        
         dst: &mut BytesMut,
-    ) -> io::Result<()> {
-        let response_len = self.codec.get_length(msg);
-        let buffered_write = response_len < MemcacheBinaryConnection::SOCKET_BUFFER;
-        match msg {
-            BinaryResponse::Error(response) => {
-                dst.put(response.error.as_bytes());
-            }
-            BinaryResponse::Get(response)
-            | BinaryResponse::GetKey(response)
-            | BinaryResponse::GetKeyQuietly(response)
-            | BinaryResponse::GetQuietly(response) => {
-                dst.put_u32(response.flags);
-                if buffered_write {
-                    if response.key.len() > 0 {
-                        dst.put_slice(&response.key[..]);
-                    }
-                    dst.put(response.value.clone());
-                }
-            }
-            BinaryResponse::Set(_response)
-            | BinaryResponse::Replace(_response)
-            | BinaryResponse::Add(_response)
-            | BinaryResponse::Append(_response)
-            | BinaryResponse::Prepend(_response) => {}
-            BinaryResponse::Version(response) => {
-                dst.put_slice(response.version.as_bytes());
-            }
-            BinaryResponse::Noop(_response) => {}
-            BinaryResponse::Delete(_response) => {}
-            BinaryResponse::Flush(_response) => {}
-            BinaryResponse::Quit(_response) => {}
-            BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
-                dst.put_u64(response.value);
-            }
-        }
+        msg: Option<Message>
+    ) -> io::Result<()> {            
         self.stream.write_all(&dst[..]).await?;
         match msg {
-            BinaryResponse::Get(response)
-            | BinaryResponse::GetKey(response)
-            | BinaryResponse::GetKeyQuietly(response)
-            | BinaryResponse::GetQuietly(response) => {
-                if buffered_write == false {
-                    if response.key.len() > 0 {
-                        self.stream.write_all(&response.key).await?;
-                    }
-                    self.stream.write_all(&response.value).await?;
+            Some(response) => {            
+                if response.key.len() > 0 {
+                    self.stream.write_all(&response.key).await?;
                 }
+                self.stream.write_all(&response.value).await?;            
             }
-            _ => {}
+            None => {}
         }
         Ok(())
     }
