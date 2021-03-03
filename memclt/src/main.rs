@@ -1,4 +1,4 @@
-use memcache::{MemcacheError};
+use memcache::MemcacheError;
 use std::collections::HashMap;
 use std::str;
 
