@@ -5,12 +5,12 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
+use tokio::io::BufWriter;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
+use tokio::sync::Semaphore;
 use tokio::time::{interval_at, timeout, Instant};
-use tokio::sync::{Semaphore};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error};
-use tokio::io::{BufWriter};
 
 //use tracing_attributes::instrument;
 
@@ -20,7 +20,6 @@ use crate::protocol::binary_connection::MemcacheBinaryConnection;
 use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
-
 
 pub struct MemcacheServerConfig {
     timeout_secs: u32,
@@ -33,13 +32,13 @@ impl MemcacheServerConfig {
         MemcacheServerConfig {
             timeout_secs,
             connection_limit,
-            memory_limit
+            memory_limit,
         }
     }
 }
 pub struct MemcacheTcpServer {
     timer: Arc<timer::SystemTimer>,
-    storage: Arc<storage::MemcStore>,    
+    storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
 }
@@ -68,7 +67,7 @@ impl Client {
         token: u32,
         rx_timeout_secs: u32,
         wx_timeout_secs: u32,
-        limit_connections: Arc<Semaphore>
+        limit_connections: Arc<Semaphore>,
     ) -> Self {
         Client {
             store,
@@ -77,7 +76,7 @@ impl Client {
             _token: token,
             rx_timeout_secs,
             wx_timeout_secs,
-            limit_connections
+            limit_connections,
         }
     }
 }
@@ -104,8 +103,8 @@ impl MemcacheTcpServer {
         MemcacheTcpServer {
             timer: timer.clone(),
             storage: Arc::new(storage::MemcStore::new(timer)),
-            limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize )),
-            config: config
+            limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
+            config: config,
         }
     }
 
@@ -155,12 +154,17 @@ impl MemcacheTcpServer {
     async fn handle_client(mut client: Client) {
         debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store.clone());
-                
+
         // Here for every packet we get back from the `Framed` decoder,
         // we parse the request, and if it's valid we generate a response
         // based on the values in the storage.
         loop {
-            match timeout(Duration::from_secs(client.rx_timeout_secs as u64), client.stream.read_frame()).await {
+            match timeout(
+                Duration::from_secs(client.rx_timeout_secs as u64),
+                client.stream.read_frame(),
+            )
+            .await
+            {
                 Ok(req_or_none) => {
                     match req_or_none {
                         Ok(re) => {
@@ -170,41 +174,44 @@ impl MemcacheTcpServer {
 
                                     if let BinaryRequest::QuitQuietly(_req) = request {
                                         debug!("Closing client socket quit quietly");
-                                        if let Err(_e) = client.stream.shutdown().await.map_err(log_error) {                                            
+                                        if let Err(_e) =
+                                            client.stream.shutdown().await.map_err(log_error)
+                                        {
                                         }
                                         return;
                                     }
-    
+
                                     let response = handler.handle_request(request);
-    
+
                                     if let Some(response) = response {
                                         let mut socket_close = false;
                                         if let BinaryResponse::Quit(_resp) = &response {
                                             socket_close = true;
                                         }
-    
+
                                         debug!("Sending response {:?}", response);
                                         if let Err(e) = client.stream.write(&response).await {
                                             error!("error on sending response; error = {:?}", e);
                                             return;
                                         }
-    
+
                                         if socket_close {
                                             debug!("Closing client socket quit command");
-                                            if let Err(_e) = client.stream.shutdown().await.map_err(log_error) {
+                                            if let Err(_e) =
+                                                client.stream.shutdown().await.map_err(log_error)
+                                            {
                                             }
                                             return;
                                         }
                                     }
-
-                                },
+                                }
                                 None => {
-                                     // The connection will be closed at this point as `lines.next()` has returned `None`.
+                                    // The connection will be closed at this point as `lines.next()` has returned `None`.
                                     debug!("Connection closed: {}", client.addr);
                                     return;
                                 }
                             }
-                        },
+                        }
                         Err(err) => {
                             error!("error when reading frame; error = {:?}", err);
                             return;

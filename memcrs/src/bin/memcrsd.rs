@@ -1,18 +1,16 @@
 use log::info;
-use std::net::{IpAddr, SocketAddr};
-use tracing_subscriber;
-use tokio::runtime::Builder;
 use num_cpus;
+use std::net::{IpAddr, SocketAddr};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::runtime::Builder;
+use tracing_subscriber;
 
 extern crate clap;
 extern crate memcrs;
 use clap::{value_t, App, Arg};
 
-
 fn main() {
-
-    let cpus = (num_cpus::get_physical()+1).to_string();
+    let cpus = (num_cpus::get_physical() + 1).to_string();
 
     let app = App::new("memcrsd");
     let matches = app
@@ -55,7 +53,7 @@ fn main() {
                 .long("memory-limit")
                 .default_value("64")
                 .help("item memory in megabytes")
-                .takes_value(true),                
+                .takes_value(true),
         )
         .arg(
             Arg::with_name("threads")
@@ -63,18 +61,17 @@ fn main() {
                 .long("threads")
                 .default_value(&cpus)
                 .help("number of threads to use")
-                .takes_value(true),                
+                .takes_value(true),
         )
         .get_matches();
-    
+
     let port: u16 = value_t!(matches.value_of("port"), u16).unwrap_or_else(|e| e.exit());
     let connection_limit: u32 =
         value_t!(matches.value_of("conn-limit"), u32).unwrap_or_else(|e| e.exit());
     let memory_limit: u32 =
         value_t!(matches.value_of("memory-limit"), u32).unwrap_or_else(|e| e.exit());
 
-    let threads: u32 =
-        value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
+    let threads: u32 = value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
 
     let listen_address = matches
         .value_of("listen")
@@ -129,22 +126,23 @@ fn main() {
         "Number of threads: {}",
         matches.value_of("threads").unwrap()
     );
-    let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(60, connection_limit, memory_limit);
+    let config =
+        memcrs::server::memc_tcp::MemcacheServerConfig::new(60, connection_limit, memory_limit);
     let addr = SocketAddr::new(listen_address, port);
     let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
 
     let runtime = Builder::new_multi_thread()
-            .worker_threads(threads as usize)
-            .thread_name_fn(|| {
-                static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-                let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-                let str  = format!("memcrsd-wrk-{}", id);
-                str
-             })
-            .max_blocking_threads(2)
-            .enable_all()
-            .build()
-            .unwrap();
+        .worker_threads(threads as usize)
+        .thread_name_fn(|| {
+            static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+            let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+            let str = format!("memcrsd-wrk-{}", id);
+            str
+        })
+        .max_blocking_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
 
     runtime.block_on(tcp_server.run(addr)).unwrap();
 }

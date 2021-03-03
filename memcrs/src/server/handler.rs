@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
-
 fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> memcstore::Meta {
     memcstore::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
@@ -231,9 +230,10 @@ impl BinaryHandler {
         delete_request: binary::DeleteRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let result = self
-            .storage
-            .delete(delete_request.key, into_record_meta(&delete_request.header, 0));
+        let result = self.storage.delete(
+            delete_request.key,
+            into_record_meta(&delete_request.header, 0),
+        );
         match result {
             Ok(_record) => binary_codec::BinaryResponse::Delete(binary::DeleteResponse {
                 header: *response_header,
@@ -298,9 +298,11 @@ impl BinaryHandler {
             value: inc_request.initial,
         };
 
-        let result = self
-            .storage
-            .increment(into_record_meta(&inc_request.header, inc_request.expiration), inc_request.key, delta);
+        let result = self.storage.increment(
+            into_record_meta(&inc_request.header, inc_request.expiration),
+            inc_request.key,
+            delta,
+        );
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
@@ -325,9 +327,11 @@ impl BinaryHandler {
             value: dec_request.initial,
         };
 
-        let result = self
-            .storage
-            .decrement(into_record_meta(&dec_request.header, dec_request.expiration), dec_request.key, delta);
+        let result = self.storage.decrement(
+            into_record_meta(&dec_request.header, dec_request.expiration),
+            dec_request.key,
+            delta,
+        );
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
@@ -345,14 +349,14 @@ impl BinaryHandler {
 
 #[cfg(test)]
 mod tests {
-    use bytes::Bytes;
     use super::binary;
     use super::binary_codec;
     use super::*;
     use crate::mock::mock_server::create_storage;
     use crate::mock::value::from_string;
     use crate::storage::error;
-    
+    use bytes::Bytes;
+
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
     fn create_handler() -> BinaryHandler {
@@ -373,14 +377,14 @@ mod tests {
         }
     }
 
-    fn get_value(handler: &BinaryHandler, key: Vec<u8>) -> Bytes {                
-        let header = create_header(binary::Command::Get, &key);                        
+    fn get_value(handler: &BinaryHandler, key: Vec<u8>) -> Bytes {
+        let header = create_header(binary::Command::Get, &key);
         let request = binary_codec::BinaryRequest::Get(binary::GetRequest { header, key });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Get(response) = resp {         
+                if let binary_codec::BinaryResponse::Get(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     return response.value;
                 } else {
@@ -392,10 +396,10 @@ mod tests {
     }
 
     fn insert_value(handler: &BinaryHandler, key: Vec<u8>, value: Bytes) {
-        let header = create_header(binary::Command::Set, &key);      
-        const FLAGS: u32 = 0xDEAD_BEEF;  
+        let header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
         let request = binary_codec::BinaryRequest::SetQuietly(binary::SetRequest {
-            header,                    
+            header,
             key,
             flags: FLAGS,
             expiration: 0,
@@ -405,10 +409,9 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(_rest) => unreachable!(),
-            None => {},
+            None => {}
         }
     }
-
 
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn check_header(
@@ -418,7 +421,7 @@ mod tests {
         extras_length: u8,
         data_type: u8,
         status: u16,
-        body_length: u32       
+        body_length: u32,
     ) {
         assert_eq!(response.magic, binary::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
@@ -427,7 +430,7 @@ mod tests {
         assert_eq!(response.data_type, data_type);
         assert_eq!(response.status, status);
         assert_eq!(response.body_length, body_length);
-        assert_eq!(response.opaque, OPAQUE_VALUE);       
+        assert_eq!(response.opaque, OPAQUE_VALUE);
     }
 
     #[test]
@@ -455,19 +458,22 @@ mod tests {
 
     #[test]
     fn get_key_request_should_return_key_and_record() {
-        let handler = create_handler();        
+        let handler = create_handler();
         let key = String::from("test_key").into_bytes();
         let value = from_string("test value");
 
         insert_value(&handler, key.clone(), value.clone());
-        
+
         let header = create_header(binary::Command::GetKey, &key);
-        let request = binary_codec::BinaryRequest::GetKey(binary::GetKeyRequest { header, key: key.clone() });
+        let request = binary_codec::BinaryRequest::GetKey(binary::GetKeyRequest {
+            header,
+            key: key.clone(),
+        });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Get(response) = resp {                    
+                if let binary_codec::BinaryResponse::Get(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -476,7 +482,7 @@ mod tests {
                         EXTRAS_LENGTH,
                         0,
                         0,
-                        key.len() as u32 + value.len() as u32 + EXTRAS_LENGTH as u32
+                        key.len() as u32 + value.len() as u32 + EXTRAS_LENGTH as u32,
                     );
                     assert_eq!(response.key[..], key[..]);
                     assert_eq!(response.value[..], value[..]);
@@ -515,7 +521,7 @@ mod tests {
                         EXTRAS_LENGTH,
                         0,
                         0,
-                        value.len() as u32 + EXTRAS_LENGTH as u32
+                        value.len() as u32 + EXTRAS_LENGTH as u32,
                     );
                 } else {
                     unreachable!();
@@ -574,7 +580,7 @@ mod tests {
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Set(response) = resp {
-                    assert_ne!(response.header.cas, 0);                    
+                    assert_ne!(response.header.cas, 0);
                     check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
@@ -603,7 +609,7 @@ mod tests {
                         0,
                         0,
                         error::StorageError::KeyExists as u16,
-                        response.error.len() as u32
+                        response.error.len() as u32,
                     );
                 } else {
                     unreachable!();
@@ -617,16 +623,13 @@ mod tests {
     fn version_request_should_return_version() {
         let handler = create_handler();
         let key = String::from("").into_bytes();
-        let header = create_header(binary::Command::Version, &key);        
-        let request = binary_codec::BinaryRequest::Version(binary::VersionRequest {
-            header,            
-        });
+        let header = create_header(binary::Command::Version, &key);
+        let request = binary_codec::BinaryRequest::Version(binary::VersionRequest { header });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Version(response) = resp {
-                    
                     check_header(
                         &response.header,
                         binary::Command::Version,
@@ -634,7 +637,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        MEMCRS_VERSION.len() as u32
+                        MEMCRS_VERSION.len() as u32,
                     );
                 } else {
                     unreachable!();
@@ -649,20 +652,19 @@ mod tests {
         const EXPECTED_VALUE: u64 = 1;
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
-        let header = create_header(binary::Command::Increment, &key);        
+        let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Increment(response) = resp {
-                    
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -670,11 +672,10 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
@@ -683,7 +684,6 @@ mod tests {
         }
     }
 
-   
     #[test]
     fn increment_request_should_increment_value() {
         const EXPECTED_VALUE: u64 = 101;
@@ -692,19 +692,19 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::Increment, &key);        
+        let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Increment(response) = resp {                    
+                if let binary_codec::BinaryResponse::Increment(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -712,40 +712,38 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
             }
             None => unreachable!(),
-        }        
+        }
     }
 
     #[test]
-    fn increment_quiet_should_increment_value() {        
+    fn increment_quiet_should_increment_value() {
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::IncrementQuiet, &key);        
+        let header = create_header(binary::Command::IncrementQuiet, &key);
         let request = binary_codec::BinaryRequest::IncrementQuiet(binary::IncrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key: key.clone()
+            key: key.clone(),
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(_resp) => unreachable!(),
-            None => {                
-            },
+            None => {}
         }
         let incremented_value = get_value(&handler, key.clone());
         let expected_value = from_string("101");
@@ -757,20 +755,19 @@ mod tests {
         const EXPECTED_VALUE: u64 = 1;
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
-        let header = create_header(binary::Command::Decrement, &key);        
+        let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Decrement(response) = resp {
-                    
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -778,11 +775,10 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
@@ -790,7 +786,7 @@ mod tests {
             None => unreachable!(),
         }
     }
-   
+
     #[test]
     fn decrement_request_should_decrement_value() {
         const EXPECTED_VALUE: u64 = 99;
@@ -799,19 +795,19 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::Decrement, &key);        
+        let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Decrement(response) = resp {                    
+                if let binary_codec::BinaryResponse::Decrement(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -819,40 +815,38 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32
+                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
             }
             None => unreachable!(),
-        }        
+        }
     }
 
     #[test]
-    fn decrement_quiet_should_increment_value() {        
+    fn decrement_quiet_should_increment_value() {
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::DecrementQuiet, &key);        
+        let header = create_header(binary::Command::DecrementQuiet, &key);
         let request = binary_codec::BinaryRequest::DecrementQuiet(binary::DecrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 1,
-            key: key.clone()
+            key: key.clone(),
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(_resp) => unreachable!(),
-            None => {                
-            },
+            None => {}
         }
         let dec_value = get_value(&handler, key.clone());
         let expected_value = from_string("99");
@@ -861,23 +855,21 @@ mod tests {
 
     #[test]
     fn increment_request_should_error_when_expiration_is_ffffffff() {
-        
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
         let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 0xffffffff,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
-                    
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -885,10 +877,9 @@ mod tests {
                         0,
                         0,
                         binary::ResponseStatus::KeyNotExists as u16,
-                        response.error.len() as u32
-                    );                    
+                        response.error.len() as u32,
+                    );
                     assert_eq!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
@@ -899,23 +890,21 @@ mod tests {
 
     #[test]
     fn decrement_request_should_error_when_expiration_is_ffffffff() {
-        
         let handler = create_handler();
         let key = String::from("counter").into_bytes();
         let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
-            header,            
+            header,
             delta: 1,
             initial: 1,
             expiration: 0xffffffff,
-            key
+            key,
         });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
-                    
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -923,10 +912,9 @@ mod tests {
                         0,
                         0,
                         binary::ResponseStatus::KeyNotExists as u16,
-                        response.error.len() as u32
-                    );                    
+                        response.error.len() as u32,
+                    );
                     assert_eq!(response.header.cas, 0);
-
                 } else {
                     unreachable!();
                 }
@@ -943,54 +931,44 @@ mod tests {
             let key = (String::from("test_key") + &key_suffix.to_string()).into_bytes();
             insert_value(&handler, key.clone(), value.clone());
         }
-        
+
         let key = String::from("").into_bytes();
         let header = create_header(binary::Command::Flush, &key);
-        let request = binary_codec::BinaryRequest::Flush(binary::FlushRequest { header, expiration: 0 });
+        let request = binary_codec::BinaryRequest::Flush(binary::FlushRequest {
+            header,
+            expiration: 0,
+        });
 
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Flush(response) = resp {                                        
-                    check_header(
-                        &response.header,
-                        binary::Command::Flush,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0
-                    );                    
+                if let binary_codec::BinaryResponse::Flush(response) = resp {
+                    check_header(&response.header, binary::Command::Flush, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
             }
             None => unreachable!(),
-        }        
+        }
     }
 
     #[test]
     fn delete_should_remove_from_store() {
         let handler = create_handler();
-        let value = from_string("test value");     
+        let value = from_string("test value");
         let key = String::from("test_key").into_bytes();
         insert_value(&handler, key.clone(), value.clone());
-        
+
         let header = create_header(binary::Command::Delete, &key);
-        let request = binary_codec::BinaryRequest::Delete(binary::DeleteRequest { header, key: key.clone() });
+        let request = binary_codec::BinaryRequest::Delete(binary::DeleteRequest {
+            header,
+            key: key.clone(),
+        });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Delete(response) = resp {                                        
-                    check_header(
-                        &response.header,
-                        binary::Command::Delete,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0
-                    );                    
+                if let binary_codec::BinaryResponse::Delete(response) = resp {
+                    check_header(&response.header, binary::Command::Delete, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1001,15 +979,18 @@ mod tests {
 
     #[test]
     fn delete_should_return_error_if_not_exists() {
-        let handler = create_handler();        
-        let key = String::from("test_key").into_bytes();        
-        
+        let handler = create_handler();
+        let key = String::from("test_key").into_bytes();
+
         let header = create_header(binary::Command::DeleteQuiet, &key);
-        let request = binary_codec::BinaryRequest::DeleteQuiet(binary::DeleteRequest { header, key: key.clone() });
+        let request = binary_codec::BinaryRequest::DeleteQuiet(binary::DeleteRequest {
+            header,
+            key: key.clone(),
+        });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Error(response) = resp {                                        
+                if let binary_codec::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::DeleteQuiet,
@@ -1017,8 +998,8 @@ mod tests {
                         0,
                         0,
                         binary::ResponseStatus::KeyNotExists as u16,
-                        response.error.len() as u32
-                    );                    
+                        response.error.len() as u32,
+                    );
                 } else {
                     unreachable!();
                 }
@@ -1029,24 +1010,16 @@ mod tests {
 
     #[test]
     fn noop_request() {
-        let handler = create_handler();        
-        let key = String::from("").into_bytes();  
-        
+        let handler = create_handler();
+        let key = String::from("").into_bytes();
+
         let header = create_header(binary::Command::Noop, &key);
         let request = binary_codec::BinaryRequest::Noop(binary::NoopRequest { header });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Noop(response) = resp {                                        
-                    check_header(
-                        &response.header,
-                        binary::Command::Noop,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0
-                    );                    
+                if let binary_codec::BinaryResponse::Noop(response) = resp {
+                    check_header(&response.header, binary::Command::Noop, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1057,24 +1030,16 @@ mod tests {
 
     #[test]
     fn quit_request() {
-        let handler = create_handler();        
-        let key = String::from("").into_bytes();  
-        
+        let handler = create_handler();
+        let key = String::from("").into_bytes();
+
         let header = create_header(binary::Command::Quit, &key);
         let request = binary_codec::BinaryRequest::Quit(binary::QuitRequest { header });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let binary_codec::BinaryResponse::Quit(response) = resp {                                        
-                    check_header(
-                        &response.header,
-                        binary::Command::Quit,
-                        0,
-                        0,
-                        0,
-                        0,
-                        0
-                    );                    
+                if let binary_codec::BinaryResponse::Quit(response) = resp {
+                    check_header(&response.header, binary::Command::Quit, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1085,15 +1050,15 @@ mod tests {
 
     #[test]
     fn quit_quiet_request() {
-        let handler = create_handler();        
-        let key = String::from("").into_bytes();  
-        
+        let handler = create_handler();
+        let key = String::from("").into_bytes();
+
         let header = create_header(binary::Command::QuitQuiet, &key);
         let request = binary_codec::BinaryRequest::QuitQuietly(binary::QuitRequest { header });
         let result = handler.handle_request(request);
         match result {
-            Some(_resp) => unreachable!(),            
-            None => {},
+            Some(_resp) => unreachable!(),
+            None => {}
         }
     }
 }

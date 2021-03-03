@@ -4,9 +4,9 @@ use crate::protocol::binary;
 use bytes::{Buf, BufMut, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
-use tokio_util::codec::{Decoder, Encoder};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
 use tokio::net::TcpStream;
+use tokio_util::codec::{Decoder, Encoder};
 
 /// Client request
 #[derive(Debug)]
@@ -130,14 +130,13 @@ enum RequestParserState {
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
-    
 }
 
 impl MemcacheBinaryCodec {
     pub fn new() -> MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
-            state: RequestParserState::None,    
+            state: RequestParserState::None,
         }
     }
 
@@ -533,7 +532,7 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec::RESPONSE_HEADER_LEN
             + (header.body_length as usize)
             + (header.extras_length as usize)
-    }    
+    }
 
     fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
         self.write_header_impl(self.get_header(msg), dst);
@@ -585,7 +584,7 @@ impl MemcacheBinaryCodec {
                 dst.put_u64(response.value);
             }
         }
-    }    
+    }
 }
 
 impl Encoder<BinaryResponse> for MemcacheBinaryCodec {

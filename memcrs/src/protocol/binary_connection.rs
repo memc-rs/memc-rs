@@ -1,30 +1,28 @@
-use futures_util::__private::async_await;
-use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
-use tokio::net::TcpStream;
-use tokio_util::codec::{Decoder, Encoder};
+use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec};
+use bytes::{BufMut, BytesMut};
+use std::io;
 use std::io::{Error, ErrorKind};
-use crate::protocol::binary_codec::{MemcacheBinaryCodec, BinaryRequest, BinaryResponse};
-use std::{io, u8};
-use bytes::{Buf, BufMut, BytesMut};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
+use tokio_util::codec::Decoder;
 
 pub struct MemcacheBinaryConnection {
-    pub(crate) stream: TcpStream,
+    stream: TcpStream,
     codec: MemcacheBinaryCodec,
 }
 
-
-impl  MemcacheBinaryConnection  {
-    const SOCKET_BUFFER: usize  = 4096;
+impl MemcacheBinaryConnection {
+    const SOCKET_BUFFER: usize = 4096;
     pub fn new(socket: TcpStream) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
-            codec: MemcacheBinaryCodec::new()
+            codec: MemcacheBinaryCodec::new(),
         }
     }
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
         let mut buffer = BytesMut::with_capacity(24);
-        loop {            
+        loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
             if let Some(frame) = self.codec.decode(&mut buffer)? {
@@ -55,15 +53,19 @@ impl  MemcacheBinaryConnection  {
     }
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
-        let mut dst = BytesMut::with_capacity(self.codec.get_length(&msg));        
+        let mut dst = BytesMut::with_capacity(self.codec.get_length(&msg));
         self.codec.write_header(msg, &mut dst);
         self.write_data_to_stream(msg, &mut dst).await?;
         Ok(())
     }
 
-    async fn write_data_to_stream(&mut self, msg: &BinaryResponse, dst: &mut BytesMut) -> io::Result<()> {
+    async fn write_data_to_stream(
+        &mut self,
+        msg: &BinaryResponse,
+        dst: &mut BytesMut,
+    ) -> io::Result<()> {
         let response_len = self.codec.get_length(msg);
-        let buffered_write = response_len <  MemcacheBinaryConnection::SOCKET_BUFFER;
+        let buffered_write = response_len < MemcacheBinaryConnection::SOCKET_BUFFER;
         match msg {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
@@ -78,7 +80,7 @@ impl  MemcacheBinaryConnection  {
                         dst.put_slice(&response.key[..]);
                     }
                     dst.put(response.value.clone());
-                }              
+                }
             }
             BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
@@ -86,7 +88,7 @@ impl  MemcacheBinaryConnection  {
             | BinaryResponse::Append(_response)
             | BinaryResponse::Prepend(_response) => {}
             BinaryResponse::Version(response) => {
-                dst.put_slice(response.version.as_bytes());                
+                dst.put_slice(response.version.as_bytes());
             }
             BinaryResponse::Noop(_response) => {}
             BinaryResponse::Delete(_response) => {}
@@ -101,22 +103,21 @@ impl  MemcacheBinaryConnection  {
             BinaryResponse::Get(response)
             | BinaryResponse::GetKey(response)
             | BinaryResponse::GetKeyQuietly(response)
-            | BinaryResponse::GetQuietly(response) => {                
+            | BinaryResponse::GetQuietly(response) => {
                 if buffered_write == false {
                     if response.key.len() > 0 {
                         self.stream.write_all(&response.key).await?;
                     }
-                    self.stream.write_all(&response.value).await?;                
-                }                
-            }            
-            _ => {                
+                    self.stream.write_all(&response.value).await?;
+                }
             }
+            _ => {}
         }
-        Ok(())        
+        Ok(())
     }
 
     pub async fn shutdown(&mut self) -> io::Result<()> {
-        self.stream.shutdown().await?;  
-        Ok(())      
+        self.stream.shutdown().await?;
+        Ok(())
     }
 }

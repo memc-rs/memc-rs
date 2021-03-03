@@ -3,8 +3,8 @@ use super::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::error;
     use crate::mock::value::from_string;
+    use crate::storage::error;
 
     fn create_response_header(
         cmd: binary::Command,
