@@ -1,4 +1,4 @@
-use std::{io, u8};
+use std::{fmt::format, io, u8};
 
 use crate::protocol::binary;
 use bytes::{Buf, BufMut, BytesMut, Bytes};
@@ -275,7 +275,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_get_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
+        if !self.request_valid(src, true) {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect get request"));
         }
 
@@ -308,7 +308,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_delete_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
+        if !self.request_valid(src, true) {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect get request"));
         }
 
@@ -332,8 +332,8 @@ impl MemcacheBinaryCodec {
         &self,
         src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
-            return Err(Error::new(ErrorKind::InvalidData, "Incorrect Noop request"));
+        if !self.request_valid(src, false) {
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect header only request"));
         }
         if self.header.opcode == binary::Command::Noop as u8 {
             Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
@@ -355,7 +355,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_flush_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
+        if !self.request_valid(src, false) {
             return Err(Error::new(
                 ErrorKind::InvalidData,
                 "Incorrect Flush request",
@@ -382,7 +382,7 @@ impl MemcacheBinaryCodec {
         &self,
         src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
+        if !self.request_valid(src, true) {
             return Err(Error::new(
                 ErrorKind::InvalidData,
                 "Incorrect append/prepend request",
@@ -411,8 +411,18 @@ impl MemcacheBinaryCodec {
         &self,
         src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
-            return Err(Error::new(ErrorKind::InvalidData, "Incorrect set request"));
+        if !self.request_valid(src, true) {
+            return Err(Error::new(ErrorKind::InvalidData, "Incorrect inc/dec request"));
+        }
+
+        let required_len = 2*std::mem::size_of::<u64>()+std::mem::size_of::<u32>()+self.header.key_length as usize;
+        if src.len() < required_len {
+            error!(
+                "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",
+                src.len(),
+                required_len
+            );
+            return Err(Error::new(ErrorKind::InvalidData, format!("[Invalid data]: Buffer length({:?}) smaller than requied length({:?})", self.header.body_length, required_len)));
         }
 
         let request = binary::IncrementRequest {
@@ -436,11 +446,22 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
-        if !self.request_valid(src) {
+        if !self.request_valid(src, true) {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect set request"));
         }
 
         let value_len = self.get_value_len();
+        // flags u32 +expiration u32
+        let required_len = 2*std::mem::size_of::<u32>() + self.header.key_length as usize + value_len;
+        
+        if src.len() < required_len {
+            error!(
+                "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",                
+                src.len(),
+                required_len
+            );
+            return Err(Error::new(ErrorKind::InvalidData, format!("[Invalid data]: Buffer length({:?}) smaller than requied length({:?})", self.header.body_length, required_len)));
+        }
 
         let set_request = binary::SetRequest {
             header: self.header,
@@ -472,12 +493,16 @@ impl MemcacheBinaryCodec {
         result
     }
 
-    fn request_valid(&self, _src: &mut BytesMut) -> bool {
+    fn request_valid(&self, _src: &mut BytesMut, key_required: bool) -> bool {
         if self.header.extras_length > 20 {
             return false;
         }
 
         if self.header.key_length > 250 {
+            return false;
+        }
+
+        if key_required && self.header.key_length==0 {
             return false;
         }
 
