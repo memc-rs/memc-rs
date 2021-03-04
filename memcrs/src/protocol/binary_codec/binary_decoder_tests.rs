@@ -1010,25 +1010,30 @@ mod tests {
     }
     #[test]
     fn decode_fuzz_crash1_request() {
-        let crash_request_packet: [u8; 29] = [128, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 255, 255, 0, 255, 126, 39, 0, 0, 2, 239, 191, 191, 210, 27];
+        let crash_request_packet: [u8; 29] = [
+            128, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 255, 255, 0, 255, 126, 39, 0, 0, 2, 239,
+            191, 191, 210, 27,
+        ];
         let decode_result = decode_packet(&crash_request_packet);
         match decode_result {
             Ok(_) => unreachable!(),
             Err(err) => {
-                assert_eq!(err.kind(), io::ErrorKind::InvalidData);                
+                assert_eq!(err.kind(), io::ErrorKind::InvalidData);
             }
         }
     }
     #[test]
     fn decode_fuzz_crash2_request() {
-        let crash_request_packet: [u8; 25] = [128, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 96, 255, 255, 254, 63, 255, 4, 93, 64, 27];
+        let crash_request_packet: [u8; 25] = [
+            128, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 255, 96, 255, 255, 254, 63, 255, 4, 93, 64,
+            27,
+        ];
         let decode_result = decode_packet(&crash_request_packet);
         match decode_result {
             Ok(_) => unreachable!(),
             Err(err) => {
-                assert_eq!(err.kind(), io::ErrorKind::InvalidData);                
+                assert_eq!(err.kind(), io::ErrorKind::InvalidData);
             }
         }
     }
-    
 }

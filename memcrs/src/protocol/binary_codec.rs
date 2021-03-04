@@ -1,7 +1,7 @@
 use std::{fmt::format, io, u8};
 
 use crate::protocol::binary;
-use bytes::{Buf, BufMut, BytesMut, Bytes};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
 use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
@@ -333,7 +333,10 @@ impl MemcacheBinaryCodec {
         src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src, false) {
-            return Err(Error::new(ErrorKind::InvalidData, "Incorrect header only request"));
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Incorrect header only request",
+            ));
         }
         if self.header.opcode == binary::Command::Noop as u8 {
             Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
@@ -412,17 +415,28 @@ impl MemcacheBinaryCodec {
         src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
         if !self.request_valid(src, true) {
-            return Err(Error::new(ErrorKind::InvalidData, "Incorrect inc/dec request"));
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Incorrect inc/dec request",
+            ));
         }
 
-        let required_len = 2*std::mem::size_of::<u64>()+std::mem::size_of::<u32>()+self.header.key_length as usize;
+        let required_len = 2 * std::mem::size_of::<u64>()
+            + std::mem::size_of::<u32>()
+            + self.header.key_length as usize;
         if src.len() < required_len {
             error!(
                 "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",
                 src.len(),
                 required_len
             );
-            return Err(Error::new(ErrorKind::InvalidData, format!("[Invalid data]: Buffer length({:?}) smaller than requied length({:?})", self.header.body_length, required_len)));
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",
+                    self.header.body_length, required_len
+                ),
+            ));
         }
 
         let request = binary::IncrementRequest {
@@ -452,15 +466,22 @@ impl MemcacheBinaryCodec {
 
         let value_len = self.get_value_len();
         // flags u32 +expiration u32
-        let required_len = 2*std::mem::size_of::<u32>() + self.header.key_length as usize + value_len;
-        
+        let required_len =
+            2 * std::mem::size_of::<u32>() + self.header.key_length as usize + value_len;
+
         if src.len() < required_len {
             error!(
-                "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",                
+                "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",
                 src.len(),
                 required_len
             );
-            return Err(Error::new(ErrorKind::InvalidData, format!("[Invalid data]: Buffer length({:?}) smaller than requied length({:?})", self.header.body_length, required_len)));
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "[Invalid data]: Buffer length({:?}) smaller than requied length({:?})",
+                    self.header.body_length, required_len
+                ),
+            ));
         }
 
         let set_request = binary::SetRequest {
@@ -502,7 +523,7 @@ impl MemcacheBinaryCodec {
             return false;
         }
 
-        if key_required && self.header.key_length==0 {
+        if key_required && self.header.key_length == 0 {
             return false;
         }
 
@@ -545,11 +566,10 @@ impl Decoder for MemcacheBinaryCodec {
 pub struct ResponseMessage {
     // If small enough header+key?+value?
     pub(crate) data: Bytes,
-    // if value is large to avoid copying into data 
+    // if value is large to avoid copying into data
     // it is returned as Option<Bytes>
     pub(crate) value: Option<Bytes>,
 }
-
 
 impl MemcacheBinaryCodec {
     const RESPONSE_HEADER_LEN: usize = 24;
@@ -569,20 +589,20 @@ impl MemcacheBinaryCodec {
             + (header.body_length as usize)
             + (header.extras_length as usize)
     }
-    
-    /// 
+
+    ///
     /// Encodes a msg into a dst
     // if msg value is large i.e. bigger than SOCKET_BUFFER to avoid double buffering
     // it is returned as  Option<Bytes> so there are no
-    // necessary copies made into dst and can be 
+    // necessary copies made into dst and can be
     // written into socket directly.
-    // 
+    //
     pub fn encode_message(&self, msg: &BinaryResponse) -> ResponseMessage {
         let mut dst = BytesMut::with_capacity(MemcacheBinaryCodec::DEFAULT_BUFFER_CAPACITY);
         let len = self.get_length(msg);
         if len < MemcacheBinaryCodec::SOCKET_BUFFER {
             dst.reserve(len);
-        }        
+        }
         self.write_header_impl(self.get_header(msg), &mut dst);
         self.encode_data(msg, dst)
     }
@@ -598,17 +618,17 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::GetKeyQuietly(response)
             | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
-                if response.key.len() >0 {
+                if response.key.len() > 0 {
                     dst.put_slice(&response.key[..]);
-                }            
-                if buffered {                    
+                }
+                if buffered {
                     dst.put(response.value.clone());
                 } else {
                     return ResponseMessage {
-                        data: dst.freeze(),        
+                        data: dst.freeze(),
                         value: Some(response.value.clone()),
                     };
-                }                
+                }
             }
             BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
@@ -628,7 +648,7 @@ impl MemcacheBinaryCodec {
         }
         ResponseMessage {
             data: dst.freeze(),
-            value: None
+            value: None,
         }
     }
 

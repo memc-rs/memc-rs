@@ -1,4 +1,6 @@
-use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage};
+use crate::protocol::binary_codec::{
+    BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
+};
 use bytes::{BufMut, BytesMut};
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -11,7 +13,7 @@ pub struct MemcacheBinaryConnection {
     codec: MemcacheBinaryCodec,
 }
 
-impl MemcacheBinaryConnection {    
+impl MemcacheBinaryConnection {
     pub fn new(socket: TcpStream) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
@@ -52,20 +54,16 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
-        
         let message = self.codec.encode_message(msg);
-        self.write_data_to_stream( message).await?;
+        self.write_data_to_stream(message).await?;
         Ok(())
     }
 
-    async fn write_data_to_stream(
-        &mut self,        
-        msg: ResponseMessage
-    ) -> io::Result<()> {
+    async fn write_data_to_stream(&mut self, msg: ResponseMessage) -> io::Result<()> {
         self.stream.write_all(&msg.data[..]).await?;
         match msg.value {
-            Some(value) => {                
-                self.stream.write_all(&value).await?;            
+            Some(value) => {
+                self.stream.write_all(&value).await?;
             }
             None => {}
         }
