@@ -1,10 +1,107 @@
-# memc.rs pure memcache implementation in Rust
+# memcrsd memcached server implementation in Rust
 
-The main purpose of this project is to provide pure memcache server implementation in Rust.
+memcrsd is a key value store implementation in Rust. It is compatible with memcached server.
+
+## Supported features and compatibility
+
+To check compatibility with memcached server implementation memcrsd project
+is using [memcapable](http://docs.libmemcached.org/bin/memcapable.html) tool from [libmemcached library](https://libmemcached.org/libMemcached.html)
+
+Here is a capability status for memcrsd:
+
+```sh
+./memcapable -p 11211  -b -h localhost -v
+Hostname was provided.localhost
+binary noop                             [pass]
+binary quit                             [pass]
+binary quitq                            [pass]
+binary set                              [pass]
+binary setq                             [pass]
+binary flush                            [pass]
+binary flushq                           [pass]
+binary add                              [pass]
+binary addq                             [pass]
+binary replace                          [pass]
+binary replaceq                         [pass]
+binary delete                           [pass]
+binary deleteq                          [pass]
+binary get                              [pass]
+binary getq                             [pass]
+binary getk                             [pass]
+binary getkq                            [pass]
+binary incr                             [pass]
+binary incrq                            [pass]
+binary decr                             [pass]
+binary decrq                            [pass]
+binary version                          [pass]
+binary append                           [pass]
+binary appendq                          [pass]
+binary prepend                          [pass]
+binary prependq                         [pass]
+binary stat                             Errno: 110 Connection timed out
+
+clients/memcapable.cc:343: get_socket_errno() == EINTR || get_socket_errno() == EAGAIN
+clients/memcapable.cc:363: retry_read(rsp, sizeof(protocol_binary_response_no_extras))
+[FAIL]
+1 of 27 tests failed
+```
+
+## Bug reports
+
+Feel free to use the issue tracker on github.
+
+**If you are reporting a security bug** please contact a maintainer privately.
+We follow responsible disclosure: we handle reports privately, prepare a
+patch, allow notifications to vendor lists. Then we push a fix release and your
+bug can be posted publicly with credit in our release notes and commit
+history.
+
+## Website
+
+* [https://memc.rs/](https://memc.rs/)
+
+## Testing
+
+memcrsd project is tested using different types of tests:
+
+* unit testing,
+* fuzzy testing,
+* end-2-end tests
+
+### Fuzzy testing
+
+At the moment decoding network packets is fuzzy tested.
+
+### Generating test coverage reporting
+
+To generate test coverage there is a convenient shell script that compiles and executed unit tests:
+
+```sh
+cd memcrs
+./coverage.sh
+firefox ../target/debug/coverage/index.html
+```
+
+The purpose in the future is to have coverage ~90%.
+
+### Integration testing
+
+For end-to-end integration testing at the moment memcrsd project is using memcapable tool from libmemcache 
+library. In the future memclt binary will be used to perform end-to-end tests.
 
 ## Measuring performance
 
-To be able to measure performance memtier benchmarking tool is used from RedisLabs.
+Measuring performance can be tricky, thats why to measure performance memcrsd
+project is using industry standard benchmarking tool for measuring performance
+of memcached server which is memtier_benchmark.
+This tool can be used to generate various traffic patterns. It provides a robust
+set of customization and reporting capabilities all wrapped into a convenient and
+easy-to-use command-line interface.
+More information about memtier benchmark tool can be found on [RedisLabs blog.](https://redislabs.com/blog/memtier_benchmark-a-high-throughput-benchmarking-tool-for-redis-memcached/)
+
+### Memtier benchmark installation
+
+Memtier benchmark is available on github, it needs to be cloned and compiled:
 
 ```sh
 git clone https://github.com/RedisLabs/memtier_benchmark.git
@@ -14,12 +111,12 @@ make
 make install
 ```
 
-### Memtier benchmark
-
-
 ### Generating flamegraph
 
-To be able to probe Kernel functions it has to be enabled:
+To be able to sample and resolve Kernel functions:
+
+* we need to expose kernel addresses([kptr_restrict](https://sysctl-explorer.net/kernel/kptr_restrict/))
+* grant unprivileged users access to performance events in kernel([perf_event_paranoid](https://sysctl-explorer.net/kernel/perf_event_paranoid/))
 
 ```sh
 sudo sh -c " echo 0 > /proc/sys/kernel/kptr_restrict"
@@ -27,6 +124,7 @@ sudo sh -c " echo -1 >> /proc/sys/kernel/perf_event_paranoid"
 ```
 
 Generating flamegraphs:
+
 ```sh
 sudo apt install -y linux-tools-common linux-tools-generic
 cargo install flamegraph
@@ -35,11 +133,34 @@ cargo flamegraph
 cargo flamegraph --bin memcrsd
 ```
 
-Perf
+### Attaching perf
+
+By default release profile is built with debug symbols, see Cargo.toml:
+
+```toml
+[profile.release]
+opt-level = 3
+debug=true
+```
+
+On Ubuntu install required packages:
+
+```sh
+sudo apt install -y linux-tools-common linux-tools-generic
+```
+
+We can start a server:
+
 ```sh
 ./target/release/memcrsd -v & perf record -F 99 -p `pgrep memcrsd`
+```
 
-# after 
+* First we run the memcrsd server and we send it to the background using the ampersand (&) symbol.
+* Next to it, so it executes immediately, we run perf that receives the process identifier (PID) courtesy of pgrep memcrsd.
+* The pgrep command returns the PID of a process by name.
 
+After benchmarks are executed reports can be displayed using perf report:
+
+```sh
 perf report
 ```
