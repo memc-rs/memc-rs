@@ -22,8 +22,8 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "fuzz_binary_encoder"
-path = "fuzz_targets/fuzz_target_1.rs"
+name = "fuzz_binary_decoder"
+path = "fuzz_targets/fuzz_decode_binary.rs"
 test = false
 doc = false
 
