@@ -1,6 +1,6 @@
 # memcrsd memcached server implementation in Rust
 
-memcrsd is a key value store implementation in Rust. It is compatible with memcached server.
+memcrsd is a key value store implementation in Rust. It is compatible with binary protocol of memcached server.
 
 ## Supported features and compatibility
 
@@ -82,7 +82,7 @@ cd memcrs
 firefox ../target/debug/coverage/index.html
 ```
 
-The purpose in the future is to have coverage ~90%.
+The plan in the future is to have coverage ~90%.
 
 ### Integration testing
 
