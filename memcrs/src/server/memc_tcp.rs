@@ -25,14 +25,16 @@ pub struct MemcacheServerConfig {
     timeout_secs: u32,
     connection_limit: u32,
     memory_limit: u32,
+    item_memory_limit: u32,
 }
 
 impl MemcacheServerConfig {
-    pub fn new(timeout_secs: u32, connection_limit: u32, memory_limit: u32) -> Self {
+    pub fn new(timeout_secs: u32, connection_limit: u32, memory_limit: u32, item_memory_limit: u32) -> Self {
         MemcacheServerConfig {
             timeout_secs,
             connection_limit,
             memory_limit,
+            item_memory_limit
         }
     }
 }
@@ -213,7 +215,7 @@ impl MemcacheTcpServer {
                             }
                         }
                         Err(err) => {
-                            error!("error when reading frame; error = {:?}", err);
+                            error!("Error when reading frame; error = {:?}", err);
                             return;
                         }
                     }
