@@ -1,9 +1,9 @@
-# Contributing to memcrs
+# Contributing to Memcrs
 
 :balloon: Thanks for your help improving the project! We are so happy to have
 you!
 
-There are opportunities to contribute to memcrs at any level. It doesn't matter if
+There are opportunities to contribute to Memcrs at any level. It doesn't matter if
 you are just getting started with Rust or are the most weathered expert, we can
 use your help.
 
@@ -14,7 +14,7 @@ It should be considered a map to help you navigate the process.
 
 ## Conduct
 
-The memcrs project adheres to the [Rust Code of Conduct][coc]. This describes
+The Memcrs project adheres to the [Rust Code of Conduct][coc]. This describes
 the _minimum_ behavior expected from all contributors.
 
 [coc]: https://github.com/rust-lang/rust/blob/master/CODE_OF_CONDUCT.md
@@ -24,7 +24,7 @@ the _minimum_ behavior expected from all contributors.
 For any issue, there are fundamentally three ways an individual can contribute:
 
 1. By opening the issue for discussion: For instance, if you believe that you
-   have discovered a bug in memcrs, creating a new issue in [the memcrs
+   have discovered a bug in Memcrs, creating a new issue in [the Memcrs
    issue tracker][issue] is the way to report it.
 
 2. By helping to triage the issue: This can be done by providing
@@ -35,9 +35,9 @@ For any issue, there are fundamentally three ways an individual can contribute:
 3. By helping to resolve the issue: Typically this is done either in the form of
    demonstrating that the issue reported is not a problem after all, or more
    often, by opening a Pull Request that changes some bit of something in
-   memcrs in a concrete and reviewable manner.
+   Memcrs in a concrete and reviewable manner.
 
-[issue]: https://github.com/memcrs/issues
+[issue]: https://github.com/Memcrs/issues
 
 **Anybody can participate in any stage of contribution**. We urge you to
 participate in the discussion around bugs and participate in reviewing PRs.
@@ -50,11 +50,11 @@ having problems, you can [open a discussion] asking for help.
 In exchange for receiving help, we ask that you contribute back a documentation
 PR that helps others avoid the problems that you encountered.
 
-[open a discussion]: https://github.com/memcrs/discussions/new
+[open a discussion]: https://github.com/Memcrs/discussions/new
 
 ### Submitting a Bug Report
 
-When opening a new issue in the memcrs issue tracker, you will be presented
+When opening a new issue in the Memcrs issue tracker, you will be presented
 with a basic template that should be filled in. If you believe that you have
 uncovered a bug, please fill out this form, following the template to the best
 of your ability. Do not worry if you cannot answer every detail, just fill in
@@ -95,12 +95,12 @@ In the majority of cases, issues are resolved by opening a Pull Request. The
 process for opening and reviewing a Pull Request is similar to that of opening
 and triaging issues, but carries with it a necessary review and approval
 workflow that ensures that the proposed changes meet the minimal quality and
-functional guidelines of the memcrs project.
+functional guidelines of the Memcrs project.
 
 ## Pull Requests
 
 Pull Requests are the way concrete changes are made to the code, documentation,
-and dependencies in the memcrs repository.
+and dependencies in the Memcrs repository.
 
 Even tiny pull requests (e.g., one character pull request fixing a typo in API
 documentation) are greatly appreciated. Before making a large change, it is
@@ -111,9 +111,9 @@ merged.
 ### Tests
 
 If the change being proposed alters code (as opposed to only documentation for
-example), it is either adding new functionality to memcrs or it is fixing
+example), it is either adding new functionality to Memcrs or it is fixing
 existing, broken functionality. In both of these cases, the pull request should
-include one or more tests to ensure that memcrs does not regress in the future.
+include one or more tests to ensure that Memcrs does not regress in the future.
 There are three ways to write tests: integration tests, documentation tests and
 unit tests.
 
@@ -278,9 +278,9 @@ however, will stay intact on the Pull Request page.
 
 ## Reviewing Pull Requests
 
-**Any memcrs community member is welcome to review any pull request**.
+**Any Memcrs community member is welcome to review any pull request**.
 
-All memcrs contributors who choose to review and provide feedback on Pull
+All Memcrs contributors who choose to review and provide feedback on Pull
 Requests have a responsibility to both the project and the individual making the
 contribution. Reviews and feedback must be helpful, insightful, and geared
 towards improving the contribution as opposed to simply blocking it. If there
@@ -298,7 +298,7 @@ does not land, the submitters should come away from the experience feeling like
 their effort was not wasted or unappreciated**. Every Pull Request from a new
 contributor is an opportunity to grow the community.
 
-### Review a bit at a time.
+### Review a bit at a time
 
 Do not overwhelm new contributors.
 
@@ -307,8 +307,8 @@ perfect grammar, or exact style matches. Do not succumb to that temptation.
 
 Focus first on the most significant aspects of the change:
 
-1. Does this change make sense for memcrs?
-2. Does this change make memcrs better, even if only incrementally?
+1. Does this change make sense for Memcrs?
+2. Does this change make Memcrs better, even if only incrementally?
 3. Are there clear bugs or larger scale issues that need attending to?
 4. Is the commit message readable and correct? If it contains a breaking change
    is it clear enough?
@@ -324,7 +324,7 @@ Specific performance optimization techniques, coding styles and conventions
 change over time. The first impression you give to a new contributor never does.
 
 Nits (requests for small changes that are not essential) are fine, but try to
-avoid stalling the Pull Request. Most nits can typically be fixed by the memcrs
+avoid stalling the Pull Request. Most nits can typically be fixed by the Memcrs
 Collaborator landing the Pull Request but they can also be an opportunity for
 the contributor to learn a bit more about the project.
 
@@ -339,8 +339,8 @@ with the appropriate reason to keep the conversation flow concise and relevant.
 
 Be aware that *how* you communicate requests and reviews in your feedback can
 have a significant impact on the success of the Pull Request. Yes, we may land
-a particular change that makes memcrs better, but the individual might just not
-want to have anything to do with memcrs ever again. The goal is not just having
+a particular change that makes Memcrs better, but the individual might just not
+want to have anything to do with Memcrs ever again. The goal is not just having
 good code.
 
 ### Abandoned or Stalled Pull Requests
@@ -360,7 +360,7 @@ _Adapted from the [Node.js contributing guide][node]_.
 
 ## Keeping track of issues and PRs
 
-The memcrs GitHub repository has a lot of issues and PRs to keep track of. This
+The Memcrs GitHub repository has a lot of issues and PRs to keep track of. This
 section explains the meaning of various labels, as well as our [GitHub
 project][project]. The section is primarily targeted at maintainers.  Most
 contributors aren't able to set these labels.
@@ -419,13 +419,13 @@ The goal of these guarantees is to provide stability to the ecosystem.
 
 ## Mininum Supported Rust Version (MSRV)
 
- * All memcrs ≥1.0.0 releases will support at least a 6-month old Rust
+ * All Memcrs ≥1.0.0 releases will support at least a 6-month old Rust
    compiler release.
  * The MSRV will only be increased on 1.x releases.
 
 ## Versioning Policy
 
-With memcrs ≥1.0.0:
+With Memcrs ≥1.0.0:
 
  * Patch (1.\_.x) releases _should only_ contain bug fixes or documentation
    changes. Besides this, these releases should not substantially change
