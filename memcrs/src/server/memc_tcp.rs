@@ -45,14 +45,16 @@ pub struct MemcacheTcpServer {
     config: MemcacheServerConfig,
 }
 
+pub struct ClientConfig {
+    item_memory_limit: u32,
+    rx_timeout_secs: u32,
+    wx_timeout_secs: u32,
+}
 struct Client {
     store: Arc<storage::MemcStore>,
     stream: MemcacheBinaryConnection,
     addr: SocketAddr,
-    _token: u32,
-    rx_timeout_secs: u32,
-    wx_timeout_secs: u32,
-
+    config: ClientConfig,
     /// Max connection semaphore.
     ///
     /// When the handler is dropped, a permit is returned to this semaphore. If
@@ -66,18 +68,14 @@ impl Client {
         store: Arc<storage::MemcStore>,
         socket: TcpStream,
         addr: SocketAddr,
-        token: u32,
-        rx_timeout_secs: u32,
-        wx_timeout_secs: u32,
+        config: ClientConfig,
         limit_connections: Arc<Semaphore>,
     ) -> Self {
         Client {
             store,
             stream: MemcacheBinaryConnection::new(socket),
             addr,
-            _token: token,
-            rx_timeout_secs,
-            wx_timeout_secs,
+            config,
             limit_connections,
         }
     }
@@ -127,9 +125,7 @@ impl MemcacheTcpServer {
                             self.storage.clone(),
                             socket,
                             peer_addr,
-                            0,
-                            self.config.timeout_secs,
-                            self.config.timeout_secs,
+                            self.get_client_config(),
                             self.limit_connections.clone()
                         );
 
@@ -153,6 +149,14 @@ impl MemcacheTcpServer {
         }
     }
 
+    fn get_client_config(&self) -> ClientConfig {
+        ClientConfig {
+            item_memory_limit: self.config.item_memory_limit,
+            rx_timeout_secs: self.config.timeout_secs,
+            wx_timeout_secs: self.config.timeout_secs
+        }
+    }
+    
     async fn handle_client(mut client: Client) {
         debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store.clone());

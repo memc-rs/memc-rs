@@ -70,7 +70,7 @@ fn main() {
             .short("I")
             .long("max-item-size")
             .default_value("1m")
-            .help("adjusts max item size (default: 1m, min: 1k, max: 1024m)")
+            .help("adjusts max item size (min: 1k, max: 1024m)")
             .takes_value(true),
         )
         .get_matches();
