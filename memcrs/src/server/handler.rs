@@ -1,5 +1,6 @@
 use crate::protocol::{binary, binary_codec};
-use crate::storage::error;
+use crate::protocol::binary_codec::storage_error_to_response;
+use crate::storage::error::{StorageError};
 use crate::storage::memcstore;
 use crate::version::MEMCRS_VERSION;
 use std::sync::Arc;
@@ -10,22 +11,10 @@ fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> 
     memcstore::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
 
-fn storage_error_to_response(
-    err: error::StorageError,
-    response_header: &mut binary::ResponseHeader,
-) -> binary_codec::BinaryResponse {
-    let message = err.to_static_string();
-    response_header.status = err as u16;
-    response_header.body_length = message.len() as u32;
-    binary_codec::BinaryResponse::Error(binary::ErrorResponse {
-        header: *response_header,
-        error: message,
-    })
-}
 
 fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
-        if response.header.status == error::StorageError::NotFound as u16 {
+        if response.header.status == StorageError::NotFound as u16 {
             return None;
         }
     }

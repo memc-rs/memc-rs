@@ -17,7 +17,7 @@ mod tests {
     }
 
     fn encode_packet(src: BinaryResponse) -> Result<BytesMut, io::Error> {
-        let mut encoder = MemcacheBinaryCodec::new();
+        let mut encoder = MemcacheBinaryCodec::new(1024);
         let mut buf = BytesMut::with_capacity(128);
         match encoder.encode(src, &mut buf) {
             Ok(_) => Ok(buf),

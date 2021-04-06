@@ -73,7 +73,7 @@ impl Client {
     ) -> Self {
         Client {
             store,
-            stream: MemcacheBinaryConnection::new(socket),
+            stream: MemcacheBinaryConnection::new(socket, config.item_memory_limit),
             addr,
             config,
             limit_connections,
@@ -156,7 +156,7 @@ impl MemcacheTcpServer {
             wx_timeout_secs: self.config.timeout_secs
         }
     }
-    
+
     async fn handle_client(mut client: Client) {
         debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store.clone());
@@ -166,7 +166,7 @@ impl MemcacheTcpServer {
         // based on the values in the storage.
         loop {
             match timeout(
-                Duration::from_secs(client.rx_timeout_secs as u64),
+                Duration::from_secs(client.config.rx_timeout_secs as u64),
                 client.stream.read_frame(),
             )
             .await
@@ -227,7 +227,7 @@ impl MemcacheTcpServer {
                 Err(err) => {
                     debug!(
                         "Timeout {}s elapsed, disconecting client: {}, error: {}",
-                        client.rx_timeout_secs, client.addr, err
+                        client.config.rx_timeout_secs, client.addr, err
                     );
                     return;
                 }

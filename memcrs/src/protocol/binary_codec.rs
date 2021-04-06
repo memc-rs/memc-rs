@@ -1,12 +1,11 @@
-use std::{fmt::format, io, u8};
+use std::{io, u8};
 
 use crate::protocol::binary;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
-use tokio::io::{AsyncReadExt, AsyncWriteExt, BufWriter};
-use tokio::net::TcpStream;
 use tokio_util::codec::{Decoder, Encoder};
+use crate::storage::error::{StorageError};
 
 /// Client request
 #[derive(Debug)]
@@ -121,6 +120,19 @@ impl BinaryResponse {
     }
 }
 
+pub fn storage_error_to_response(
+    err: StorageError,
+    response_header: &mut binary::ResponseHeader,
+) -> BinaryResponse {
+    let message = err.to_static_string();
+    response_header.status = err as u16;
+    response_header.body_length = message.len() as u32;
+    BinaryResponse::Error(binary::ErrorResponse {
+        header: *response_header,
+        error: message,
+    })
+}
+
 #[derive(PartialEq, Debug)]
 enum RequestParserState {
     None,
@@ -130,13 +142,15 @@ enum RequestParserState {
 pub struct MemcacheBinaryCodec {
     header: binary::RequestHeader,
     state: RequestParserState,
+    item_size_limit: u32,
 }
 
 impl MemcacheBinaryCodec {
-    pub fn new() -> MemcacheBinaryCodec {
+    pub fn new(item_size_limit: u32) -> MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
             state: RequestParserState::None,
+            item_size_limit
         }
     }
 

@@ -6,7 +6,7 @@ mod tests {
     use super::*;
 
     fn decode_packet(src: &[u8]) -> Result<Option<BinaryRequest>, io::Error> {
-        let mut decoder = MemcacheBinaryCodec::new();
+        let mut decoder = MemcacheBinaryCodec::new(1024);
         let mut buf = BytesMut::with_capacity(src.len());
         buf.put_slice(&src);
         decoder.decode(&mut buf)

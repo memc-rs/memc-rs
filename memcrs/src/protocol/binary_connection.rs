@@ -14,10 +14,10 @@ pub struct MemcacheBinaryConnection {
 }
 
 impl MemcacheBinaryConnection {
-    pub fn new(socket: TcpStream) -> Self {
+    pub fn new(socket: TcpStream, item_size_limit: u32) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
-            codec: MemcacheBinaryCodec::new(),
+            codec: MemcacheBinaryCodec::new(item_size_limit),
         }
     }
 
