@@ -163,7 +163,7 @@ pub type GetQuietlyResponse = GetResponse;
 pub type GetKeyResponse = GetResponse;
 pub type GetKeyQuietlyResponse = GetResponse;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SetRequest {
     pub(crate) header: RequestHeader,
     pub(crate) flags: u32,

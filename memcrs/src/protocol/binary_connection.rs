@@ -23,12 +23,24 @@ impl MemcacheBinaryConnection {
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
         let mut buffer = BytesMut::with_capacity(24);
+        let extras_length: u32 = 8;
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
-            if let Some(frame) = self.codec.decode(&mut buffer)? {
-                buffer.clear();
-                return Ok(Some(frame));
+            if let Some(frame) = self.codec.decode(&mut buffer)? {                
+                match frame {
+                    BinaryRequest::ItemTooLarge(request) => {
+                        debug!("Body len {:?} buffer len {:?}", request.header.body_length, buffer.len());
+                        let skip = (request.header.body_length)-(buffer.len() as u32+extras_length);
+                        self.skip_bytes(skip).await?;
+                        return Ok(Some(BinaryRequest::ItemTooLarge(request)));
+                    }
+                    _ => {
+                        buffer.clear();
+                        return Ok(Some(frame));
+                    }
+                }
+                
             }
 
             // There is not enough buffered data to read a frame. Attempt to
@@ -49,6 +61,37 @@ impl MemcacheBinaryConnection {
                         "Connection reset by peer",
                     ));
                 }
+            }
+        }
+    }
+
+    pub async fn skip_bytes(&mut self, bytes: u32) -> io::Result<()> {
+        let mut buffer = BytesMut::with_capacity(8192);
+        let mut bytes_read: usize;
+        let mut bytes_counter: usize = 0;
+        debug!("Skip bytes {:?}", bytes);
+        if bytes == 0 {
+            return Ok(());
+        }
+
+        loop {
+            bytes_read = self.stream.read_buf(&mut buffer).await?;
+            debug!("Bytes read {:?}", bytes_read);
+            if bytes_read == 0 {
+                if buffer.is_empty() {
+                    return Ok(());
+                } else {
+                    return Err(Error::new(
+                        ErrorKind::ConnectionReset,
+                        "Connection reset by peer",
+                    ));
+                }
+            }                        
+            bytes_counter += bytes_read;
+            debug!("Bytes counter {:?}", bytes_counter);
+            buffer.clear();
+            if bytes_counter >= bytes as usize{
+                return Ok(());
             }
         }
     }

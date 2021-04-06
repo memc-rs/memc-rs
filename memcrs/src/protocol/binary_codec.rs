@@ -36,6 +36,7 @@ pub enum BinaryRequest {
     Version(binary::VersionRequest),
     Quit(binary::QuitRequest),
     QuitQuietly(binary::QuitRequest),
+    ItemTooLarge(binary::SetRequest),
 }
 
 impl BinaryRequest {
@@ -53,7 +54,8 @@ impl BinaryRequest {
             | BinaryRequest::Replace(request)
             | BinaryRequest::ReplaceQuietly(request)
             | BinaryRequest::Add(request)
-            | BinaryRequest::AddQuietly(request) => &request.header,
+            | BinaryRequest::AddQuietly(request)
+            | BinaryRequest::ItemTooLarge(request) => &request.header,
 
             BinaryRequest::Prepend(request)
             | BinaryRequest::PrependQuietly(request)
@@ -185,6 +187,11 @@ impl MemcacheBinaryCodec {
         if !self.header_valid() {
             return Err(Error::new(ErrorKind::InvalidData, "Incorrect header"));
         }
+
+        if self.header.body_length > self.item_size_limit {
+            return Ok(());
+        }
+
         src.reserve(self.header.body_length as usize);
         Ok(())
     }
@@ -211,6 +218,10 @@ impl MemcacheBinaryCodec {
         if self.state != RequestParserState::HeaderParsed {
             error!("Incorrect parser state ({:?})", self.state);
             return Err(Error::new(ErrorKind::Other, "Header is not parsed"));
+        }
+
+        if self.header.body_length > self.item_size_limit {
+            return self.parse_item_too_large(src);
         }
 
         if self.header.body_length as usize > src.len() {
@@ -258,7 +269,7 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
                 self.parse_flush_request(src)
             }
-
+           
             Some(binary::Command::Touch) => Ok(None),
             Some(binary::Command::GetAndTouch) => Ok(None),
             Some(binary::Command::GetAndTouchQuiet) => Ok(None),
@@ -471,6 +482,17 @@ impl MemcacheBinaryCodec {
             Ok(Some(BinaryRequest::DecrementQuiet(request)))
         };
         response
+    }
+
+    fn parse_item_too_large(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+        let set_request = binary::SetRequest {
+            header: self.header,
+            flags: src.get_u32(),
+            expiration: src.get_u32(),
+            key: Vec::new(),
+            value: BytesMut::new().freeze(),
+        };
+        Ok(Some(BinaryRequest::ItemTooLarge(set_request)))
     }
 
     fn parse_set_request(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {

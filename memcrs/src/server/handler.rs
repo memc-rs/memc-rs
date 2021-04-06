@@ -129,6 +129,9 @@ impl BinaryHandler {
                     },
                 ))
             }
+            binary_codec::BinaryRequest::ItemTooLarge(_set_request) => {
+                Some(storage_error_to_response(StorageError::ValueTooLarge, &mut response_header))
+            }
         }
     }
 

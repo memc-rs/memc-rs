@@ -21,7 +21,7 @@ impl StorageError {
         match self {
             StorageError::NotFound => String::from("Not found"),
             StorageError::KeyExists => String::from("Key exists"),
-            StorageError::ValueTooLarge => String::from("Value too large"),
+            StorageError::ValueTooLarge => String::from("Value too big"),
             StorageError::InvalidArguments => String::from("Invalid arguments"),
             StorageError::ItemNotStored => String::from("Item not stored"),
             StorageError::ArithOnNonNumeric => String::from("Incr/Decr on non numeric value"),
