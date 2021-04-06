@@ -410,7 +410,7 @@ Any label not listed here is not in active use.
 
 ## LTS guarantees
 
-memc.rs ≥1.0.0 comes with LTS guarantees:
+memc.rs ≥ 1.0.0 comes with LTS guarantees:
 
  * A minimum of 5 years of maintenance.
  * A minimum of 3 years before a hypothetical 2.0 release.
@@ -419,7 +419,7 @@ The goal of these guarantees is to provide stability to the ecosystem.
 
 ## Mininum Supported Rust Version (MSRV)
 
- * All Memcrs ≥1.0.0 releases will support at least a 6-month old Rust
+ * All Memcrs ≥ 1.0.0 releases will support at least a 6-month old Rust
    compiler release.
  * The MSRV will only be increased on 1.x releases.
 
