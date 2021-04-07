@@ -2,6 +2,7 @@ use crate::protocol::binary_codec::{
     BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
 };
 use bytes::{BufMut, BytesMut};
+use std::cmp;
 use std::io;
 use std::io::{Error, ErrorKind};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -31,8 +32,13 @@ impl MemcacheBinaryConnection {
                 match frame {
                     BinaryRequest::ItemTooLarge(request) => {
                         debug!("Body len {:?} buffer len {:?}", request.header.body_length, buffer.len());
-                        let skip = (request.header.body_length)-(buffer.len() as u32+extras_length);
-                        self.skip_bytes(skip).await?;
+                        let skip = (request.header.body_length)-(buffer.len() as u32);                        
+                        if skip >= buffer.len() as u32 {
+                            buffer.clear();
+                        } else {
+                            buffer = buffer.split_off(skip as usize);
+                        }
+                        self.skip_bytes(skip).await?;                        
                         return Ok(Some(BinaryRequest::ItemTooLarge(request)));
                     }
                     _ => {
@@ -66,7 +72,8 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn skip_bytes(&mut self, bytes: u32) -> io::Result<()> {
-        let mut buffer = BytesMut::with_capacity(8192);
+        let buffer_size = 64*1024;
+        let mut buffer = BytesMut::with_capacity(cmp::min(bytes as usize, buffer_size));
         let mut bytes_read: usize;
         let mut bytes_counter: usize = 0;
         debug!("Skip bytes {:?}", bytes);
@@ -76,8 +83,13 @@ impl MemcacheBinaryConnection {
 
         loop {
             bytes_read = self.stream.read_buf(&mut buffer).await?;
-            debug!("Bytes read {:?}", bytes_read);
+            
+            // The remote closed the connection. For this to be a clean
+            // shutdown, there should be no data in the read buffer. If
+            // there is, this means that the peer closed the socket while
+            // sending a frame.
             if bytes_read == 0 {
+                debug!("Bytes read {:?}", bytes_read);
                 if buffer.is_empty() {
                     return Ok(());
                 } else {
@@ -87,11 +99,23 @@ impl MemcacheBinaryConnection {
                     ));
                 }
             }                        
+            
             bytes_counter += bytes_read;
-            debug!("Bytes counter {:?}", bytes_counter);
-            buffer.clear();
-            if bytes_counter >= bytes as usize{
+            let difference = bytes as usize - bytes_counter;
+            debug!("Bytes read: {:?} {:?} {:?}", bytes_read, bytes_counter, difference);
+            
+            if bytes_counter == bytes as usize {
                 return Ok(());
+            }
+
+            if difference < buffer_size {
+                buffer =  BytesMut::with_capacity(difference);
+            } else {
+                buffer.clear();
+            }
+
+            if bytes_counter > bytes as usize {
+                panic!("Read too much bytes socket corrupted");
             }
         }
     }

@@ -221,7 +221,9 @@ impl MemcacheBinaryCodec {
         }
 
         if self.header.body_length > self.item_size_limit {
-            return self.parse_item_too_large(src);
+            let result = self.parse_item_too_large(src);
+            self.init_parser();
+            return result;
         }
 
         if self.header.body_length as usize > src.len() {
@@ -487,8 +489,8 @@ impl MemcacheBinaryCodec {
     fn parse_item_too_large(&self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         let set_request = binary::SetRequest {
             header: self.header,
-            flags: src.get_u32(),
-            expiration: src.get_u32(),
+            flags: 0,
+            expiration: 0,
             key: Vec::new(),
             value: BytesMut::new().freeze(),
         };
@@ -592,6 +594,14 @@ impl Decoder for MemcacheBinaryCodec {
                 Ok(()) => {}
             }
         }
+
+        if self.header.body_length > self.item_size_limit {
+            let result = self.parse_item_too_large(src);
+            self.init_parser();
+            return result;
+        }
+        
+
         if (self.header.body_length as usize) > src.len() {
             return Ok(None);
         }
