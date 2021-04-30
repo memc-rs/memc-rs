@@ -72,7 +72,7 @@ impl KVStore {
     }
 
     pub fn get(&self, key: &KeyType) -> StorageResult<Record> {
-        trace!("Get: {:?}", str::from_utf8(key));
+        //trace!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
 
@@ -109,10 +109,6 @@ impl KVStore {
         }
     }
 
-    /**
-     * FIXME: Make it atomic operation based on CAS, now there is a race between
-     * check_cas and insert
-     */
     pub fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
         //trace!("Set: {:?}", &record.header);
 

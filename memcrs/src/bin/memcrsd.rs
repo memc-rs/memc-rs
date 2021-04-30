@@ -1,11 +1,11 @@
+use byte_unit::{Byte, ByteUnit};
 use log::info;
 use num_cpus;
 use std::net::{IpAddr, SocketAddr};
+use std::process;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::runtime::Builder;
 use tracing_subscriber;
-use byte_unit::{Byte, ByteUnit};
-use std::process;
 
 extern crate clap;
 extern crate memcrs;
@@ -44,6 +44,14 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
+            Arg::with_name("listen-backlog")
+                .short("b")
+                .long("listen-backlog")
+                .default_value("1024")
+                .help("set the backlog queue limit")
+                .takes_value(true),
+        )
+        .arg(
             Arg::with_name("v")
                 .short("v")
                 .multiple(true)
@@ -67,11 +75,11 @@ fn main() {
         )
         .arg(
             Arg::with_name("max-item-size")
-            .short("I")
-            .long("max-item-size")
-            .default_value("1m")
-            .help("adjusts max item size (min: 1k, max: 1024m)")
-            .takes_value(true),
+                .short("I")
+                .long("max-item-size")
+                .default_value("1m")
+                .help("adjusts max item size (min: 1k, max: 1024m)")
+                .takes_value(true),
         )
         .get_matches();
 
@@ -79,19 +87,27 @@ fn main() {
     let connection_limit: u32 =
         value_t!(matches.value_of("conn-limit"), u32).unwrap_or_else(|e| e.exit());
 
-    let memory_limit_mb = value_t!(matches.value_of("memory-limit"), u32).unwrap_or_else(|e| e.exit());
-    let memory_limit_res = Byte::from_unit(memory_limit_mb as f64,ByteUnit::KB).unwrap();
-    let memory_limit: u32 = memory_limit_res.get_bytes() as u32;        
+    let backlog_limit: u32 =
+        value_t!(matches.value_of("listen-backlog"), u32).unwrap_or_else(|e| e.exit());
 
-    let item_size_limit_str = value_t!(matches.value_of("max-item-size"), String).unwrap_or_else(|e| e.exit());
+    let memory_limit_mb =
+        value_t!(matches.value_of("memory-limit"), u32).unwrap_or_else(|e| e.exit());
+    let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::KB).unwrap();
+    let memory_limit: u32 = memory_limit_res.get_bytes() as u32;
+
+    let item_size_limit_str =
+        value_t!(matches.value_of("max-item-size"), String).unwrap_or_else(|e| e.exit());
     let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
     let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
 
     if item_size_limit_res.get_bytes() > item_size_limit_max.get_bytes() {
-        eprintln!("Max item size cannot be greater than: {}", item_size_limit_max.get_appropriate_unit(false).to_string());
+        eprintln!(
+            "Max item size cannot be greater than: {}",
+            item_size_limit_max.get_appropriate_unit(false).to_string()
+        );
         process::exit(1);
     }
-     
+
     let threads: u32 = value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
 
     let listen_address = matches
@@ -139,16 +155,16 @@ fn main() {
 
     info!("Listen address: {}", matches.value_of("listen").unwrap());
     info!("Listen port: {}", port);
-    info!(
-        "Connection limit: {}",
-        matches.value_of("conn-limit").unwrap()
+    info!("Connection limit: {}", connection_limit);
+    info!("Number of threads: {}", threads);
+    info!("Max item size: {}", item_size_limit_res.get_bytes());
+    let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
+        60,
+        connection_limit,
+        memory_limit,
+        item_size_limit_res.get_bytes() as u32,
+        backlog_limit,
     );
-    info!(
-        "Number of threads: {}",
-        matches.value_of("threads").unwrap()
-    );
-    let config =
-        memcrs::server::memc_tcp::MemcacheServerConfig::new(60, connection_limit, memory_limit, item_size_limit_res.get_bytes() as u32);
     let addr = SocketAddr::new(listen_address, port);
     let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
 

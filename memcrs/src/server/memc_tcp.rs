@@ -1,15 +1,14 @@
 use futures::sink::SinkExt;
 use futures::StreamExt;
 use io::AsyncWriteExt;
+use socket2::{Domain, SockAddr, Socket, Type};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
-use tokio::io::BufWriter;
 use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
 use tokio::sync::Semaphore;
 use tokio::time::{interval_at, timeout, Instant};
-use tokio_util::codec::{FramedRead, FramedWrite};
 use tracing::{debug, error};
 
 //use tracing_attributes::instrument;
@@ -26,15 +25,23 @@ pub struct MemcacheServerConfig {
     connection_limit: u32,
     memory_limit: u32,
     item_memory_limit: u32,
+    listen_backlog: u32,
 }
 
 impl MemcacheServerConfig {
-    pub fn new(timeout_secs: u32, connection_limit: u32, memory_limit: u32, item_memory_limit: u32) -> Self {
+    pub fn new(
+        timeout_secs: u32,
+        connection_limit: u32,
+        memory_limit: u32,
+        item_memory_limit: u32,
+        listen_backlog: u32,
+    ) -> Self {
         MemcacheServerConfig {
             timeout_secs,
             connection_limit,
             memory_limit,
-            item_memory_limit
+            item_memory_limit,
+            listen_backlog,
         }
     }
 }
@@ -108,8 +115,29 @@ impl MemcacheTcpServer {
         }
     }
 
-    pub async fn run<A: ToSocketAddrs + TokioToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
-        let listener = TcpListener::bind(addr).await?;
+    pub async fn run<A: ToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
+        let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
+        socket.set_reuse_address(true)?;
+        socket.set_reuse_port(true)?;
+        socket.set_nonblocking(true)?;
+        let mut addrs_iter = addr.to_socket_addrs()?;
+        while let Some(socket_addr) = addrs_iter.next() {
+            debug!("Binding to addr: {:?}", socket_addr);
+            let sock_addr = SockAddr::from(socket_addr);
+            let res = socket.bind(&sock_addr);
+            if let Err(err) = res {
+                error!("Can't bind to: {:?}, err {:?}", sock_addr, err);
+                return Err(err);
+            }
+        }
+
+        if let Err(err) = socket.listen(self.config.listen_backlog as i32) {
+            error!("Listen error: {:?}", err);
+            return Err(err);
+        }
+
+        let std_listener: std::net::TcpListener = socket.into();
+        let listener = TcpListener::from_std(std_listener)?;
 
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
@@ -136,7 +164,7 @@ impl MemcacheTcpServer {
                         tokio::spawn(async move { MemcacheTcpServer::handle_client(client).await });
                     },
                     Err(err) => {
-                        error!("{}", err);
+                        error!("Accept error: {}", err);
                     }
                 }
 
@@ -153,7 +181,7 @@ impl MemcacheTcpServer {
         ClientConfig {
             item_memory_limit: self.config.item_memory_limit,
             rx_timeout_secs: self.config.timeout_secs,
-            wx_timeout_secs: self.config.timeout_secs
+            wx_timeout_secs: self.config.timeout_secs,
         }
     }
 

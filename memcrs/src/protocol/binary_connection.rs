@@ -28,17 +28,21 @@ impl MemcacheBinaryConnection {
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
-            if let Some(frame) = self.codec.decode(&mut buffer)? {                
+            if let Some(frame) = self.codec.decode(&mut buffer)? {
                 match frame {
                     BinaryRequest::ItemTooLarge(request) => {
-                        debug!("Body len {:?} buffer len {:?}", request.header.body_length, buffer.len());
-                        let skip = (request.header.body_length)-(buffer.len() as u32);                        
+                        debug!(
+                            "Body len {:?} buffer len {:?}",
+                            request.header.body_length,
+                            buffer.len()
+                        );
+                        let skip = (request.header.body_length) - (buffer.len() as u32);
                         if skip >= buffer.len() as u32 {
                             buffer.clear();
                         } else {
                             buffer = buffer.split_off(skip as usize);
                         }
-                        self.skip_bytes(skip).await?;                        
+                        self.skip_bytes(skip).await?;
                         return Ok(Some(BinaryRequest::ItemTooLarge(request)));
                     }
                     _ => {
@@ -46,7 +50,6 @@ impl MemcacheBinaryConnection {
                         return Ok(Some(frame));
                     }
                 }
-                
             }
 
             // There is not enough buffered data to read a frame. Attempt to
@@ -72,7 +75,7 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn skip_bytes(&mut self, bytes: u32) -> io::Result<()> {
-        let buffer_size = 64*1024;
+        let buffer_size = 64 * 1024;
         let mut buffer = BytesMut::with_capacity(cmp::min(bytes as usize, buffer_size));
         let mut bytes_read: usize;
         let mut bytes_counter: usize = 0;
@@ -83,7 +86,7 @@ impl MemcacheBinaryConnection {
 
         loop {
             bytes_read = self.stream.read_buf(&mut buffer).await?;
-            
+
             // The remote closed the connection. For this to be a clean
             // shutdown, there should be no data in the read buffer. If
             // there is, this means that the peer closed the socket while
@@ -98,18 +101,21 @@ impl MemcacheBinaryConnection {
                         "Connection reset by peer",
                     ));
                 }
-            }                        
-            
+            }
+
             bytes_counter += bytes_read;
             let difference = bytes as usize - bytes_counter;
-            debug!("Bytes read: {:?} {:?} {:?}", bytes_read, bytes_counter, difference);
-            
+            debug!(
+                "Bytes read: {:?} {:?} {:?}",
+                bytes_read, bytes_counter, difference
+            );
+
             if bytes_counter == bytes as usize {
                 return Ok(());
             }
 
             if difference < buffer_size {
-                buffer =  BytesMut::with_capacity(difference);
+                buffer = BytesMut::with_capacity(difference);
             } else {
                 buffer.clear();
             }

@@ -21,6 +21,7 @@ failure_derive = { version = "0.1.8" }
 futures = "0.3.12"
 futures-util = "0.3.12"
 log = "0.4.14"
+socket2 = { version = "0.4.0", features = ["all"] }
 num_cpus = "1.13.0"
 num-derive = "0.3.3"
 num-traits = "0.2.14"

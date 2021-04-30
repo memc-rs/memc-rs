@@ -1,6 +1,6 @@
-use crate::protocol::{binary, binary_codec};
 use crate::protocol::binary_codec::storage_error_to_response;
-use crate::storage::error::{StorageError};
+use crate::protocol::{binary, binary_codec};
+use crate::storage::error::StorageError;
 use crate::storage::memcstore;
 use crate::version::MEMCRS_VERSION;
 use std::sync::Arc;
@@ -10,7 +10,6 @@ const EXTRAS_LENGTH: u8 = 4;
 fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> memcstore::Meta {
     memcstore::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
-
 
 fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
@@ -129,9 +128,9 @@ impl BinaryHandler {
                     },
                 ))
             }
-            binary_codec::BinaryRequest::ItemTooLarge(_set_request) => {
-                Some(storage_error_to_response(StorageError::ValueTooLarge, &mut response_header))
-            }
+            binary_codec::BinaryRequest::ItemTooLarge(_set_request) => Some(
+                storage_error_to_response(StorageError::ValueTooLarge, &mut response_header),
+            ),
         }
     }
 

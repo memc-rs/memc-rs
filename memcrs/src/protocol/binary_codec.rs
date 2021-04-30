@@ -1,11 +1,11 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
+use crate::storage::error::StorageError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
 use tokio_util::codec::{Decoder, Encoder};
-use crate::storage::error::{StorageError};
 
 /// Client request
 #[derive(Debug)]
@@ -152,7 +152,7 @@ impl MemcacheBinaryCodec {
         MemcacheBinaryCodec {
             header: Default::default(),
             state: RequestParserState::None,
-            item_size_limit
+            item_size_limit,
         }
     }
 
@@ -271,7 +271,7 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
                 self.parse_flush_request(src)
             }
-           
+
             Some(binary::Command::Touch) => Ok(None),
             Some(binary::Command::GetAndTouch) => Ok(None),
             Some(binary::Command::GetAndTouchQuiet) => Ok(None),
@@ -600,7 +600,6 @@ impl Decoder for MemcacheBinaryCodec {
             self.init_parser();
             return result;
         }
-        
 
         if (self.header.body_length as usize) > src.len() {
             return Ok(None);
