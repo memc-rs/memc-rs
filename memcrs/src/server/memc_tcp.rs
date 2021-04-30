@@ -19,7 +19,7 @@ use crate::protocol::binary_connection::MemcacheBinaryConnection;
 use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
-
+#[derive(Clone)]
 pub struct MemcacheServerConfig {
     timeout_secs: u32,
     connection_limit: u32,
@@ -45,6 +45,7 @@ impl MemcacheServerConfig {
         }
     }
 }
+#[derive(Clone)]
 pub struct MemcacheTcpServer {
     timer: Arc<timer::SystemTimer>,
     storage: Arc<storage::MemcStore>,

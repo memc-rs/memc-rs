@@ -1,11 +1,12 @@
 use byte_unit::{Byte, ByteUnit};
-use log::info;
+use log::{debug, info};
 use num_cpus;
 use std::net::{IpAddr, SocketAddr};
 use std::process;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::runtime::Builder;
 use tracing_subscriber;
+use std::sync::Arc;
 
 extern crate clap;
 extern crate memcrs;
@@ -13,6 +14,7 @@ use clap::{value_t, App, Arg};
 
 fn main() {
     let cpus = (num_cpus::get_physical() + 1).to_string();
+    let runtimes = ((num_cpus::get_physical() + 1)/2).to_string();
 
     let app = App::new("memcrsd");
     let matches = app
@@ -81,6 +83,14 @@ fn main() {
                 .help("adjusts max item size (min: 1k, max: 1024m)")
                 .takes_value(true),
         )
+        .arg(
+            Arg::with_name("runtimes")
+                .short("r")
+                .long("runtimes")
+                .default_value(&runtimes)
+                .help("number of runtimes to use, each runtime will have n number of threads")
+                .takes_value(true),
+        )
         .get_matches();
 
     let port: u16 = value_t!(matches.value_of("port"), u16).unwrap_or_else(|e| e.exit());
@@ -109,6 +119,7 @@ fn main() {
     }
 
     let threads: u32 = value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
+    let runtimes: u32 = value_t!(matches.value_of("runtimes"), u32).unwrap_or_else(|e| e.exit());
 
     let listen_address = matches
         .value_of("listen")
@@ -165,9 +176,32 @@ fn main() {
         item_size_limit_res.get_bytes() as u32,
         backlog_limit,
     );
-    let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
 
+    let addr = SocketAddr::new(listen_address, port);
+    let mut tcp_server_a = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
+    
+
+    let parent_runtime = create_runtime(threads);
+    for i  in 1..runtimes {
+        debug!("Creating runtime {}", i);
+        let child_runtime = create_runtime(threads);
+        let mut tcp_server_clone = tcp_server_a.clone();        
+        std::thread::spawn(move || {
+            child_runtime.block_on(tcp_server_clone.run(addr)).unwrap()
+        });
+        /*parent_runtime.spawn(async move {            
+            handle.block_on(async move {
+                let mut tcp_server_b = tcp_server_clone.clone();
+                tcp_server_b.run(addr).await
+                });
+            }       
+        );*/
+    }
+    parent_runtime.block_on(tcp_server_a.run(addr)).unwrap()    
+}
+
+
+fn create_runtime(threads: u32) -> tokio::runtime::Runtime {
     let runtime = Builder::new_multi_thread()
         .worker_threads(threads as usize)
         .thread_name_fn(|| {
@@ -180,6 +214,5 @@ fn main() {
         .enable_all()
         .build()
         .unwrap();
-
-    runtime.block_on(tcp_server.run(addr)).unwrap();
+    runtime
 }
