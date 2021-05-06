@@ -4,9 +4,9 @@ use num_cpus;
 use std::net::{IpAddr, SocketAddr};
 use std::process;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use tokio::runtime::Builder;
 use tracing_subscriber;
-use std::sync::Arc;
 
 extern crate clap;
 extern crate memcrs;
@@ -14,7 +14,7 @@ use clap::{value_t, App, Arg};
 
 fn main() {
     let cpus = (num_cpus::get_physical() + 1).to_string();
-    let runtimes = ((num_cpus::get_physical() + 1)/2).to_string();
+    let runtimes = ((num_cpus::get_physical() + 1) / 2).to_string();
 
     let app = App::new("memcrsd");
     let matches = app
@@ -167,7 +167,9 @@ fn main() {
     info!("Listen address: {}", matches.value_of("listen").unwrap());
     info!("Listen port: {}", port);
     info!("Connection limit: {}", connection_limit);
-    info!("Number of threads: {}", threads);
+    info!("Number of threads per runtime: {}", threads);
+    info!("Number of runtimes: {}", runtimes);
+    info!("Number of threads total: {}", (runtimes-1) * (threads + 1) + 1);
     info!("Max item size: {}", item_size_limit_res.get_bytes());
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -179,27 +181,23 @@ fn main() {
 
     let addr = SocketAddr::new(listen_address, port);
     let mut tcp_server_a = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
-    
 
-    let parent_runtime = create_runtime(threads);
-    for i  in 1..runtimes {
+    let parent_runtime = create_runtime(1);
+    for i in 1..runtimes {
         debug!("Creating runtime {}", i);
         let child_runtime = create_runtime(threads);
-        let mut tcp_server_clone = tcp_server_a.clone();        
-        std::thread::spawn(move || {
-            child_runtime.block_on(tcp_server_clone.run(addr)).unwrap()
-        });
-        /*parent_runtime.spawn(async move {            
+        let mut tcp_server_clone = tcp_server_a.clone();
+        std::thread::spawn(move || child_runtime.block_on(tcp_server_clone.run(addr)).unwrap());
+        /*parent_runtime.spawn(async move {
             handle.block_on(async move {
                 let mut tcp_server_b = tcp_server_clone.clone();
                 tcp_server_b.run(addr).await
                 });
-            }       
+            }
         );*/
     }
-    parent_runtime.block_on(tcp_server_a.run(addr)).unwrap()    
+    parent_runtime.block_on(tcp_server_a.run_clock())
 }
-
 
 fn create_runtime(threads: u32) -> tokio::runtime::Runtime {
     let runtime = Builder::new_multi_thread()

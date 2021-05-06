@@ -115,49 +115,53 @@ impl MemcacheTcpServer {
             config: config,
         }
     }
+    pub async fn run_clock(&mut self) -> () {
+        let start = Instant::now();
+        let mut interval = interval_at(start, Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+            self.timer.add_second();
+            debug!("Server tick: {}", self.timer.secs());
+        }
+    }
 
     pub async fn run<A: ToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
         let listener = self.get_tcp_listener(addr)?;
-
-        let start = Instant::now();
-        let mut interval = interval_at(start, Duration::from_secs(1));
         loop {
             tokio::select! {
                 connection = listener.accept() => {
                     match connection {
-                    Ok((socket, addr)) => {
-                        let peer_addr = addr;
-                        socket.set_nodelay(true)?;
-                        socket.set_linger(None)?;
-                        let client = Client::new(
-                            self.storage.clone(),
-                            socket,
-                            peer_addr,
-                            self.get_client_config(),
-                            self.limit_connections.clone()
-                        );
+                        Ok((socket, addr)) => {
+                            let peer_addr = addr;
+                            socket.set_nodelay(true)?;
+                            socket.set_linger(None)?;
+                            let client = Client::new(
+                                self.storage.clone(),
+                                socket,
+                                peer_addr,
+                                self.get_client_config(),
+                                self.limit_connections.clone()
+                            );
 
-                        self.limit_connections.acquire().await.unwrap().forget();
-                        // Like with other small servers, we'll `spawn` this client to ensure it
-                        // runs concurrently with all other clients. The `move` keyword is used
-                        // here to move ownership of our store handle into the async closure.
-                        tokio::spawn(async move { MemcacheTcpServer::handle_client(client).await });
-                    },
-                    Err(err) => {
-                        error!("Accept error: {}", err);
+                            self.limit_connections.acquire().await.unwrap().forget();
+                            // Like with other small servers, we'll `spawn` this client to ensure it
+                            // runs concurrently with all other clients. The `move` keyword is used
+                            // here to move ownership of our store handle into the async closure.
+                            tokio::spawn(async move { MemcacheTcpServer::handle_client(client).await });
+                        },
+                        Err(err) => {
+                            error!("Accept error: {}", err);
+                        }
                     }
                 }
-
-                },
-                _ = interval.tick() => {
-                    self.timer.add_second();
-                    debug!("Server tick: {}", self.timer.secs());
-                },
             }
         }
     }
 
-    fn get_tcp_listener<A: ToSocketAddrs>(&mut self, addr: A) -> Result<TcpListener, std::io::Error> {
+    fn get_tcp_listener<A: ToSocketAddrs>(
+        &mut self,
+        addr: A,
+    ) -> Result<TcpListener, std::io::Error> {
         let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
         socket.set_reuse_address(true)?;
         socket.set_reuse_port(true)?;
