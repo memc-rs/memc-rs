@@ -6,7 +6,7 @@ use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
-use tokio::net::{TcpListener, TcpStream, ToSocketAddrs as TokioToSocketAddrs};
+use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::Semaphore;
 use tokio::time::{interval_at, timeout, Instant};
 use tracing::{debug, error};
@@ -115,6 +115,7 @@ impl MemcacheTcpServer {
             config: config,
         }
     }
+
     pub async fn run_clock(&mut self) -> () {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
