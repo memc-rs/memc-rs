@@ -106,7 +106,10 @@ impl Drop for Client {
 }
 
 impl MemcacheTcpServer {
-    pub fn new(config: MemcacheServerConfig, timer: Arc<dyn timer::Timer + Send + Sync>) -> MemcacheTcpServer {        
+    pub fn new(
+        config: MemcacheServerConfig,
+        timer: Arc<dyn timer::Timer + Send + Sync>,
+    ) -> MemcacheTcpServer {
         MemcacheTcpServer {
             timer: timer.clone(),
             storage: Arc::new(storage::MemcStore::new(timer)),

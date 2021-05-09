@@ -2,7 +2,6 @@ use super::error::{StorageError, StorageResult};
 use super::timer;
 use bytes::Bytes;
 use dashmap::DashMap;
-use std::str;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 #[derive(Clone, Debug)]

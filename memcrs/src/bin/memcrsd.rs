@@ -169,7 +169,10 @@ fn main() {
     info!("Connection limit: {}", connection_limit);
     info!("Number of threads per runtime: {}", threads);
     info!("Number of runtimes: {}", runtimes);
-    info!("Number of threads total: {}", (runtimes-1) * (threads + 1) + 1);
+    info!(
+        "Number of threads total: {}",
+        (runtimes) * (threads + 1) + 1
+    );
     info!("Max item size: {}", item_size_limit_res.get_bytes());
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -180,17 +183,20 @@ fn main() {
     );
 
     let addr = SocketAddr::new(listen_address, port);
-    let system_timer: Arc<memcrs::storage::timer::SystemTimer> = Arc::new(memcrs::storage::timer::SystemTimer::new());
-    
-    for i in 1..runtimes {
-        let server_timer: Arc<dyn memcrs::storage::timer::Timer+Send+Sync> = system_timer.clone();
+    let system_timer: Arc<memcrs::storage::timer::SystemTimer> =
+        Arc::new(memcrs::storage::timer::SystemTimer::new());
+
+    for i in 0..runtimes {
+        let server_timer: Arc<dyn memcrs::storage::timer::Timer + Send + Sync> =
+            system_timer.clone();
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
-            let child_runtime = create_runtime(threads);            
-            let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config, server_timer.clone());
+            let child_runtime = create_runtime(threads);
+            let mut tcp_server =
+                memcrs::server::memc_tcp::MemcacheTcpServer::new(config, server_timer.clone());
             child_runtime.block_on(tcp_server.run(addr)).unwrap()
         });
-    }    
+    }
     let parent_runtime = create_runtime(1);
     parent_runtime.block_on(system_timer.run())
 }
