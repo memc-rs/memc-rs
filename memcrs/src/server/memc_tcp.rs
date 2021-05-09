@@ -19,7 +19,7 @@ use crate::protocol::binary_connection::MemcacheBinaryConnection;
 use crate::storage::memcstore as storage;
 use crate::storage::timer;
 use crate::storage::timer::{SetableTimer, Timer};
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {
     timeout_secs: u32,
     connection_limit: u32,
@@ -47,7 +47,7 @@ impl MemcacheServerConfig {
 }
 #[derive(Clone)]
 pub struct MemcacheTcpServer {
-    timer: Arc<timer::SystemTimer>,
+    timer: Arc<timer::Timer>,
     storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
@@ -106,23 +106,12 @@ impl Drop for Client {
 }
 
 impl MemcacheTcpServer {
-    pub fn new(config: MemcacheServerConfig) -> MemcacheTcpServer {
-        let timer = Arc::new(timer::SystemTimer::new());
+    pub fn new(config: MemcacheServerConfig, timer: Arc<dyn timer::Timer + Send + Sync>) -> MemcacheTcpServer {        
         MemcacheTcpServer {
             timer: timer.clone(),
             storage: Arc::new(storage::MemcStore::new(timer)),
             limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
             config: config,
-        }
-    }
-
-    pub async fn run_clock(&mut self) -> () {
-        let start = Instant::now();
-        let mut interval = interval_at(start, Duration::from_secs(1));
-        loop {
-            interval.tick().await;
-            self.timer.add_second();
-            debug!("Server tick: {}", self.timer.secs());
         }
     }
 

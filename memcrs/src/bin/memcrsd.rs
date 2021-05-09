@@ -180,23 +180,19 @@ fn main() {
     );
 
     let addr = SocketAddr::new(listen_address, port);
-    let mut tcp_server_a = memcrs::server::memc_tcp::MemcacheTcpServer::new(config);
-
-    let parent_runtime = create_runtime(1);
+    let system_timer: Arc<memcrs::storage::timer::SystemTimer> = Arc::new(memcrs::storage::timer::SystemTimer::new());
+    
     for i in 1..runtimes {
-        debug!("Creating runtime {}", i);
-        let child_runtime = create_runtime(threads);
-        let mut tcp_server_clone = tcp_server_a.clone();
-        std::thread::spawn(move || child_runtime.block_on(tcp_server_clone.run(addr)).unwrap());
-        /*parent_runtime.spawn(async move {
-            handle.block_on(async move {
-                let mut tcp_server_b = tcp_server_clone.clone();
-                tcp_server_b.run(addr).await
-                });
-            }
-        );*/
-    }
-    parent_runtime.block_on(tcp_server_a.run_clock())
+        let server_timer: Arc<dyn memcrs::storage::timer::Timer+Send+Sync> = system_timer.clone();
+        std::thread::spawn(move || {
+            debug!("Creating runtime {}", i);
+            let child_runtime = create_runtime(threads);            
+            let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config, server_timer.clone());
+            child_runtime.block_on(tcp_server.run(addr)).unwrap()
+        });
+    }    
+    let parent_runtime = create_runtime(1);
+    parent_runtime.block_on(system_timer.run())
 }
 
 fn create_runtime(threads: u32) -> tokio::runtime::Runtime {
