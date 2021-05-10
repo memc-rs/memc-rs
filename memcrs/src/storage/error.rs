@@ -17,20 +17,23 @@ pub enum StorageError {
 }
 
 impl StorageError {
-    pub fn to_static_string(&self) -> String {
+    pub fn to_static_string(&self) -> & 'static str {
+        static NOT_FOUND: & 'static str = "Not found";
+        static KEY_EXISTS:  & 'static str = "Key exists";
+        
         match self {
-            StorageError::NotFound => String::from("Not found"),
-            StorageError::KeyExists => String::from("Key exists"),
-            StorageError::ValueTooLarge => String::from("Value too big"),
-            StorageError::InvalidArguments => String::from("Invalid arguments"),
-            StorageError::ItemNotStored => String::from("Item not stored"),
-            StorageError::ArithOnNonNumeric => String::from("Incr/Decr on non numeric value"),
-            StorageError::UnkownCommand => String::from("Invalid command"),
-            StorageError::OutOfMemory => String::from("Out of memory"),
-            StorageError::NotSupported => String::from("Not supported"),
-            StorageError::InternalError => String::from("Internal error"),
-            StorageError::Busy => String::from("Busy"),
-            StorageError::TemporaryFailure => String::from("Temporary failure"),
+            StorageError::NotFound => NOT_FOUND,
+            StorageError::KeyExists => KEY_EXISTS,
+            StorageError::ValueTooLarge => "Value too big",
+            StorageError::InvalidArguments => "Invalid arguments",
+            StorageError::ItemNotStored => "Item not stored",
+            StorageError::ArithOnNonNumeric => "Incr/Decr on non numeric value",
+            StorageError::UnkownCommand => "Invalid command",
+            StorageError::OutOfMemory => "Out of memory",
+            StorageError::NotSupported => "Not supported",
+            StorageError::InternalError => "Internal error",
+            StorageError::Busy => "Busy",
+            StorageError::TemporaryFailure => "Temporary failure",
         }
     }
 }

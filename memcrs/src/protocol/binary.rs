@@ -135,7 +135,7 @@ pub struct VersionResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     pub header: ResponseHeader,
-    pub error: String,
+    pub error: & 'static str,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
