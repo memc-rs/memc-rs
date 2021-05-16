@@ -47,7 +47,7 @@ impl MemcacheServerConfig {
 }
 #[derive(Clone)]
 pub struct MemcacheTcpServer {
-    timer: Arc<timer::Timer>,
+    timer: Arc<dyn timer::Timer>,
     storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
@@ -187,7 +187,7 @@ impl MemcacheTcpServer {
         }
     }
 
-    async fn handle_client(mut client: Client) {
+    async fn handle_client(mut client: Client) {        
         debug!("New client connected: {}", client.addr);
         let handler = handler::BinaryHandler::new(client.store.clone());
 
@@ -201,57 +201,10 @@ impl MemcacheTcpServer {
             )
             .await
             {
-                Ok(req_or_none) => {
-                    match req_or_none {
-                        Ok(re) => {
-                            match re {
-                                Some(request) => {
-                                    debug!("Got request {:?}", request.get_header());
-
-                                    if let BinaryRequest::QuitQuietly(_req) = request {
-                                        debug!("Closing client socket quit quietly");
-                                        if let Err(_e) =
-                                            client.stream.shutdown().await.map_err(log_error)
-                                        {
-                                        }
-                                        return;
-                                    }
-
-                                    let response = handler.handle_request(request);
-
-                                    if let Some(response) = response {
-                                        let mut socket_close = false;
-                                        if let BinaryResponse::Quit(_resp) = &response {
-                                            socket_close = true;
-                                        }
-
-                                        debug!("Sending response {:?}", response);
-                                        if let Err(e) = client.stream.write(&response).await {
-                                            error!("error on sending response; error = {:?}", e);
-                                            return;
-                                        }
-
-                                        if socket_close {
-                                            debug!("Closing client socket quit command");
-                                            if let Err(_e) =
-                                                client.stream.shutdown().await.map_err(log_error)
-                                            {
-                                            }
-                                            return;
-                                        }
-                                    }
-                                }
-                                None => {
-                                    // The connection will be closed at this point as `lines.next()` has returned `None`.
-                                    debug!("Connection closed: {}", client.addr);
-                                    return;
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            error!("Error when reading frame; error = {:?}", err);
-                            return;
-                        }
+                Ok(req_or_none) => {                    
+                    let result = MemcacheTcpServer::handle_frame(&mut client, &handler, req_or_none).await;
+                    if result {
+                        return;
                     }
                 }
                 Err(err) => {
@@ -263,6 +216,69 @@ impl MemcacheTcpServer {
                 }
             }
         }
+    }
+
+    async fn handle_frame(client: &mut Client, handler: &handler::BinaryHandler, req: Result<Option<BinaryRequest>, io::Error>) -> bool {
+        match req {
+            Ok(re) => {
+                match re {
+                    Some(request) => {
+                        return MemcacheTcpServer::handle_request(client, handler, request).await
+                    }
+                    None => {
+                        // The connection will be closed at this point as `lines.next()` has returned `None`.
+                        debug!("Connection closed: {}", client.addr);
+                        return true;
+                    }
+                }
+            }
+            Err(err) => {
+                error!("Error when reading frame; error = {:?}", err);
+                return true;
+            }
+        }        
+    }
+
+    async fn handle_request(client: &mut Client, handler: &handler::BinaryHandler, request: BinaryRequest) -> bool {
+        debug!("Got request {:?}", request.get_header());
+
+        if let BinaryRequest::QuitQuietly(_req) = request {
+            debug!("Closing client socket quit quietly");
+            if let Err(_e) =
+                client.stream.shutdown().await.map_err(log_error)
+            {
+            }
+            return true;
+        }
+
+        let resp = handler.handle_request(request);
+        match resp {
+            Some(response) => {
+                let mut socket_close = false;
+                if let BinaryResponse::Quit(_resp) = &response {
+                    socket_close = true;
+                }
+    
+                debug!("Sending response {:?}", response);
+                if let Err(e) = client.stream.write(&response).await {
+                    error!("error on sending response; error = {:?}", e);
+                    return true;
+                }
+    
+                if socket_close {
+                    debug!("Closing client socket quit command");
+                    if let Err(_e) =
+                        client.stream.shutdown().await.map_err(log_error)
+                    {
+                    }
+                    return true;
+                } 
+                return false;
+            }
+            None => {
+                return true;
+            }
+        }        
     }
 }
 
