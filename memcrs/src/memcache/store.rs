@@ -2,7 +2,7 @@ use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{StorageError, StorageResult};
 use crate::storage::store::{
-    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus, KeyValueStore
 };
 use crate::storage::timer;
 use std::str;
@@ -32,13 +32,13 @@ pub struct DeltaResult {
  * on Key Value Store
  */
 pub struct MemcStore {
-    store: KVStore,
+    store: Arc<dyn KVStore+ Send + Sync>,
 }
 
 impl MemcStore {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> MemcStore {
         MemcStore {
-            store: KVStore::new(timer),
+            store: Arc::new(KeyValueStore::new(timer)),
         }
     }
 

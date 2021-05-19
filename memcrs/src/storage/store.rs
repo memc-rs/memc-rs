@@ -55,24 +55,28 @@ pub struct SetStatus {
 
 pub type KeyType = Vec<u8>;
 
-pub struct KVStore {
+pub trait KVStore {
+    fn get(&self, key: &KeyType) -> StorageResult<Record>;
+    fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
+    fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()>;
+    fn flush(&self, header: Meta);
+}
+
+pub struct KeyValueStore {
     memory: DashMap<KeyType, Record>,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
 }
 
-impl KVStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> KVStore {
-        KVStore {
+
+
+impl KeyValueStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> KeyValueStore {
+        KeyValueStore {
             memory: DashMap::new(),
             timer,
             cas_id: AtomicU64::new(1),
         }
-    }
-
-    pub fn get(&self, key: &KeyType) -> StorageResult<Record> {
-        //trace!("Get: {:?}", str::from_utf8(key));
-        self.get_by_key(key)
     }
 
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
@@ -108,7 +112,21 @@ impl KVStore {
         }
     }
 
-    pub fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
+    fn get_cas_id(&self) -> u64 {
+        self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
+    }
+}
+
+impl KVStore for KeyValueStore {
+
+
+    fn get(&self, key: &KeyType) -> StorageResult<Record> {
+        //trace!("Get: {:?}", str::from_utf8(key));
+        self.get_by_key(key)
+    }
+
+    
+    fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
         //trace!("Set: {:?}", &record.header);
 
         if record.header.cas > 0 {
@@ -141,11 +159,9 @@ impl KVStore {
         }
     }
 
-    fn get_cas_id(&self) -> u64 {
-        self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
-    }
 
-    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()> {
+
+    fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
             let result = header.cas == 0 || record.header.cas == header.cas;
@@ -160,7 +176,7 @@ impl KVStore {
         }
     }
 
-    pub fn flush(&self, header: Meta) {
+    fn flush(&self, header: Meta) {
         if header.expiration > 0 {
             self.memory.alter_all(|_key, mut value| {
                 value.header.expiration = header.expiration;
