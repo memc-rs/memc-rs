@@ -12,7 +12,7 @@ use tracing::{debug, error};
 
 
 use super::client_handler;
-use crate::storage::memcstore as storage;
+use crate::memcache::store as storage;
 use crate::storage::timer;
 
 #[derive(Clone, Copy)]

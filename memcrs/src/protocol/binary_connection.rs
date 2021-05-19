@@ -23,7 +23,7 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
-        let mut buffer = BytesMut::with_capacity(24);
+        let mut buffer = BytesMut::with_capacity(4096);
         let extras_length: u32 = 8;
         loop {
             // Attempt to parse a frame from the buffered data. If enough data

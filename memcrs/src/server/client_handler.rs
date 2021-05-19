@@ -13,7 +13,7 @@ use tracing::{debug, error};
 use super::handler;
 use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse};
 use crate::protocol::binary_connection::MemcacheBinaryConnection;
-use crate::storage::memcstore as storage;
+use crate::memcache::store as storage;
 
 
 pub struct ClientConfig {

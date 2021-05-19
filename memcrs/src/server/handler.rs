@@ -1,14 +1,14 @@
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error::StorageError;
-use crate::storage::memcstore;
+use crate::memcache::store;
 use crate::version::MEMCRS_VERSION;
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
-fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> memcstore::Meta {
-    memcstore::Meta::new(request_header.cas, request_header.opaque, expiration)
+fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> store::Meta {
+    store::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
 
 fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
@@ -30,11 +30,11 @@ fn into_quiet_mutation(
 }
 
 pub struct BinaryHandler {
-    storage: Arc<memcstore::MemcStore>,
+    storage: Arc<store::MemcStore>,
 }
 
 impl BinaryHandler {
-    pub fn new(store: Arc<memcstore::MemcStore>) -> BinaryHandler {
+    pub fn new(store: Arc<store::MemcStore>) -> BinaryHandler {
         BinaryHandler { storage: store }
     }
 
@@ -139,7 +139,7 @@ impl BinaryHandler {
         request: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = memcstore::Record::new(
+        let record = store::Record::new(
             request.value,
             request.header.cas,
             request.flags,
@@ -171,7 +171,7 @@ impl BinaryHandler {
         append_req: binary::AppendRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = memcstore::Record::new(append_req.value, append_req.header.cas, 0, 0);
+        let record = store::Record::new(append_req.value, append_req.header.cas, 0, 0);
         let result = if self.is_append(append_req.header.opcode) {
             self.storage.append(append_req.key, record)
         } else {
@@ -198,7 +198,7 @@ impl BinaryHandler {
         set_req: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let record = memcstore::Record::new(
+        let record = store::Record::new(
             set_req.value,
             set_req.header.cas,
             set_req.flags,
@@ -272,7 +272,7 @@ impl BinaryHandler {
         flush_request: binary::FlushRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let meta: memcstore::Meta = memcstore::Meta::new(0, 0, flush_request.expiration);
+        let meta: store::Meta = store::Meta::new(0, 0, flush_request.expiration);
         self.storage.flush(meta);
         binary_codec::BinaryResponse::Flush(binary::FlushResponse {
             header: *response_header,
@@ -284,7 +284,7 @@ impl BinaryHandler {
         inc_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let delta = memcstore::IncrementParam {
+        let delta = store::IncrementParam {
             delta: inc_request.delta,
             value: inc_request.initial,
         };
@@ -297,7 +297,7 @@ impl BinaryHandler {
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
-                    std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                    std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Increment(binary::IncrementResponse {
                     header: *response_header,
@@ -313,7 +313,7 @@ impl BinaryHandler {
         dec_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
     ) -> binary_codec::BinaryResponse {
-        let delta = memcstore::IncrementParam {
+        let delta = store::IncrementParam {
             delta: dec_request.delta,
             value: dec_request.initial,
         };
@@ -326,7 +326,7 @@ impl BinaryHandler {
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
-                    std::mem::size_of::<memcstore::DeltaResultValueType>() as u32;
+                    std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 binary_codec::BinaryResponse::Decrement(binary::DecrementResponse {
                     header: *response_header,
@@ -492,7 +492,7 @@ mod tests {
         let header = create_header(binary::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
-        let record = memcstore::Record::new(value.clone(), 0, FLAGS, 0);
+        let record = store::Record::new(value.clone(), 0, FLAGS, 0);
 
         let set_result = handler.storage.set(key.clone(), record);
         assert!(set_result.is_ok());
@@ -663,7 +663,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -703,7 +703,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -766,7 +766,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -806,7 +806,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<memcstore::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);

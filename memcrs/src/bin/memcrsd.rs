@@ -202,15 +202,15 @@ fn main() {
 }
 
 fn create_runtime(threads: u32) -> tokio::runtime::Runtime {
-    let runtime = Builder::new_multi_thread()
-        .worker_threads(threads as usize)
+    let runtime = Builder::new_current_thread()
+        //.worker_threads(threads as usize)
         .thread_name_fn(|| {
             static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
             let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
             let str = format!("memcrsd-wrk-{}", id);
             str
         })
-        .max_blocking_threads(2)
+        //.max_blocking_threads(2)
         .enable_all()
         .build()
         .unwrap();

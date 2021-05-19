@@ -6,6 +6,7 @@ extern crate num_derive;
 pub mod protocol;
 pub mod server;
 pub mod storage;
+pub mod memcache;
 pub mod version;
 
 #[cfg(test)]
