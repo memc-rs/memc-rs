@@ -13,13 +13,12 @@ use tracing::{debug, error};
 
 use super::client_handler;
 use crate::memcache::store as storage;
-use crate::storage::timer;
+use crate::storage::store::KVStore;
 
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {
     timeout_secs: u32,
-    connection_limit: u32,
-    memory_limit: u32,
+    connection_limit: u32,    
     item_memory_limit: u32,
     listen_backlog: u32,
 }
@@ -28,22 +27,19 @@ impl MemcacheServerConfig {
     pub fn new(
         timeout_secs: u32,
         connection_limit: u32,
-        memory_limit: u32,
         item_memory_limit: u32,
         listen_backlog: u32,
     ) -> Self {
         MemcacheServerConfig {
             timeout_secs,
             connection_limit,
-            memory_limit,
             item_memory_limit,
             listen_backlog,
         }
     }
 }
 #[derive(Clone)]
-pub struct MemcacheTcpServer {
-    timer: Arc<dyn timer::Timer>,
+pub struct MemcacheTcpServer {    
     storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
@@ -53,11 +49,11 @@ pub struct MemcacheTcpServer {
 impl MemcacheTcpServer {
     pub fn new(
         config: MemcacheServerConfig,
-        timer: Arc<dyn timer::Timer + Send + Sync>,
+        store: Arc<dyn KVStore+ Send + Sync>,
     ) -> MemcacheTcpServer {
-        MemcacheTcpServer {
-            timer: timer.clone(),
-            storage: Arc::new(storage::MemcStore::new(timer)),
+
+        MemcacheTcpServer {            
+            storage: Arc::new(storage::MemcStore::new(store)),
             limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
             config: config,
         }

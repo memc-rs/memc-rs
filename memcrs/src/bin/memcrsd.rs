@@ -101,9 +101,9 @@ fn main() {
         value_t!(matches.value_of("listen-backlog"), u32).unwrap_or_else(|e| e.exit());
 
     let memory_limit_mb =
-        value_t!(matches.value_of("memory-limit"), u32).unwrap_or_else(|e| e.exit());
+        value_t!(matches.value_of("memory-limit"), u64).unwrap_or_else(|e| e.exit());
     let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::KB).unwrap();
-    let memory_limit: u32 = memory_limit_res.get_bytes() as u32;
+    let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
     let item_size_limit_str =
         value_t!(matches.value_of("max-item-size"), String).unwrap_or_else(|e| e.exit());
@@ -174,26 +174,28 @@ fn main() {
         (runtimes) * (threads + 1) + 1
     );
     info!("Max item size: {}", item_size_limit_res.get_bytes());
+    
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
         60,
         connection_limit,
-        memory_limit,
         item_size_limit_res.get_bytes() as u32,
         backlog_limit,
     );
+    let store_config = memcrs::memcache::builder::MemcacheStoreConfig::new(memory_limit);
 
-    let addr = SocketAddr::new(listen_address, port);
+    
     let system_timer: Arc<memcrs::storage::timer::SystemTimer> =
         Arc::new(memcrs::storage::timer::SystemTimer::new());
+    let memcache_store = memcrs::memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
 
-    for i in 0..runtimes {
-        let server_timer: Arc<dyn memcrs::storage::timer::Timer + Send + Sync> =
-            system_timer.clone();
+    let addr = SocketAddr::new(listen_address, port);
+    for i in 0..runtimes {        
+        let store = memcache_store.clone();
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
             let child_runtime = create_runtime(threads);
             let mut tcp_server =
-                memcrs::server::memc_tcp::MemcacheTcpServer::new(config, server_timer.clone());
+                memcrs::server::memc_tcp::MemcacheTcpServer::new(config, store);
             child_runtime.block_on(tcp_server.run(addr)).unwrap()
         });
     }

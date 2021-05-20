@@ -36,9 +36,9 @@ pub struct MemcStore {
 }
 
 impl MemcStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> MemcStore {
+    pub fn new(store: Arc<dyn KVStore+ Send + Sync>) -> MemcStore {
         MemcStore {
-            store: Arc::new(KeyValueStore::new(timer)),
+            store
         }
     }
 
