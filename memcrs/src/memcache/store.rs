@@ -174,7 +174,7 @@ impl MemcStore {
         }
     }
 
-    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<()> {
+    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
         self.store.delete(key, header)
     }
 
