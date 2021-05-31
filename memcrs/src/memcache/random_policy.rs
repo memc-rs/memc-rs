@@ -18,6 +18,14 @@ impl RandomPolicy {
             memory_usage: atomic::AtomicU64::new(0)
         }
     }
+
+    fn incr_mem_usage(&self, value: u64) -> u64 {
+        self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst)
+    }
+
+    fn decr_mem_usage(&self, value: u64) -> u64 {
+        self.memory_usage.fetch_sub(value, atomic::Ordering::SeqCst)
+    }
 }
 
 impl KVStore for RandomPolicy {
@@ -26,19 +34,18 @@ impl KVStore for RandomPolicy {
     }
 
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
-        let len = record.len();
+        let len = record.len() as u64;
         let result = self.store.set(key, record);
         if let Ok(_status) = &result  {
-            self.memory_usage.fetch_add(len as u64, atomic::Ordering::SeqCst);    
-        }
-        
+            self.incr_mem_usage(len);
+        }        
         result
     }
 
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
         let result = self.store.delete(key, header);
         if let Ok(record) =  &result {
-            self.memory_usage.fetch_sub(record.len() as u64, atomic::Ordering::SeqCst);          
+            self.decr_mem_usage(record.len() as u64);
         }
         result
     }
