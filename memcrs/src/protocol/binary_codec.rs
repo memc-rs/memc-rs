@@ -486,7 +486,10 @@ impl MemcacheBinaryCodec {
         response
     }
 
-    fn parse_item_too_large(&self, _src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
+    fn parse_item_too_large(
+        &self,
+        _src: &mut BytesMut,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
         let set_request = binary::SetRequest {
             header: self.header,
             flags: 0,

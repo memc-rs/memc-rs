@@ -1,15 +1,14 @@
 use socket2::{Domain, SockAddr, Socket, Type};
-use std::net::{ToSocketAddrs};
+use std::net::ToSocketAddrs;
 use std::sync::Arc;
 
 use tokio::io;
-use tokio::net::{TcpListener};
+use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 
 use tracing::{debug, error};
 
 //use tracing_attributes::instrument;
-
 
 use super::client_handler;
 use crate::memcache::store as storage;
@@ -18,7 +17,7 @@ use crate::storage::store::KVStore;
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {
     timeout_secs: u32,
-    connection_limit: u32,    
+    connection_limit: u32,
     item_memory_limit: u32,
     listen_backlog: u32,
 }
@@ -39,20 +38,18 @@ impl MemcacheServerConfig {
     }
 }
 #[derive(Clone)]
-pub struct MemcacheTcpServer {    
+pub struct MemcacheTcpServer {
     storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
 }
 
-
 impl MemcacheTcpServer {
     pub fn new(
         config: MemcacheServerConfig,
-        store: Arc<dyn KVStore+ Send + Sync>,
+        store: Arc<dyn KVStore + Send + Sync>,
     ) -> MemcacheTcpServer {
-
-        MemcacheTcpServer {            
+        MemcacheTcpServer {
             storage: Arc::new(storage::MemcStore::new(store)),
             limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
             config: config,
@@ -128,4 +125,3 @@ impl MemcacheTcpServer {
         }
     }
 }
-

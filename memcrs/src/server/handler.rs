@@ -1,7 +1,7 @@
+use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error::StorageError;
-use crate::memcache::store;
 use crate::version::MEMCRS_VERSION;
 use std::sync::Arc;
 

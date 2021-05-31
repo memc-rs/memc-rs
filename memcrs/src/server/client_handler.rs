@@ -1,27 +1,25 @@
-
-use std::net::{SocketAddr};
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io;
-use tokio::net::{TcpStream};
+use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
-use tokio::time::{timeout};
+use tokio::time::timeout;
 use tracing::{debug, error};
 
 //use tracing_attributes::instrument;
 
 use super::handler;
+use crate::memcache::store as storage;
 use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse};
 use crate::protocol::binary_connection::MemcacheBinaryConnection;
-use crate::memcache::store as storage;
-
 
 pub struct ClientConfig {
     pub(crate) item_memory_limit: u32,
     pub(crate) rx_timeout_secs: u32,
     pub(crate) wx_timeout_secs: u32,
 }
-pub struct Client {    
+pub struct Client {
     stream: MemcacheBinaryConnection,
     addr: SocketAddr,
     config: ClientConfig,
@@ -42,18 +40,17 @@ impl Client {
         config: ClientConfig,
         limit_connections: Arc<Semaphore>,
     ) -> Self {
-        Client {            
+        Client {
             stream: MemcacheBinaryConnection::new(socket, config.item_memory_limit),
             addr,
             config,
-            handler:  handler::BinaryHandler::new(store),
+            handler: handler::BinaryHandler::new(store),
             limit_connections,
         }
     }
 
-    pub async fn handle(&mut self) {        
+    pub async fn handle(&mut self) {
         debug!("New client connected: {}", self.addr);
-        
 
         // Here for every packet we get back from the `Framed` decoder,
         // we parse the request, and if it's valid we generate a response
@@ -65,7 +62,7 @@ impl Client {
             )
             .await
             {
-                Ok(req_or_none) => {                    
+                Ok(req_or_none) => {
                     let finished = self.handle_frame(req_or_none).await;
                     if finished {
                         return;
@@ -86,9 +83,7 @@ impl Client {
         match req {
             Ok(re) => {
                 match re {
-                    Some(request) => {
-                        return self.handle_request(request).await
-                    }
+                    Some(request) => return self.handle_request(request).await,
                     None => {
                         // The connection will be closed at this point as `lines.next()` has returned `None`.
                         debug!("Connection closed: {}", self.addr);
@@ -100,7 +95,7 @@ impl Client {
                 error!("Error when reading frame; error = {:?}", err);
                 return true;
             }
-        }        
+        }
     }
 
     async fn handle_request(&mut self, request: BinaryRequest) -> bool {
@@ -108,10 +103,7 @@ impl Client {
 
         if let BinaryRequest::QuitQuietly(_req) = request {
             debug!("Closing client socket quit quietly");
-            if let Err(_e) =
-                self.stream.shutdown().await.map_err(log_error)
-            {
-            }
+            if let Err(_e) = self.stream.shutdown().await.map_err(log_error) {}
             return true;
         }
 
@@ -122,27 +114,24 @@ impl Client {
                 if let BinaryResponse::Quit(_resp) = &response {
                     socket_close = true;
                 }
-    
+
                 debug!("Sending response {:?}", response);
                 if let Err(e) = self.stream.write(&response).await {
                     error!("error on sending response; error = {:?}", e);
                     return true;
                 }
-    
+
                 if socket_close {
                     debug!("Closing client socket quit command");
-                    if let Err(_e) =
-                        self.stream.shutdown().await.map_err(log_error)
-                    {
-                    }
+                    if let Err(_e) = self.stream.shutdown().await.map_err(log_error) {}
                     return true;
-                } 
+                }
                 return false;
             }
             None => {
                 return true;
             }
-        }        
+        }
     }
 }
 

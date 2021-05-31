@@ -1,21 +1,20 @@
-use std::sync::Arc;
-use std::sync::atomic;
-use crate::storage::store::{KVStore, KeyType, Record, Meta, SetStatus, KVStoreReadOnlyView};
 use crate::storage::error::StorageResult;
-
+use crate::storage::store::{KVStore, KVStoreReadOnlyView, KeyType, Meta, Record, SetStatus};
+use std::sync::atomic;
+use std::sync::Arc;
 
 pub struct RandomPolicy {
-    store:  Arc<dyn KVStore+ Send + Sync>,
+    store: Arc<dyn KVStore + Send + Sync>,
     memory_limit: u64,
-    memory_usage: atomic::AtomicU64
+    memory_usage: atomic::AtomicU64,
 }
 
 impl RandomPolicy {
-    pub fn new(store: Arc<dyn KVStore+ Send + Sync>, memory_limit: u64) -> RandomPolicy {
+    pub fn new(store: Arc<dyn KVStore + Send + Sync>, memory_limit: u64) -> RandomPolicy {
         RandomPolicy {
             store: store,
             memory_limit: memory_limit,
-            memory_usage: atomic::AtomicU64::new(0)
+            memory_usage: atomic::AtomicU64::new(0),
         }
     }
 
@@ -36,15 +35,15 @@ impl KVStore for RandomPolicy {
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         let len = record.len() as u64;
         let result = self.store.set(key, record);
-        if let Ok(_status) = &result  {
+        if let Ok(_status) = &result {
             self.incr_mem_usage(len);
-        }        
+        }
         result
     }
 
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
         let result = self.store.delete(key, header);
-        if let Ok(record) =  &result {
+        if let Ok(record) = &result {
             self.decr_mem_usage(record.len() as u64);
         }
         result

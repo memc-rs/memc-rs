@@ -1,6 +1,6 @@
 use crate::memcache::store::MemcStore;
-use crate::storage::timer;
 use crate::storage::store::KeyValueStore;
+use crate::storage::timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 

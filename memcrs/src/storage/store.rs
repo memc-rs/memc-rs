@@ -49,7 +49,6 @@ impl Record {
     pub fn len(&self) -> usize {
         self.header.len() + self.value.len()
     }
-
 }
 
 impl PartialEq for Record {
@@ -68,7 +67,7 @@ pub type KeyType = Vec<u8>;
 pub trait KVStoreReadOnlyView<'a> {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
-    fn keys(&'a self) -> Box<dyn Iterator<Item = & 'a KeyType> + 'a>;
+    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
 }
 
 pub trait KVStore {
@@ -86,7 +85,7 @@ pub struct KeyValueStore {
     cas_id: AtomicU64,
 }
 
-type StorageReadOnlyView =  ReadOnlyView<KeyType, Record>;
+type StorageReadOnlyView = ReadOnlyView<KeyType, Record>;
 
 impl<'a> KVStoreReadOnlyView<'a> for StorageReadOnlyView {
     fn len(&self) -> usize {
@@ -94,10 +93,10 @@ impl<'a> KVStoreReadOnlyView<'a> for StorageReadOnlyView {
     }
 
     fn is_empty(&self) -> bool {
-        StorageReadOnlyView::is_empty(self)        
+        StorageReadOnlyView::is_empty(self)
     }
 
-    fn keys(&'a self) -> Box<dyn Iterator<Item = & 'a KeyType> + 'a> {
+    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a> {
         let keys = self.keys();
         let result = Box::new(keys);
         result
@@ -152,12 +151,11 @@ impl KeyValueStore {
 }
 
 impl KVStore for KeyValueStore {
-
     fn get(&self, key: &KeyType) -> StorageResult<Record> {
         //trace!("Get: {:?}", str::from_utf8(key));
         self.get_by_key(key)
     }
-    
+
     fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
         //trace!("Set: {:?}", &record.header);
         if record.header.cas > 0 {
@@ -190,8 +188,6 @@ impl KVStore for KeyValueStore {
         }
     }
 
-
-
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
@@ -221,6 +217,5 @@ impl KVStore for KeyValueStore {
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
         let storage_clone = self.memory.clone();
         Box::new(storage_clone.into_read_only())
-        
     }
 }

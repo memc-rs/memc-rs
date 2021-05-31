@@ -174,7 +174,7 @@ fn main() {
         (runtimes) * (threads + 1) + 1
     );
     info!("Max item size: {}", item_size_limit_res.get_bytes());
-    
+
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
         60,
         connection_limit,
@@ -183,19 +183,20 @@ fn main() {
     );
     let store_config = memcrs::memcache::builder::MemcacheStoreConfig::new(memory_limit);
 
-    
     let system_timer: Arc<memcrs::storage::timer::SystemTimer> =
         Arc::new(memcrs::storage::timer::SystemTimer::new());
-    let memcache_store = memcrs::memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
+    let memcache_store = memcrs::memcache::builder::MemcacheStoreBuilder::from_config(
+        store_config,
+        system_timer.clone(),
+    );
 
     let addr = SocketAddr::new(listen_address, port);
-    for i in 0..runtimes {        
+    for i in 0..runtimes {
         let store = memcache_store.clone();
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
             let child_runtime = create_runtime(threads);
-            let mut tcp_server =
-                memcrs::server::memc_tcp::MemcacheTcpServer::new(config, store);
+            let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config, store);
             child_runtime.block_on(tcp_server.run(addr)).unwrap()
         });
     }
