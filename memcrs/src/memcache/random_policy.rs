@@ -22,9 +22,9 @@ impl RandomPolicy {
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
         let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
+        let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
-            let max = self.store.len();
-            let mut small_rng = SmallRng::from_entropy();
+            let max = self.store.len();            
             let item = small_rng.gen_range(0..max);
             let mut number_of_calls: usize = 0;
             let res = self.store.remove_if(&move |key: &KeyType, value: &Record| -> bool {                
