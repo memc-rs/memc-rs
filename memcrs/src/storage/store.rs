@@ -4,6 +4,7 @@ use bytes::Bytes;
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::hash::BuildHasher;
 
 #[derive(Clone, Debug)]
 pub struct Meta {
@@ -70,13 +71,21 @@ pub trait KVStoreReadOnlyView<'a> {
     fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
 }
 
+pub type RemoveIfResult = Option<(KeyType, Record)>;
+pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 pub trait KVStore {
     fn get(&self, key: &KeyType) -> StorageResult<Record>;
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record>;
     fn flush(&self, header: Meta);
+    fn len(&self) -> usize;
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
+    fn remove_if(
+        &self,       
+        f: &Predicate        
+    ) -> RemoveIfResult;
 }
+        
 
 type Storage = DashMap<KeyType, Record>;
 pub struct KeyValueStore {
@@ -217,5 +226,16 @@ impl KVStore for KeyValueStore {
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
         let storage_clone = self.memory.clone();
         Box::new(storage_clone.into_read_only())
+    }
+
+    fn remove_if(
+        &self,    
+        f: &Predicate        
+    ) -> RemoveIfResult {
+        None
+    }
+
+    fn len(&self) -> usize {
+        self.memory.len()
     }
 }

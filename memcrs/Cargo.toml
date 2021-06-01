@@ -25,6 +25,7 @@ socket2 = { version = "0.4.0", features = ["all"] }
 num_cpus = "1.13.0"
 num-derive = "0.3.3"
 num-traits = "0.2.14"
+rand = { version = "0.8.3", features = ["small_rng"] }
 serde = "1.0.125"
 serde_derive = "1.0.125"
 tracing = "0.1.25"

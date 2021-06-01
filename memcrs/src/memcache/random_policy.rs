@@ -1,5 +1,7 @@
 use crate::storage::error::StorageResult;
-use crate::storage::store::{KVStore, KVStoreReadOnlyView, KeyType, Meta, Record, SetStatus};
+use crate::storage::store::{KVStore, KVStoreReadOnlyView, KeyType, Meta, Record, SetStatus, Predicate, RemoveIfResult};
+use rand::{Rng, SeedableRng};
+use rand::rngs::SmallRng;
 use std::sync::atomic;
 use std::sync::Arc;
 
@@ -14,12 +16,37 @@ impl RandomPolicy {
         RandomPolicy {
             store: store,
             memory_limit: memory_limit,
-            memory_usage: atomic::AtomicU64::new(0),
+            memory_usage: atomic::AtomicU64::new(0),            
         }
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst)
+        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
+        while usage > self.memory_limit {
+            let max = self.store.len();
+            let mut small_rng = SmallRng::from_entropy();
+            let item = small_rng.gen_range(0..max);
+            let mut number_of_calls: usize = 0;
+            let res = self.store.remove_if(&move |key: &KeyType, value: &Record| -> bool {                
+                if number_of_calls < item || number_of_calls > item{                    
+                    number_of_calls += 1;
+                    return false;
+                }
+                number_of_calls += 1;
+                true
+            });
+
+            match res {
+                Some(val) => {
+                    let len = val.1.len();
+                    usage = self.decr_mem_usage(len as u64);
+                },
+                None => {
+                    break;
+                }
+            }
+        }
+        usage
     }
 
     fn decr_mem_usage(&self, value: u64) -> u64 {
@@ -34,10 +61,8 @@ impl KVStore for RandomPolicy {
 
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         let len = record.len() as u64;
-        let result = self.store.set(key, record);
-        if let Ok(_status) = &result {
-            self.incr_mem_usage(len);
-        }
+        self.incr_mem_usage(len);
+        let result = self.store.set(key, record);        
         result
     }
 
@@ -55,5 +80,16 @@ impl KVStore for RandomPolicy {
 
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
         self.store.into_read_only()
+    }
+
+    fn remove_if(
+        &self,    
+        f: &Predicate        
+    ) -> RemoveIfResult {
+        self.store.remove_if(f)
+    }
+
+    fn len(&self) -> usize {
+        self.store.len()
     }
 }
