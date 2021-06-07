@@ -102,7 +102,7 @@ fn main() {
 
     let memory_limit_mb =
         value_t!(matches.value_of("memory-limit"), u64).unwrap_or_else(|e| e.exit());
-    let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::KB).unwrap();
+    let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
     let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
     let item_size_limit_str =
@@ -174,6 +174,7 @@ fn main() {
         (runtimes) * (threads + 1) + 1
     );
     info!("Max item size: {}", item_size_limit_res.get_bytes());
+    info!("Memory limit: {} MB", memory_limit_mb);
 
     let config = memcrs::server::memc_tcp::MemcacheServerConfig::new(
         60,

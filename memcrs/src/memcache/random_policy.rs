@@ -21,13 +21,17 @@ impl RandomPolicy {
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
+        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);            
+
         let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
+            debug!("Current memory usage: {}", usage);
+            debug!("Memory limit: {}", self.memory_limit);
+
             let max = self.store.len();            
             let item = small_rng.gen_range(0..max);
             let mut number_of_calls: usize = 0;
-            let res = self.store.remove_if(&move |key: &KeyType, value: &Record| -> bool {                
+            let res = self.store.remove_if(&mut move |_key: &KeyType, _value: &Record| -> bool {                
                 if number_of_calls < item || number_of_calls > item{                    
                     number_of_calls += 1;
                     return false;
@@ -36,15 +40,18 @@ impl RandomPolicy {
                 true
             });
 
-            match res {
-                Some(val) => {
-                    let len = val.1.len();
-                    usage = self.decr_mem_usage(len as u64);
-                },
-                None => {
-                    break;
-                }
-            }
+            res
+                .iter()
+                .for_each(|record| {
+                    match record {
+                        Some(val) => {
+                            let len = val.1.len();
+                            debug!("Evicted: {} bytes from storage", len);
+                            usage = self.decr_mem_usage(len as u64);
+                        },
+                        None => {}
+                    }
+                });            
         }
         usage
     }
@@ -84,7 +91,7 @@ impl KVStore for RandomPolicy {
 
     fn remove_if(
         &self,    
-        f: &Predicate        
+        f: &mut Predicate        
     ) -> RemoveIfResult {
         self.store.remove_if(f)
     }

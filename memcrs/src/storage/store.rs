@@ -1,10 +1,10 @@
 use super::error::{StorageError, StorageResult};
 use super::timer;
 use bytes::Bytes;
+use dashmap::mapref::multiple::RefMulti;
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::hash::BuildHasher;
 
 #[derive(Clone, Debug)]
 pub struct Meta {
@@ -71,7 +71,7 @@ pub trait KVStoreReadOnlyView<'a> {
     fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
 }
 
-pub type RemoveIfResult = Option<(KeyType, Record)>;
+pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 pub trait KVStore {
     fn get(&self, key: &KeyType) -> StorageResult<Record>;
@@ -82,7 +82,7 @@ pub trait KVStore {
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
     fn remove_if(
         &self,       
-        f: &Predicate        
+        f: &mut Predicate        
     ) -> RemoveIfResult;
 }
         
@@ -230,9 +230,23 @@ impl KVStore for KeyValueStore {
 
     fn remove_if(
         &self,    
-        f: &Predicate        
+        f: &mut Predicate        
     ) -> RemoveIfResult {
-        None
+        let items: Vec<KeyType> =
+            self.memory
+                .iter()
+                .filter(|record: &RefMulti<Vec<u8>, Record>| {
+                        f(record.key(), record.value())  
+                }).map(|record: RefMulti<Vec<u8>, Record>| {
+                    record.key().clone()
+                }).collect();
+
+        let result: Vec<Option<(Vec<u8>, Record)>> = items
+            .iter()
+            .map(|key: &KeyType| {
+                self.memory.remove(key)
+            }).collect();
+        result
     }
 
     fn len(&self) -> usize {
