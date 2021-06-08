@@ -1,7 +1,9 @@
 use crate::storage::error::StorageResult;
-use crate::storage::store::{KVStore, KVStoreReadOnlyView, KeyType, Meta, Record, SetStatus, Predicate, RemoveIfResult};
-use rand::{Rng, SeedableRng};
+use crate::storage::store::{
+    KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record, RemoveIfResult, SetStatus,
+};
 use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 use std::sync::atomic;
 use std::sync::Arc;
 
@@ -16,42 +18,44 @@ impl RandomPolicy {
         RandomPolicy {
             store: store,
             memory_limit: memory_limit,
-            memory_usage: atomic::AtomicU64::new(0),            
+            memory_usage: atomic::AtomicU64::new(0),
         }
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);            
+        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
 
         let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
             debug!("Current memory usage: {}", usage);
             debug!("Memory limit: {}", self.memory_limit);
 
-            let max = self.store.len();            
+            let max = self.store.len();
+            if max == 0 {
+                self.decr_mem_usage(usage);
+                break;
+            }
             let item = small_rng.gen_range(0..max);
             let mut number_of_calls: usize = 0;
-            let res = self.store.remove_if(&mut move |_key: &KeyType, _value: &Record| -> bool {                
-                if number_of_calls < item || number_of_calls > item{                    
-                    number_of_calls += 1;
-                    return false;
-                }
-                number_of_calls += 1;
-                true
-            });
-
-            res
-                .iter()
-                .for_each(|record| {
-                    match record {
-                        Some(val) => {
-                            let len = val.1.len();
-                            debug!("Evicted: {} bytes from storage", len);
-                            usage = self.decr_mem_usage(len as u64);
-                        },
-                        None => {}
+            let res = self
+                .store
+                .remove_if(&mut move |_key: &KeyType, _value: &Record| -> bool {
+                    if number_of_calls < item || number_of_calls > item {
+                        number_of_calls += 1;
+                        return false;
                     }
-                });            
+                    number_of_calls += 1;
+                    true
+                });
+
+            res.iter().for_each(|record| match record {
+                Some(val) => {
+                    let len = val.1.len();
+                    debug!("Evicted: {} bytes from storage", len);
+                    usage = self.decr_mem_usage(len as u64);
+                }
+                None => {}
+            });
         }
         usage
     }
@@ -69,7 +73,7 @@ impl KVStore for RandomPolicy {
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         let len = record.len() as u64;
         self.incr_mem_usage(len);
-        let result = self.store.set(key, record);        
+        let result = self.store.set(key, record);
         result
     }
 
@@ -89,10 +93,7 @@ impl KVStore for RandomPolicy {
         self.store.into_read_only()
     }
 
-    fn remove_if(
-        &self,    
-        f: &mut Predicate        
-    ) -> RemoveIfResult {
+    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
         self.store.remove_if(f)
     }
 

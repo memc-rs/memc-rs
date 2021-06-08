@@ -80,12 +80,8 @@ pub trait KVStore {
     fn flush(&self, header: Meta);
     fn len(&self) -> usize;
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
-    fn remove_if(
-        &self,       
-        f: &mut Predicate        
-    ) -> RemoveIfResult;
+    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult;
 }
-        
 
 type Storage = DashMap<KeyType, Record>;
 pub struct KeyValueStore {
@@ -228,24 +224,18 @@ impl KVStore for KeyValueStore {
         Box::new(storage_clone.into_read_only())
     }
 
-    fn remove_if(
-        &self,    
-        f: &mut Predicate        
-    ) -> RemoveIfResult {
-        let items: Vec<KeyType> =
-            self.memory
-                .iter()
-                .filter(|record: &RefMulti<Vec<u8>, Record>| {
-                        f(record.key(), record.value())  
-                }).map(|record: RefMulti<Vec<u8>, Record>| {
-                    record.key().clone()
-                }).collect();
+    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
+        let items: Vec<KeyType> = self
+            .memory
+            .iter()
+            .filter(|record: &RefMulti<Vec<u8>, Record>| f(record.key(), record.value()))
+            .map(|record: RefMulti<Vec<u8>, Record>| record.key().clone())
+            .collect();
 
         let result: Vec<Option<(Vec<u8>, Record)>> = items
             .iter()
-            .map(|key: &KeyType| {
-                self.memory.remove(key)
-            }).collect();
+            .map(|key: &KeyType| self.memory.remove(key))
+            .collect();
         result
     }
 

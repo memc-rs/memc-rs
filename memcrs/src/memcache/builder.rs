@@ -31,9 +31,11 @@ impl MemcacheStoreBuilder {
     ) -> Arc<dyn KVStore + Send + Sync> {
         let store_engine = Arc::new(KeyValueStore::new(timer));
         let store: Arc<dyn KVStore + Send + Sync> = match config.policy {
-            EvictionPolicy::Random => Arc::new(RandomPolicy::new(store_engine, config.memory_limit)),
-            EvictionPolicy::None => store_engine
-        };        
+            EvictionPolicy::Random => {
+                Arc::new(RandomPolicy::new(store_engine, config.memory_limit))
+            }
+            EvictionPolicy::None => store_engine,
+        };
         store
     }
 }
