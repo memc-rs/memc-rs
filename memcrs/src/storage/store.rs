@@ -76,7 +76,6 @@ pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 // An abstraction over a generic store key <=> value store
 pub trait KVStore {
-
     
     // Returns a value associated with a key
     fn get(&self, key: &KeyType) -> StorageResult<Record>;
