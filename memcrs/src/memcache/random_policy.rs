@@ -101,3 +101,7 @@ impl KVStore for RandomPolicy {
         self.store.len()
     }
 }
+
+mod tests {
+    use super::*;
+}

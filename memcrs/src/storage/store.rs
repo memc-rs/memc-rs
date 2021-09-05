@@ -65,6 +65,7 @@ pub struct SetStatus {
 
 pub type KeyType = Vec<u8>;
 
+// Read only view over a store
 pub trait KVStoreReadOnlyView<'a> {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool;
@@ -73,13 +74,44 @@ pub trait KVStoreReadOnlyView<'a> {
 
 pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
+// An abstraction over a generic store key <=> value store
 pub trait KVStore {
+
+    
+    // Returns a value associated with a key
     fn get(&self, key: &KeyType) -> StorageResult<Record>;
+
+    // Sets value that will be associated with a store.
+    // If value already exists in a store CAS field is compared
+    // and depending on CAS value comparison value is set or rejected.
+    // 
+    // - if CAS is equal to 0 value is always set 
+    // - if CAS is not equal value is not set and there is an error 
+    //   returned with status KeyExists    
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
+
+    // Removes a value associated with a key a returns it to a caller if CAS
+    // value comparison is successful or header.CAS is equal to 0:
+    //
+    // - if header.CAS != to stored record CAS KeyExists is returned
+    // - if key is not found NotFound is returned
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record>;
+
+    // Removes all values from a store
+    // 
+    // - if header.ttl is set to 0 values are removed immediately,
+    // - if header.ttl>0 values are removed from a store after 
+    //   ttl expiration
     fn flush(&self, header: Meta);
+    
+    // Number of key value pairs stored in store
     fn len(&self) -> usize;
+
+    // Returns a read-only view over a stroe
     fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
+
+    // Removes key-value pairs from a store for which
+    // f predicate returns true
     fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult;
 }
 
