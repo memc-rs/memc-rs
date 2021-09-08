@@ -78,7 +78,24 @@ pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 pub trait KVStore {
     
     // Returns a value associated with a key
-    fn get(&self, key: &KeyType) -> StorageResult<Record>;
+    fn get(&self, key: &KeyType) -> StorageResult<Record> {
+        let result = self.get_by_key(key);
+        match result {
+            Ok(record) => {
+                if self.check_if_expired(key, &record) {
+                    return Err(StorageError::NotFound);
+                }
+                Ok(record)
+            }
+            Err(err) => Err(err),
+        }
+    }
+
+    // 
+    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
+
+    //
+    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
 
     // Sets value that will be associated with a store.
     // If value already exists in a store CAS field is compared
@@ -112,6 +129,9 @@ pub trait KVStore {
     // Removes key-value pairs from a store for which
     // f predicate returns true
     fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult;
+
+    // Removes key value and returns as an option
+    fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
 }
 
 type Storage = DashMap<KeyType, Record>;
@@ -148,20 +168,17 @@ impl KeyValueStore {
         }
     }
 
+    fn get_cas_id(&self) -> u64 {
+        self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
+    }
+}
+
+impl KVStore for KeyValueStore {
+
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
-        let result = match self.memory.get(key) {
+        match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
             None => Err(StorageError::NotFound),
-        };
-
-        match result {
-            Ok(record) => {
-                if self.check_if_expired(key, &record) {
-                    return Err(StorageError::NotFound);
-                }
-                Ok(record)
-            }
-            Err(err) => Err(err),
         }
     }
 
@@ -175,21 +192,15 @@ impl KeyValueStore {
         if record.header.timestamp + (record.header.time_to_live as u64) > current_time {
             return false;
         }
-        match self.memory.remove(key) {
+        match self.remove(key) {
             Some(_) => true,
             None => true,
         }
     }
 
-    fn get_cas_id(&self) -> u64 {
-        self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
-    }
-}
-
-impl KVStore for KeyValueStore {
-    fn get(&self, key: &KeyType) -> StorageResult<Record> {
-        //trace!("Get: {:?}", str::from_utf8(key));
-        self.get_by_key(key)
+    // Removes key value and returns as an option
+    fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
+        self.memory.remove(key)
     }
 
     fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
@@ -265,7 +276,7 @@ impl KVStore for KeyValueStore {
 
         let result: Vec<Option<(Vec<u8>, Record)>> = items
             .iter()
-            .map(|key: &KeyType| self.memory.remove(key))
+            .map(|key: &KeyType| self.remove(key))
             .collect();
         result
     }
