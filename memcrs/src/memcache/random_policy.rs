@@ -1,6 +1,6 @@
 use crate::storage::error::StorageResult;
 use crate::storage::store::{
-    KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record, RemoveIfResult, SetStatus,
+    KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record, RemoveIfResult, SetStatus, impl_details::StoreImplDetails
 };
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -65,6 +65,18 @@ impl RandomPolicy {
     }
 }
 
+impl StoreImplDetails for RandomPolicy {
+    // 
+    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
+        self.store.get_by_key(key)
+    }
+
+    //
+    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
+        self.store.check_if_expired(key, record)
+    }
+}
+
 impl KVStore for RandomPolicy {
     fn get(&self, key: &KeyType) -> StorageResult<Record> {
         self.store.get(key)
@@ -85,16 +97,6 @@ impl KVStore for RandomPolicy {
         result
     }
     
-    // 
-    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
-        self.store.get_by_key(key)
-    }
-
-    //
-    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
-        self.store.check_if_expired(key, record)
-    }
-
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         let result = self.store.remove(key);

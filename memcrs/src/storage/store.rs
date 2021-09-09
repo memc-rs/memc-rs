@@ -72,10 +72,22 @@ pub trait KVStoreReadOnlyView<'a> {
     fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
 }
 
+// Not a part of Store public API
+pub mod impl_details {
+    use super::*;
+    pub trait StoreImplDetails {
+        // 
+        fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
+
+        //
+        fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
+    }
+}
+
 pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 // An abstraction over a generic store key <=> value store
-pub trait KVStore {
+pub trait KVStore: impl_details::StoreImplDetails {
     
     // Returns a value associated with a key
     fn get(&self, key: &KeyType) -> StorageResult<Record> {
@@ -89,13 +101,7 @@ pub trait KVStore {
             }
             Err(err) => Err(err),
         }
-    }
-
-    // 
-    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
-
-    //
-    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
+    }    
 
     // Sets value that will be associated with a store.
     // If value already exists in a store CAS field is compared
@@ -173,8 +179,7 @@ impl KeyValueStore {
     }
 }
 
-impl KVStore for KeyValueStore {
-
+impl impl_details::StoreImplDetails for KeyValueStore {
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
@@ -197,6 +202,9 @@ impl KVStore for KeyValueStore {
             None => true,
         }
     }
+}
+
+impl KVStore for KeyValueStore {
 
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
