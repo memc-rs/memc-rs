@@ -21,7 +21,7 @@ impl MockSystemTimer {
 }
 
 impl timer::Timer for MockSystemTimer {
-    fn secs(&self) -> u64 {
+    fn timestamp(&self) -> u64 {
         self.current_time.load(Ordering::Relaxed) as u64
     }
 }

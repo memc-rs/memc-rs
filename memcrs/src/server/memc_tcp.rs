@@ -67,11 +67,11 @@ impl MemcacheTcpServer {
                             socket.set_nodelay(true)?;
                             socket.set_linger(None)?;
                             let mut client = client_handler::Client::new(
-                                self.storage.clone(),
+                                Arc::clone(&self.storage),
                                 socket,
                                 peer_addr,
                                 self.get_client_config(),
-                                self.limit_connections.clone()
+                                Arc::clone(&self.limit_connections)
                             );
 
                             self.limit_connections.acquire().await.unwrap().forget();

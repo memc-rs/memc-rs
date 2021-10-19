@@ -188,7 +188,7 @@ impl impl_details::StoreImplDetails for KeyValueStore {
     }
 
     fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
-        let current_time = self.timer.secs();
+        let current_time = self.timer.timestamp();
 
         if record.header.time_to_live == 0 {
             return false;
@@ -220,7 +220,7 @@ impl KVStore for KeyValueStore {
                         Err(StorageError::KeyExists)
                     } else {
                         record.header.cas += 1;
-                        record.header.timestamp = self.timer.secs();
+                        record.header.timestamp = self.timer.timestamp();
                         let cas = record.header.cas;
                         *key_value = record;
                         Ok(SetStatus { cas })
@@ -228,7 +228,7 @@ impl KVStore for KeyValueStore {
                 }
                 None => {
                     record.header.cas += 1;
-                    record.header.timestamp = self.timer.secs();
+                    record.header.timestamp = self.timer.timestamp();
                     let cas = record.header.cas;
                     self.memory.insert(key, record);
                     Ok(SetStatus { cas })
@@ -237,7 +237,7 @@ impl KVStore for KeyValueStore {
         } else {
             let cas = self.get_cas_id();
             record.header.cas = cas;
-            record.header.timestamp = self.timer.secs();
+            record.header.timestamp = self.timer.timestamp();
             self.memory.insert(key, record);
             Ok(SetStatus { cas })
         }

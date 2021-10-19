@@ -193,7 +193,7 @@ fn main() {
 
     let addr = SocketAddr::new(listen_address, port);
     for i in 0..runtimes {
-        let store = memcache_store.clone();
+        let store = Arc::clone(&memcache_store);
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
             let child_runtime = create_runtime(threads);

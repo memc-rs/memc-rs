@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::time::{interval_at, Instant};
 pub trait Timer {
-    fn secs(&self) -> u64;
+    fn timestamp(&self) -> u64;
 }
 
 pub trait SetableTimer {
@@ -27,13 +27,13 @@ impl SystemTimer {
         loop {
             interval.tick().await;
             self.add_second();
-            debug!("Server tick: {}", self.secs());
+            debug!("Server tick: {}", self.timestamp());
         }
     }
 }
 
 impl Timer for SystemTimer {
-    fn secs(&self) -> u64 {
+    fn timestamp(&self) -> u64 {
         self.seconds.load(Ordering::SeqCst)
     }
 }
