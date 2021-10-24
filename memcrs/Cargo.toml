@@ -2,7 +2,7 @@
 name = "memcrs"
 version = "0.0.1"
 authors = ["Dariusz Ostolski <dariusz.ostolski@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 
 [lib]
