@@ -1,7 +1,7 @@
 use crate::protocol::binary_codec::{
     BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
 };
-use bytes::{BufMut, BytesMut};
+use bytes::{BytesMut};
 use std::cmp;
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -24,7 +24,7 @@ impl MemcacheBinaryConnection {
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
         let mut buffer = BytesMut::with_capacity(4096);
-        let extras_length: u32 = 8;
+        let _extras_length: u32 = 8;
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.

@@ -205,7 +205,7 @@ fn main() {
     parent_runtime.block_on(system_timer.run())
 }
 
-fn create_runtime(threads: u32) -> tokio::runtime::Runtime {
+fn create_runtime(_threads: u32) -> tokio::runtime::Runtime {
     let runtime = Builder::new_current_thread()
         //.worker_threads(threads as usize)
         .thread_name_fn(|| {
