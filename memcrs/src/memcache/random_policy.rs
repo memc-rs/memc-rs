@@ -1,6 +1,7 @@
 use crate::storage::error::StorageResult;
 use crate::storage::store::{
-    KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record, RemoveIfResult, SetStatus, impl_details::StoreImplDetails
+    impl_details::StoreImplDetails, KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record,
+    RemoveIfResult, SetStatus,
 };
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -66,7 +67,7 @@ impl RandomPolicy {
 }
 
 impl StoreImplDetails for RandomPolicy {
-    // 
+    //
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
         self.store.get_by_key(key)
     }
@@ -96,11 +97,11 @@ impl KVStore for RandomPolicy {
         }
         result
     }
-    
+
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         let result = self.store.remove(key);
-        if let Some(key_value)  = &result  {
+        if let Some(key_value) = &result {
             self.decr_mem_usage(key_value.1.len() as u64);
         }
         result

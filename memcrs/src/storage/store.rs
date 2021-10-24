@@ -76,7 +76,7 @@ pub trait KVStoreReadOnlyView<'a> {
 pub mod impl_details {
     use super::*;
     pub trait StoreImplDetails {
-        // 
+        //
         fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
 
         //
@@ -88,7 +88,6 @@ pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 // An abstraction over a generic store key <=> value store
 pub trait KVStore: impl_details::StoreImplDetails {
-    
     // Returns a value associated with a key
     fn get(&self, key: &KeyType) -> StorageResult<Record> {
         let result = self.get_by_key(key);
@@ -101,15 +100,15 @@ pub trait KVStore: impl_details::StoreImplDetails {
             }
             Err(err) => Err(err),
         }
-    }    
+    }
 
     // Sets value that will be associated with a store.
     // If value already exists in a store CAS field is compared
     // and depending on CAS value comparison value is set or rejected.
-    // 
-    // - if CAS is equal to 0 value is always set 
-    // - if CAS is not equal value is not set and there is an error 
-    //   returned with status KeyExists    
+    //
+    // - if CAS is equal to 0 value is always set
+    // - if CAS is not equal value is not set and there is an error
+    //   returned with status KeyExists
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
 
     // Removes a value associated with a key a returns it to a caller if CAS
@@ -120,12 +119,12 @@ pub trait KVStore: impl_details::StoreImplDetails {
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record>;
 
     // Removes all values from a store
-    // 
+    //
     // - if header.ttl is set to 0 values are removed immediately,
-    // - if header.ttl>0 values are removed from a store after 
+    // - if header.ttl>0 values are removed from a store after
     //   ttl expiration
     fn flush(&self, header: Meta);
-    
+
     // Number of key value pairs stored in store
     fn len(&self) -> usize;
 
@@ -205,7 +204,6 @@ impl impl_details::StoreImplDetails for KeyValueStore {
 }
 
 impl KVStore for KeyValueStore {
-
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         self.memory.remove(key)
@@ -282,10 +280,8 @@ impl KVStore for KeyValueStore {
             .map(|record: RefMulti<Vec<u8>, Record>| record.key().clone())
             .collect();
 
-        let result: Vec<Option<(Vec<u8>, Record)>> = items
-            .iter()
-            .map(|key: &KeyType| self.remove(key))
-            .collect();
+        let result: Vec<Option<(Vec<u8>, Record)>> =
+            items.iter().map(|key: &KeyType| self.remove(key)).collect();
         result
     }
 

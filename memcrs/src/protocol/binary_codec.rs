@@ -621,8 +621,6 @@ pub struct ResponseMessage {
 
 impl MemcacheBinaryCodec {
     const RESPONSE_HEADER_LEN: usize = 24;
-    const SOCKET_BUFFER: usize = 4096;
-    const DEFAULT_BUFFER_CAPACITY: usize = 512;
 
     pub fn get_length(&self, msg: &BinaryResponse) -> usize {
         self.get_len_from_header(self.get_header(msg))
@@ -646,17 +644,14 @@ impl MemcacheBinaryCodec {
     // written into socket directly.
     //
     pub fn encode_message(&self, msg: &BinaryResponse) -> ResponseMessage {
-        let mut dst = BytesMut::with_capacity(MemcacheBinaryCodec::DEFAULT_BUFFER_CAPACITY);
         let len = self.get_length(msg);
-        if len < MemcacheBinaryCodec::SOCKET_BUFFER {
-            dst.reserve(len);
-        }
+        let mut dst = BytesMut::with_capacity(len);
         self.write_header_impl(self.get_header(msg), &mut dst);
         self.encode_data(msg, dst)
     }
 
     fn encode_data(&self, msg: &BinaryResponse, mut dst: BytesMut) -> ResponseMessage {
-        let buffered = self.get_length(msg) < MemcacheBinaryCodec::SOCKET_BUFFER;
+        let buffered = false;
         match msg {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
