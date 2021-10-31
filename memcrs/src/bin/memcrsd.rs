@@ -12,6 +12,13 @@ extern crate clap;
 extern crate memcrs;
 use clap::{value_t, App, Arg};
 
+#[cfg(feature = "jemallocator")]
+use jemallocator::Jemalloc;
+
+#[cfg(feature = "jemallocator")]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 fn main() {
     let cpus = (num_cpus::get_physical() + 1).to_string();
     let runtimes = ((num_cpus::get_physical() + 1) / 2).to_string();

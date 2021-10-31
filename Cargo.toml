@@ -7,7 +7,7 @@ members = [
 ]
 
 [profile.release]
-opt-level = 's'
-debug = false
+opt-level = 3
+debug = true
 lto = true
 panic = 'unwind'
