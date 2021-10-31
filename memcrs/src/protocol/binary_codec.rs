@@ -612,11 +612,8 @@ impl Decoder for MemcacheBinaryCodec {
 }
 
 pub struct ResponseMessage {
-    // If small enough header+key?+value?
+    // header+key?+value?
     pub(crate) data: Bytes,
-    // if value is large to avoid copying into data
-    // it is returned as Option<Bytes>
-    pub(crate) value: Option<Bytes>,
 }
 
 impl MemcacheBinaryCodec {
@@ -651,7 +648,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn encode_data(&self, msg: &BinaryResponse, mut dst: BytesMut) -> ResponseMessage {
-        let buffered = false;
+        let buffered = true;
         match msg {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
@@ -664,14 +661,7 @@ impl MemcacheBinaryCodec {
                 if response.key.len() > 0 {
                     dst.put_slice(&response.key[..]);
                 }
-                if buffered {
-                    dst.put(response.value.clone());
-                } else {
-                    return ResponseMessage {
-                        data: dst.freeze(),
-                        value: Some(response.value.clone()),
-                    };
-                }
+                dst.put(response.value.clone());
             }
             BinaryResponse::Set(_response)
             | BinaryResponse::Replace(_response)
@@ -690,8 +680,7 @@ impl MemcacheBinaryCodec {
             }
         }
         ResponseMessage {
-            data: dst.freeze(),
-            value: None,
+            data: dst.freeze()
         }
     }
 

@@ -134,12 +134,6 @@ impl MemcacheBinaryConnection {
 
     async fn write_data_to_stream(&mut self, msg: ResponseMessage) -> io::Result<()> {
         self.stream.write_all(&msg.data[..]).await?;
-        match msg.value {
-            Some(value) => {
-                self.stream.write_all(&value).await?;
-            }
-            None => {}
-        }
         Ok(())
     }
 
