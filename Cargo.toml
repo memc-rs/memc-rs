@@ -2,8 +2,8 @@
 
 
 members = [
-    "memcrs",
-    "memclt"
+    "memcrs"
+    #"memclt"
 ]
 
 [profile.release]
