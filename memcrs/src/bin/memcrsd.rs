@@ -75,14 +75,6 @@ fn main() {
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("threads")
-                .short("t")
-                .long("threads")
-                .default_value(&cpus)
-                .help("number of threads to use")
-                .takes_value(true),
-        )
-        .arg(
             Arg::with_name("max-item-size")
                 .short("I")
                 .long("max-item-size")
@@ -125,7 +117,6 @@ fn main() {
         process::exit(1);
     }
 
-    let threads: u32 = value_t!(matches.value_of("threads"), u32).unwrap_or_else(|e| e.exit());
     let runtimes: u32 = value_t!(matches.value_of("runtimes"), u32).unwrap_or_else(|e| e.exit());
 
     let listen_address = matches
@@ -174,7 +165,6 @@ fn main() {
     info!("Listen address: {}", matches.value_of("listen").unwrap());
     info!("Listen port: {}", port);
     info!("Connection limit: {}", connection_limit);
-    info!("Number of threads per runtime: {}", threads);
     info!("Number of runtimes: {}", runtimes);
     info!(
         "Number of threads total: {}",
@@ -203,16 +193,16 @@ fn main() {
         let store = Arc::clone(&memcache_store);
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
-            let child_runtime = create_runtime(threads);
+            let child_runtime = create_runtime();
             let mut tcp_server = memcrs::server::memc_tcp::MemcacheTcpServer::new(config, store);
             child_runtime.block_on(tcp_server.run(addr)).unwrap()
         });
     }
-    let parent_runtime = create_runtime(1);
+    let parent_runtime = create_runtime();
     parent_runtime.block_on(system_timer.run())
 }
 
-fn create_runtime(_threads: u32) -> tokio::runtime::Runtime {
+fn create_runtime() -> tokio::runtime::Runtime {
     let runtime = Builder::new_current_thread()
         //.worker_threads(threads as usize)
         .thread_name_fn(|| {
