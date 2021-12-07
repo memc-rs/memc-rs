@@ -98,6 +98,8 @@ impl Client {
         }
     }
 
+    /// Handles single memcached binary request
+    /// Returns true if we should leave client receive loop
     async fn handle_request(&mut self, request: BinaryRequest) -> bool {
         debug!("Got request {:?}", request.get_header());
 
