@@ -63,8 +63,8 @@ impl Client {
             .await
             {
                 Ok(req_or_none) => {
-                    let finished = self.handle_frame(req_or_none).await;
-                    if finished {
+                    let client_close = self.handle_frame(req_or_none).await;
+                    if client_close {
                         return;
                     }
                 }

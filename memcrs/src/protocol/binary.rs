@@ -224,4 +224,20 @@ pub type FlushResponse = Response;
 pub type QuitRequest = Request;
 pub type QuitResponse = Response;
 
+pub type StatsRequest = Request;
+#[derive(Debug)]
+pub struct StatsResponse {
+    pub(crate) header: ResponseHeader,
+}
+
+// pub struct StatsResponseRecord {
+//     pub(crate) header: ResponseHeader,
+//     pub(crate) key: Vec<u8>,
+//     pub(crate) value: Bytes,
+// }
+// #[derive(Debug)]
+// pub struct StatsResponse {
+//     pub(crate) records: Vec<StatsResponseRecord>,
+// }
+
 /* TODO Get And Touch (GAT) */

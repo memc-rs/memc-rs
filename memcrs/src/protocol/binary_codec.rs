@@ -37,6 +37,7 @@ pub enum BinaryRequest {
     Quit(binary::QuitRequest),
     QuitQuietly(binary::QuitRequest),
     ItemTooLarge(binary::SetRequest),
+    Stats(binary::StatsRequest)
 }
 
 impl BinaryRequest {
@@ -67,11 +68,14 @@ impl BinaryRequest {
             | BinaryRequest::Decrement(request)
             | BinaryRequest::DecrementQuiet(request) => &request.header,
 
-            BinaryRequest::Noop(request) | BinaryRequest::Version(request) => &request.header,
+            BinaryRequest::Noop(request) 
+            | BinaryRequest::Version(request) 
+            | BinaryRequest::Stats(request) => &request.header,
 
             BinaryRequest::Flush(request) | BinaryRequest::FlushQuietly(request) => &request.header,
 
             BinaryRequest::Quit(request) | BinaryRequest::QuitQuietly(request) => &request.header,
+
         }
     }
 }
@@ -96,6 +100,7 @@ pub enum BinaryResponse {
     Increment(binary::IncrementResponse),
     Decrement(binary::DecrementResponse),
     Quit(binary::QuitResponse),
+    Stats(binary::StatsResponse)
 }
 
 impl BinaryResponse {
@@ -118,6 +123,7 @@ impl BinaryResponse {
             BinaryResponse::Increment(response) => &response.header,
             BinaryResponse::Decrement(response) => &response.header,
             BinaryResponse::Quit(response) => &response.header,
+            BinaryResponse::Stats(response) => &response.header,
         }
     }
 }
@@ -265,8 +271,8 @@ impl MemcacheBinaryCodec {
             Some(binary::Command::Noop)
             | Some(binary::Command::Quit)
             | Some(binary::Command::QuitQuiet)
+            | Some(binary::Command::Stat)
             | Some(binary::Command::Version) => self.parse_header_only_request(src),
-            Some(binary::Command::Stat) => Ok(None),
 
             Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
                 self.parse_flush_request(src)
@@ -648,7 +654,6 @@ impl MemcacheBinaryCodec {
     }
 
     fn encode_data(&self, msg: &BinaryResponse, mut dst: BytesMut) -> ResponseMessage {
-        let buffered = true;
         match msg {
             BinaryResponse::Error(response) => {
                 dst.put(response.error.as_bytes());
@@ -675,6 +680,7 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Delete(_response) => {}
             BinaryResponse::Flush(_response) => {}
             BinaryResponse::Quit(_response) => {}
+            BinaryResponse::Stats(_response) => {}
             BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
                 dst.put_u64(response.value);
             }
@@ -730,6 +736,7 @@ impl MemcacheBinaryCodec {
             BinaryResponse::Delete(_response) => {}
             BinaryResponse::Flush(_response) => {}
             BinaryResponse::Quit(_response) => {}
+            BinaryResponse::Stats(_response) => {}
             BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
                 dst.put_u64(response.value);
             }

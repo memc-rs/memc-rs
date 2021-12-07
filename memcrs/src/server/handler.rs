@@ -84,6 +84,11 @@ impl BinaryHandler {
                     header: response_header,
                 }))
             }
+            binary_codec::BinaryRequest::Stats(_stat_request) => {
+                Some(binary_codec::BinaryResponse::Stats(binary::StatsResponse {
+                    header: response_header,
+                }))
+            }
             binary_codec::BinaryRequest::Quit(_quit_req) => {
                 Some(binary_codec::BinaryResponse::Quit(binary::QuitResponse {
                     header: response_header,
