@@ -129,7 +129,7 @@ impl Client {
                 return false;
             }
             None => {
-                return true;
+                return false;
             }
         }
     }

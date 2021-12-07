@@ -12,6 +12,7 @@ use tokio_util::codec::Decoder;
 pub struct MemcacheBinaryConnection {
     stream: TcpStream,
     codec: MemcacheBinaryCodec,
+    buffer: BytesMut,
 }
 
 impl MemcacheBinaryConnection {
@@ -19,34 +20,33 @@ impl MemcacheBinaryConnection {
         MemcacheBinaryConnection {
             stream: socket,
             codec: MemcacheBinaryCodec::new(item_size_limit),
+            buffer: BytesMut::with_capacity(4096)
         }
     }
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
-        let mut buffer = BytesMut::with_capacity(4096);
         let _extras_length: u32 = 8;
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
-            if let Some(frame) = self.codec.decode(&mut buffer)? {
+            if let Some(frame) = self.codec.decode(&mut self.buffer)? {
                 match frame {
                     BinaryRequest::ItemTooLarge(request) => {
                         debug!(
                             "Body len {:?} buffer len {:?}",
                             request.header.body_length,
-                            buffer.len()
+                            self.buffer.len()
                         );
-                        let skip = (request.header.body_length) - (buffer.len() as u32);
-                        if skip >= buffer.len() as u32 {
-                            buffer.clear();
+                        let skip = (request.header.body_length) - (self.buffer.len() as u32);
+                        if skip >= self.buffer.len() as u32 {
+                            self.buffer.clear();
                         } else {
-                            buffer = buffer.split_off(skip as usize);
+                            self.buffer = self.buffer.split_off(skip as usize);
                         }
                         self.skip_bytes(skip).await?;
                         return Ok(Some(BinaryRequest::ItemTooLarge(request)));
                     }
                     _ => {
-                        buffer.clear();
                         return Ok(Some(frame));
                     }
                 }
@@ -57,12 +57,12 @@ impl MemcacheBinaryConnection {
             //
             // On success, the number of bytes is returned. `0` indicates "end
             // of stream".
-            if 0 == self.stream.read_buf(&mut buffer).await? {
+            if 0 == self.stream.read_buf(&mut self.buffer).await? {
                 // The remote closed the connection. For this to be a clean
                 // shutdown, there should be no data in the read buffer. If
                 // there is, this means that the peer closed the socket while
                 // sending a frame.
-                if buffer.is_empty() {
+                if self.buffer.is_empty() {
                     return Ok(None);
                 } else {
                     return Err(Error::new(
