@@ -278,15 +278,17 @@ impl MemcacheBinaryCodec {
                 self.parse_flush_request(src)
             }
 
-            Some(binary::Command::Touch) => Ok(None),
-            Some(binary::Command::GetAndTouch) => Ok(None),
-            Some(binary::Command::GetAndTouchQuiet) => Ok(None),
-            Some(binary::Command::GetAndTouchKey) => Ok(None),
-            Some(binary::Command::GetAndTouchKeyQuiet) => Ok(None),
-
-            Some(binary::Command::SaslAuth) => Ok(None),
-            Some(binary::Command::SaslListMechs) => Ok(None),
-            Some(binary::Command::SaslStep) => Ok(None),
+            Some(binary::Command::Touch)
+            | Some(binary::Command::GetAndTouch)
+            | Some(binary::Command::GetAndTouchQuiet)
+            | Some(binary::Command::GetAndTouchKey)
+            | Some(binary::Command::GetAndTouchKeyQuiet)
+            | Some(binary::Command::SaslAuth)
+            | Some(binary::Command::SaslListMechs)
+            | Some(binary::Command::SaslStep) => {
+                error!("Command not supported, opcode: {:?}", self.header.opcode);
+                Ok(None)
+            },
 
             Some(binary::Command::OpCodeMax) => {
                 error!("Incorrect command opcode: {:?}", self.header.opcode);
