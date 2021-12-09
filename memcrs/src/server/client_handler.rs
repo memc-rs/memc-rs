@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use failure::Fail;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
@@ -154,5 +155,13 @@ impl Drop for Client {
 }
 
 fn log_error(e: io::Error) {
-    error!("Error: {}", e);
+    // in most cases its not an error
+    // client may just drop connection i.e. like
+    // php client does
+    if e.kind() == io::ErrorKind::NotConnected {
+        info!("Error: {}", e);
+    } else {
+        error!("Error: {}", e);
+    }
+    
 }
