@@ -37,7 +37,7 @@ pub enum BinaryRequest {
     Quit(binary::QuitRequest),
     QuitQuietly(binary::QuitRequest),
     ItemTooLarge(binary::SetRequest),
-    Stats(binary::StatsRequest)
+    Stats(binary::StatsRequest),
 }
 
 impl BinaryRequest {
@@ -68,14 +68,13 @@ impl BinaryRequest {
             | BinaryRequest::Decrement(request)
             | BinaryRequest::DecrementQuiet(request) => &request.header,
 
-            BinaryRequest::Noop(request) 
-            | BinaryRequest::Version(request) 
+            BinaryRequest::Noop(request)
+            | BinaryRequest::Version(request)
             | BinaryRequest::Stats(request) => &request.header,
 
             BinaryRequest::Flush(request) | BinaryRequest::FlushQuietly(request) => &request.header,
 
             BinaryRequest::Quit(request) | BinaryRequest::QuitQuietly(request) => &request.header,
-
         }
     }
 }
@@ -100,7 +99,7 @@ pub enum BinaryResponse {
     Increment(binary::IncrementResponse),
     Decrement(binary::DecrementResponse),
     Quit(binary::QuitResponse),
-    Stats(binary::StatsResponse)
+    Stats(binary::StatsResponse),
 }
 
 impl BinaryResponse {
@@ -288,7 +287,7 @@ impl MemcacheBinaryCodec {
             | Some(binary::Command::SaslStep) => {
                 error!("Command not supported, opcode: {:?}", self.header.opcode);
                 Ok(None)
-            },
+            }
 
             Some(binary::Command::OpCodeMax) => {
                 error!("Incorrect command opcode: {:?}", self.header.opcode);
@@ -687,9 +686,7 @@ impl MemcacheBinaryCodec {
                 dst.put_u64(response.value);
             }
         }
-        ResponseMessage {
-            data: dst.freeze()
-        }
+        ResponseMessage { data: dst.freeze() }
     }
 
     fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {

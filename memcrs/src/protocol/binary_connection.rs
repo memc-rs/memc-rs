@@ -1,7 +1,7 @@
 use crate::protocol::binary_codec::{
     BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
 };
-use bytes::{BytesMut};
+use bytes::BytesMut;
 use std::cmp;
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -20,7 +20,7 @@ impl MemcacheBinaryConnection {
         MemcacheBinaryConnection {
             stream: socket,
             codec: MemcacheBinaryCodec::new(item_size_limit),
-            buffer: BytesMut::with_capacity(4096)
+            buffer: BytesMut::with_capacity(4096),
         }
     }
 

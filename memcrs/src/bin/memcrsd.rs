@@ -21,7 +21,7 @@ static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() {
     let cpus = (num_cpus::get_physical() + 1).to_string();
-    let runtimes = ((num_cpus::get_physical())).to_string();
+    let runtimes = (num_cpus::get_physical()).to_string();
 
     let app = App::new("memcrsd");
     let matches = app
@@ -166,10 +166,7 @@ fn main() {
     info!("Listen port: {}", port);
     info!("Connection limit: {}", connection_limit);
     info!("Number of runtimes: {}", runtimes);
-    info!(
-        "Number of threads total: {}",
-        (runtimes)  + 1
-    );
+    info!("Number of threads total: {}", (runtimes) + 1);
     info!("Max item size: {}", item_size_limit_res.get_bytes());
     info!("Memory limit: {} MB", memory_limit_mb);
 

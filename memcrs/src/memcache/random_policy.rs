@@ -124,6 +124,4 @@ impl KVStore for RandomPolicy {
     }
 }
 
-mod tests {
-    
-}
+mod tests {}

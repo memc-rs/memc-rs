@@ -2,8 +2,7 @@ use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{StorageError, StorageResult};
 use crate::storage::store::{
-    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord,
-    SetStatus as KVSetStatus,
+    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
 };
 
 use std::str;

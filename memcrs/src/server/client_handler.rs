@@ -1,7 +1,7 @@
+use failure::Fail;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use failure::Fail;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
@@ -163,5 +163,4 @@ fn log_error(e: io::Error) {
     } else {
         error!("Error: {}", e);
     }
-    
 }
