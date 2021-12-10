@@ -10,8 +10,8 @@ is using [memcapable](http://docs.libmemcached.org/bin/memcapable.html) tool fro
 Here is a capability status for memcrsd:
 
 ```sh
-./memcapable -p 11211  -b -h localhost -v
-Hostname was provided.localhost
+./memcapable -h 127.0.0.1  -b -p 11211                 
+Hostname was provided.127.0.0.1
 binary noop                             [pass]
 binary quit                             [pass]
 binary quitq                            [pass]
@@ -38,12 +38,8 @@ binary append                           [pass]
 binary appendq                          [pass]
 binary prepend                          [pass]
 binary prependq                         [pass]
-binary stat                             Errno: 110 Connection timed out
-
-clients/memcapable.cc:343: get_socket_errno() == EINTR || get_socket_errno() == EAGAIN
-clients/memcapable.cc:363: retry_read(rsp, sizeof(protocol_binary_response_no_extras))
-[FAIL]
-1 of 27 tests failed
+binary stat                             [pass]
+All tests passed
 ```
 
 ## Bug reports
