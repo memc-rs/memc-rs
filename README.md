@@ -56,6 +56,31 @@ history.
 
 * [https://memc.rs/](https://memc.rs/)
 
+## Docker image
+
+Docker image is available at docker hub: [https://hub.docker.com/r/memcrs/memc-rs](https://hub.docker.com/r/memcrs/memc-rs)
+
+### Building docker image
+
+Docker image contains only one binary, so image is pretty small(~8MB). To be able to build docker image additional memory needs to be granted to container that builds final image. Building docker image is divided in 2 stages. In stage one rust:latest image is used to compile static binary and the second stage contains just copies built binary into to final image.
+
+To build docker image memcrsd sources have to be cloned and `docker build -m 512m .` command executed:
+
+```sh
+git clone git@github.com:memc-rs/memc-rs.git memc-rs
+cd memc-rs
+docker build -m 512m .
+```
+
+### Getting docker image from docker hub
+
+To get latest version of memcrsd run following command:
+
+```sh
+docker memcrs/memc-rs:latest
+```
+
+If you want specific version please take a look at available tags: [https://hub.docker.com/r/memcrs/memc-rs/tags](https://hub.docker.com/r/memcrs/memc-rs/tags)
 ## Testing
 
 memcrsd project is tested using different types of tests:
