@@ -315,7 +315,7 @@ impl MemcacheBinaryCodec {
 
         let size = self.header.key_length as usize;
         let buf = src.split_to(size);
-        let key = buf.to_vec();
+        let key = buf.freeze();
         if self.header.opcode == binary::Command::Get as u8 {
             Ok(Some(BinaryRequest::Get(binary::GetRequest {
                 header: self.header,
@@ -348,7 +348,7 @@ impl MemcacheBinaryCodec {
 
         let size = self.header.key_length as usize;
         let buf = src.split_to(size);
-        let key = buf.to_vec();
+        let key = buf.freeze();
         if self.header.opcode == binary::Command::Delete as u8 {
             Ok(Some(BinaryRequest::Delete(binary::DeleteRequest {
                 header: self.header,
@@ -428,7 +428,7 @@ impl MemcacheBinaryCodec {
         let value_len = self.get_value_len();
         let append_request = binary::AppendRequest {
             header: self.header,
-            key: src.split_to(self.header.key_length as usize).to_vec(),
+            key: src.split_to(self.header.key_length as usize).freeze(),
             value: src.split_to(value_len as usize).freeze(),
         };
 
@@ -478,7 +478,7 @@ impl MemcacheBinaryCodec {
             delta: src.get_u64(),
             initial: src.get_u64(),
             expiration: src.get_u32(),
-            key: src.split_to(self.header.key_length as usize).to_vec(),
+            key: src.split_to(self.header.key_length as usize).freeze(),
         };
 
         let response = if self.header.opcode == binary::Command::Increment as u8 {
@@ -501,7 +501,7 @@ impl MemcacheBinaryCodec {
             header: self.header,
             flags: 0,
             expiration: 0,
-            key: Vec::new(),
+            key: BytesMut::new().freeze(),
             value: BytesMut::new().freeze(),
         };
         Ok(Some(BinaryRequest::ItemTooLarge(set_request)))
@@ -536,7 +536,7 @@ impl MemcacheBinaryCodec {
             header: self.header,
             flags: src.get_u32(),
             expiration: src.get_u32(),
-            key: src.split_to(self.header.key_length as usize).to_vec(),
+            key: src.split_to(self.header.key_length as usize).freeze(),
             value: src.split_to(value_len as usize).freeze(),
         };
 

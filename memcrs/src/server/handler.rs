@@ -1,5 +1,6 @@
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
+use bytes::{Bytes, BytesMut};
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error::StorageError;
 use crate::version::MEMCRS_VERSION;
@@ -248,7 +249,7 @@ impl BinaryHandler {
         match result {
             Ok(record) => {
                 let include_key = self.is_get_key_command(get_request.header.opcode);
-                let mut key: Vec<u8> = Vec::new();
+                let mut key: Bytes = Bytes::new();
                 if include_key {
                     key = get_request.key
                 }
@@ -373,7 +374,7 @@ mod tests {
         }
     }
 
-    fn get_value(handler: &BinaryHandler, key: Vec<u8>) -> Bytes {
+    fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
         let header = create_header(binary::Command::Get, &key);
         let request = binary_codec::BinaryRequest::Get(binary::GetRequest { header, key });
 
@@ -391,7 +392,7 @@ mod tests {
         }
     }
 
-    fn insert_value(handler: &BinaryHandler, key: Vec<u8>, value: Bytes) {
+    fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let request = binary_codec::BinaryRequest::SetQuietly(binary::SetRequest {

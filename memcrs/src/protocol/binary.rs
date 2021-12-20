@@ -138,10 +138,10 @@ pub struct ErrorResponse {
     pub error: &'static str,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct GetRequest {
     pub(crate) header: RequestHeader,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Bytes,
 }
 
 pub type GetQuietRequest = GetRequest;
@@ -152,7 +152,7 @@ pub type GetKeyQuietRequest = GetRequest;
 pub struct GetResponse {
     pub(crate) header: ResponseHeader,
     pub(crate) flags: u32,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Bytes,
     pub(crate) value: Bytes,
 }
 
@@ -168,7 +168,7 @@ pub struct SetRequest {
     pub(crate) header: RequestHeader,
     pub(crate) flags: u32,
     pub(crate) expiration: u32,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Bytes,
     pub(crate) value: Bytes,
 }
 
@@ -178,7 +178,7 @@ pub type ReplaceRequest = SetRequest;
 #[derive(Debug)]
 pub struct AppendRequest {
     pub(crate) header: RequestHeader,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Bytes,
     pub(crate) value: Bytes,
 }
 
@@ -190,13 +190,13 @@ pub type SetResponse = Response;
 pub type AddResponse = Response;
 pub type ReplaceResponse = Response;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct IncrementRequest {
     pub(crate) header: RequestHeader,
     pub(crate) delta: u64,
     pub(crate) initial: u64,
     pub(crate) expiration: u32,
-    pub(crate) key: Vec<u8>,
+    pub(crate) key: Bytes,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IncrementResponse {

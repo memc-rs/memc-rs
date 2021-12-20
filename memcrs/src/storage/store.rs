@@ -42,7 +42,7 @@ pub struct Record {
 }
 
 impl Record {
-    pub fn new(value: Bytes, cas: u64, flags: u32, expiration: u32) -> Record {
+    pub fn new(value: ValueType, cas: u64, flags: u32, expiration: u32) -> Record {
         let header = Meta::new(cas, flags, expiration);
         Record { header, value }
     }
@@ -63,7 +63,7 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
-pub type KeyType = Vec<u8>;
+pub type KeyType = Bytes;
 
 // Read only view over a store
 pub trait KVStoreReadOnlyView<'a> {
@@ -84,7 +84,7 @@ pub mod impl_details {
     }
 }
 
-pub type RemoveIfResult = Vec<Option<(Vec<u8>, Record)>>;
+pub type RemoveIfResult = Vec<Option<(KeyType, Record)>>;
 pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 // An abstraction over a generic store key <=> value store
 pub trait KVStore: impl_details::StoreImplDetails {
@@ -276,11 +276,11 @@ impl KVStore for KeyValueStore {
         let items: Vec<KeyType> = self
             .memory
             .iter()
-            .filter(|record: &RefMulti<Vec<u8>, Record>| f(record.key(), record.value()))
-            .map(|record: RefMulti<Vec<u8>, Record>| record.key().clone())
+            .filter(|record: &RefMulti<KeyType, Record>| f(record.key(), record.value()))
+            .map(|record: RefMulti<KeyType, Record>| record.key().clone())
             .collect();
 
-        let result: Vec<Option<(Vec<u8>, Record)>> =
+        let result: Vec<Option<(KeyType, Record)>> =
             items.iter().map(|key: &KeyType| self.remove(key)).collect();
         result
     }
