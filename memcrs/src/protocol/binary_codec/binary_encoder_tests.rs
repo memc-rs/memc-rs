@@ -110,7 +110,7 @@ mod tests {
         let response = BinaryResponse::GetKeyQuietly(binary::GetKeyQuietlyResponse {
             header,
             flags: 0,
-            key: vec![b'f', b'o', b'o'],
+            key: Bytes::from("foo"),
             value: from_string("test"),
         });
         let encode_result = encode_packet(response);
@@ -136,7 +136,7 @@ mod tests {
         let response = BinaryResponse::Get(binary::GetResponse {
             header,
             flags: 0,
-            key: Vec::new(),
+            key: Bytes::new(),
             value: from_string("3050"),
         });
         let encode_result = encode_packet(response);

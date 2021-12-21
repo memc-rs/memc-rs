@@ -1,11 +1,13 @@
 use super::*;
 use crate::mock::mock_server::{create_server, SetableTimer};
 use crate::mock::value::{from_slice, from_string};
+use bytes::{BytesMut, BufMut};
 
 #[test]
 fn if_not_defined_cas_should_be_1() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+
+    let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
@@ -24,7 +26,7 @@ fn if_not_defined_cas_should_be_1() {
 fn if_cas_defined_it_should_be_returned() {
     let storage = create_server().storage;
     let cas: u64 = 0xDEAD_BEEF;
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), cas, 0, 0);
     info!("Record {:?}", &record.header);
     let result = storage.set(key.clone(), record.clone());
@@ -44,7 +46,7 @@ fn if_cas_defined_it_should_be_returned() {
 fn insert_should_fail_on_cas_mismatch() {
     let storage = create_server().storage;
     let cas: u64 = 0xDEAD_BEEF;
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let mut record = Record::new(from_string("test data"), cas, 0, 0);
     let result = storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
@@ -60,7 +62,7 @@ fn insert_should_fail_on_cas_mismatch() {
 fn record_should_expire_in_given_time() {
     let server = create_server();
     let cas: u64 = 0xDEAD_BEEF;
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), cas, 0, 123);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -80,7 +82,7 @@ fn record_should_expire_in_given_time() {
 #[test]
 fn delete_record() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -100,7 +102,7 @@ fn delete_record() {
 #[test]
 fn delete_should_return_not_exists() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -109,7 +111,7 @@ fn delete_should_return_not_exists() {
     let header = Meta::new(0, 0, 0);
     let deleted = server
         .storage
-        .delete(String::from("bad key").into_bytes(), header);
+        .delete(Bytes::from("bad key"), header);
     match deleted {
         Ok(_) => unreachable!(),
         Err(err) => assert_eq!(err, StorageError::NotFound),
@@ -119,7 +121,7 @@ fn delete_should_return_not_exists() {
 #[test]
 fn delete_if_cas_doesnt_match_should_not_delete() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 1, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -128,7 +130,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     let header = Meta::new(6, 0, 0);
     let deleted = server
         .storage
-        .delete(String::from("key").into_bytes(), header);
+        .delete(Bytes::from("key"), header);
     match deleted {
         Ok(_) => unreachable!(),
         Err(err) => assert_eq!(err, StorageError::KeyExists),
@@ -138,7 +140,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
 #[test]
 fn delete_if_cas_match_should_succeed() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -147,7 +149,7 @@ fn delete_if_cas_match_should_succeed() {
     let header = Meta::new(found.unwrap().header.cas, 0, 0);
     let deleted = server
         .storage
-        .delete(String::from("key").into_bytes(), header);
+        .delete(Bytes::from("key"), header);
     assert!(deleted.is_ok());
 }
 
@@ -155,9 +157,10 @@ fn delete_if_cas_match_should_succeed() {
 fn flush_should_remove_all_elements_in_cache() {
     let server = create_server();
     for key_suffix in 1..10 {
-        let mut key_str = String::from("key");
-        key_str.push_str(&key_suffix.to_string());
-        let key = key_str.into_bytes();
+        let mut key_str = BytesMut::from("key");
+        key_str.reserve(8);
+        key_str.put_slice(&key_suffix.to_string().as_bytes());
+        let key = key_str.freeze();
         let record = Record::new(from_string("test data"), 0, 0, 5);
         let result = server.storage.set(key.clone(), record);
         assert!(result.is_ok());
@@ -167,10 +170,10 @@ fn flush_should_remove_all_elements_in_cache() {
     server.timer.set(10);
 
     for key_suffix in 1..10 {
-        let mut key_str = String::from("key");
-        key_str.push_str(&key_suffix.to_string());
-        let key = key_str.into_bytes();
-        let result = server.storage.get(&key);
+        let mut key_str = BytesMut::from("key");
+        key_str.reserve(8);
+        key_str.put_slice(&key_suffix.to_string().as_bytes());
+        let result = server.storage.get(&key_str.freeze());
         match result {
             Ok(_) => unreachable!(),
             Err(err) => assert_eq!(err, StorageError::NotFound),
@@ -181,7 +184,7 @@ fn flush_should_remove_all_elements_in_cache() {
 #[test]
 fn add_should_succeed_if_not_already_stored() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.add(key, record);
     assert!(result.is_ok());
@@ -190,7 +193,7 @@ fn add_should_succeed_if_not_already_stored() {
 #[test]
 fn add_should_fail_if_already_stored() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
@@ -204,7 +207,7 @@ fn add_should_fail_if_already_stored() {
 #[test]
 fn replace_should_fail_if_not_stored() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.replace(key, record);
     match result {
@@ -216,7 +219,7 @@ fn replace_should_fail_if_not_stored() {
 #[test]
 fn replace_should_succeed_if_stored() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -233,7 +236,7 @@ fn replace_should_succeed_if_stored() {
 #[test]
 fn append_should_fail_if_not_exist() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.append(key, record);
 
@@ -246,7 +249,7 @@ fn append_should_fail_if_not_exist() {
 #[test]
 fn prepend_should_fail_if_not_exist() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.prepend(key, record);
 
@@ -259,7 +262,7 @@ fn prepend_should_fail_if_not_exist() {
 #[test]
 fn append_should_add_at_the_end() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("Foo"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
 
@@ -284,7 +287,7 @@ fn append_should_add_at_the_end() {
 #[test]
 fn prepend_should_add_at_the_begining() {
     let server = create_server();
-    let key = String::from("key").into_bytes();
+    let key = Bytes::from("key");
     let record = Record::new(from_string("Foo"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
 
@@ -310,7 +313,7 @@ fn prepend_should_add_at_the_begining() {
 fn increment_if_counter_doesnt_exists_it_should_created() {
     const COUNTER_INITIAL_VALUE: u64 = 5;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let counter = IncrementParam {
         delta: 0,
         value: COUNTER_INITIAL_VALUE,
@@ -330,7 +333,7 @@ fn increment_if_counter_doesnt_exists_it_should_created() {
 #[test]
 fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let counter = IncrementParam { delta: 0, value: 0 };
     let header = Meta::new(0, 0, 0xffffffff);
     let result = server.storage.increment(header, key, counter);
@@ -349,7 +352,7 @@ fn increment_value_should_be_incremented() {
     const DELTA: u64 = 6;
     const EXPECTED_RESULT: u64 = 5 + DELTA;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let record = Record::new(from_string("5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -376,7 +379,7 @@ fn increment_value_should_be_incremented() {
 fn increment_if_value_is_not_number_it_should_be_error() {
     const DELTA: u64 = 5;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let record = Record::new(from_string("asdas5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -401,7 +404,7 @@ fn increment_if_value_is_not_number_it_should_be_error() {
 fn increment_if_value_cannot_be_parsed_it_should_be_error() {
     const DELTA: u64 = 5;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let record = Record::new(from_slice(&[0xc3, 0x28]), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -426,7 +429,7 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
 fn decrement_should_not_result_in_negative_value() {
     const DELTA: u64 = 1;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let record = Record::new(from_string("0"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());
@@ -454,7 +457,7 @@ fn decrement_value_should_be_decremented() {
     const DELTA: u64 = 1;
     const EXPECTED_RESULT: u64 = 4;
     let server = create_server();
-    let key = String::from("counter1").into_bytes();
+    let key = Bytes::from("counter1");
     let record = Record::new(from_string("5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
     assert!(result.is_ok());

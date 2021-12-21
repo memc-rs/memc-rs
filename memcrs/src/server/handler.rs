@@ -433,7 +433,7 @@ mod tests {
     #[test]
     fn get_request_should_return_not_found_when_not_exists() {
         let handler = create_handler();
-        let key = String::from("key").into_bytes();
+        let key = Bytes::from("key");
         let header = create_header(binary::Command::Get, &key);
 
         let request = binary_codec::BinaryRequest::Get(binary::GetRequest { header, key });
@@ -456,7 +456,7 @@ mod tests {
     #[test]
     fn get_key_request_should_return_key_and_record() {
         let handler = create_handler();
-        let key = String::from("test_key").into_bytes();
+        let key = Bytes::from("test_key");
         let value = from_string("test value");
 
         insert_value(&handler, key.clone(), value.clone());
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn get_request_should_return_record() {
         let handler = create_handler();
-        let key = String::from("key").into_bytes();
+        let key = Bytes::from("key");
         let header = create_header(binary::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
@@ -531,7 +531,7 @@ mod tests {
     #[test]
     fn set_request_should_succeed() {
         let handler = create_handler();
-        let key = String::from("key").into_bytes();
+        let key = Bytes::from("key");
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
@@ -559,7 +559,7 @@ mod tests {
     #[test]
     fn set_request_on_cas_mismatch_should_return_key_exists() {
         let handler = create_handler();
-        let key = String::from("key").into_bytes();
+        let key = Bytes::from("key");
         let mut header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
@@ -648,7 +648,7 @@ mod tests {
     fn increment_request_should_return_cas() {
         const EXPECTED_VALUE: u64 = 1;
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
             header,
@@ -685,7 +685,7 @@ mod tests {
     fn increment_request_should_increment_value() {
         const EXPECTED_VALUE: u64 = 101;
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
@@ -724,7 +724,7 @@ mod tests {
     #[test]
     fn increment_quiet_should_increment_value() {
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
@@ -751,7 +751,7 @@ mod tests {
     fn decrement_request_should_return_cas() {
         const EXPECTED_VALUE: u64 = 1;
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
             header,
@@ -788,7 +788,7 @@ mod tests {
     fn decrement_request_should_decrement_value() {
         const EXPECTED_VALUE: u64 = 99;
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
@@ -827,7 +827,7 @@ mod tests {
     #[test]
     fn decrement_quiet_should_increment_value() {
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
@@ -853,7 +853,7 @@ mod tests {
     #[test]
     fn increment_request_should_error_when_expiration_is_ffffffff() {
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
             header,
@@ -888,7 +888,7 @@ mod tests {
     #[test]
     fn decrement_request_should_error_when_expiration_is_ffffffff() {
         let handler = create_handler();
-        let key = String::from("counter").into_bytes();
+        let key = Bytes::from("counter");
         let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
             header,
@@ -925,7 +925,7 @@ mod tests {
         let handler = create_handler();
         let value = from_string("test value");
         for key_suffix in 0..100 {
-            let key = (String::from("test_key") + &key_suffix.to_string()).into_bytes();
+            let key = Bytes::from(String::from("test_key") + &key_suffix.to_string());
             insert_value(&handler, key.clone(), value.clone());
         }
 
@@ -953,7 +953,7 @@ mod tests {
     fn delete_should_remove_from_store() {
         let handler = create_handler();
         let value = from_string("test value");
-        let key = String::from("test_key").into_bytes();
+        let key = Bytes::from("test_key");
         insert_value(&handler, key.clone(), value.clone());
 
         let header = create_header(binary::Command::Delete, &key);
@@ -977,7 +977,7 @@ mod tests {
     #[test]
     fn delete_should_return_error_if_not_exists() {
         let handler = create_handler();
-        let key = String::from("test_key").into_bytes();
+        let key = Bytes::from("test_key");
 
         let header = create_header(binary::Command::DeleteQuiet, &key);
         let request = binary_codec::BinaryRequest::DeleteQuiet(binary::DeleteRequest {

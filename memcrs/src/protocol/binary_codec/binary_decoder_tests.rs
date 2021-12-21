@@ -50,7 +50,7 @@ mod tests {
                         BinaryRequest::Set(req) => {
                             assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..][..], [b'f', b'o', b'o']);
                             assert_eq!(req.value[..], [b't', b'e', b's', b't']);
                         }
                         _ => unreachable!(),
@@ -92,7 +92,7 @@ mod tests {
                         BinaryRequest::Replace(req) => {
                             assert_eq!(req.flags, 0xabadcafe);
                             assert_eq!(req.expiration, 0x32);
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.value[..], [b't', b'e', b's', b't']);
                         }
                         _ => unreachable!(),
@@ -123,7 +123,7 @@ mod tests {
                         BinaryRequest::Add(req) => {
                             assert_eq!(req.flags, 0);
                             assert_eq!(req.expiration, 100);
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.value[..], [b'b', b'a', b'r']);
                         }
                         _ => unreachable!(),
@@ -168,7 +168,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Get(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -211,7 +211,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::GetQuietly(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -248,7 +248,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::GetKey(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -285,7 +285,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::GetKeyQuietly(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -528,7 +528,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Append(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.value[..], [b'b', b'a', b's']);
                         }
                         _ => unreachable!(),
@@ -574,7 +574,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Prepend(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.value[..], [b'b', b'i', b's']);
                         }
                         _ => unreachable!(),
@@ -619,7 +619,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Delete(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -663,7 +663,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::DeleteQuiet(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                         }
                         _ => unreachable!(),
                     }
@@ -726,7 +726,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Increment(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 100);
                             assert_eq!(req.initial, 0);
                             assert_eq!(req.expiration, 0);
@@ -767,7 +767,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::IncrementQuiet(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 101);
                             assert_eq!(req.initial, 1);
                             assert_eq!(req.expiration, 0x00ff0000);
@@ -808,7 +808,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::Decrement(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 100);
                             assert_eq!(req.initial, 0);
                             assert_eq!(req.expiration, 0);
@@ -849,7 +849,7 @@ mod tests {
                     //
                     match request {
                         BinaryRequest::DecrementQuiet(req) => {
-                            assert_eq!(req.key, [b'f', b'o', b'o']);
+                            assert_eq!(req.key[..], [b'f', b'o', b'o']);
                             assert_eq!(req.delta, 102);
                             assert_eq!(req.initial, 16);
                             assert_eq!(req.expiration, 0xDEADBEEF);
