@@ -1,9 +1,9 @@
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
-use bytes::{Bytes, BytesMut};
 use crate::protocol::{binary, binary_codec};
 use crate::storage::error::StorageError;
 use crate::version::MEMCRS_VERSION;
+use bytes::Bytes;
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
@@ -540,7 +540,7 @@ mod tests {
             flags: FLAGS,
             expiration: 0,
             key,
-            value: value,
+            value,
         });
         let result = handler.handle_request(request);
         match result {
@@ -591,7 +591,7 @@ mod tests {
             flags: FLAGS,
             expiration: 0,
             key,
-            value: value,
+            value,
         });
 
         let result = handler.handle_request(request);

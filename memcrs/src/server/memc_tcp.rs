@@ -52,7 +52,7 @@ impl MemcacheTcpServer {
         MemcacheTcpServer {
             storage: Arc::new(storage::MemcStore::new(store)),
             limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
-            config: config,
+            config,
         }
     }
 
@@ -97,8 +97,8 @@ impl MemcacheTcpServer {
         socket.set_reuse_address(true)?;
         socket.set_reuse_port(true)?;
         socket.set_nonblocking(true)?;
-        let mut addrs_iter = addr.to_socket_addrs()?;
-        while let Some(socket_addr) = addrs_iter.next() {
+        let addrs_iter = addr.to_socket_addrs()?;
+        for socket_addr in addrs_iter {
             debug!("Binding to addr: {:?}", socket_addr);
             let sock_addr = SockAddr::from(socket_addr);
             let res = socket.bind(&sock_addr);
@@ -121,7 +121,7 @@ impl MemcacheTcpServer {
         client_handler::ClientConfig {
             item_memory_limit: self.config.item_memory_limit,
             rx_timeout_secs: self.config.timeout_secs,
-            wx_timeout_secs: self.config.timeout_secs,
+            _wx_timeout_secs: self.config.timeout_secs,
         }
     }
 }

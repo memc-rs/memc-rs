@@ -31,6 +31,10 @@ impl Meta {
     pub const fn len(&self) -> usize {
         std::mem::size_of::<Meta>()
     }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub type ValueType = Bytes;
@@ -49,6 +53,10 @@ impl Record {
 
     pub fn len(&self) -> usize {
         self.header.len() + self.value.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -128,8 +136,10 @@ pub trait KVStore: impl_details::StoreImplDetails {
     // Number of key value pairs stored in store
     fn len(&self) -> usize;
 
+    fn is_empty(&self) -> bool;
+
     // Returns a read-only view over a stroe
-    fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
+    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
 
     // Removes key-value pairs from a store for which
     // f predicate returns true
@@ -159,8 +169,7 @@ impl<'a> KVStoreReadOnlyView<'a> for StorageReadOnlyView {
 
     fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a> {
         let keys = self.keys();
-        let result = Box::new(keys);
-        result
+        Box::new(keys)
     }
 }
 
@@ -267,7 +276,7 @@ impl KVStore for KeyValueStore {
         }
     }
 
-    fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
+    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
         let storage_clone = self.memory.clone();
         Box::new(storage_clone.into_read_only())
     }
@@ -287,5 +296,9 @@ impl KVStore for KeyValueStore {
 
     fn len(&self) -> usize {
         self.memory.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.memory.is_empty()
     }
 }
