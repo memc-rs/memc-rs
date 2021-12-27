@@ -1,12 +1,10 @@
 use byte_unit::{Byte, ByteUnit};
 use log::{debug, info};
-use num_cpus;
 use std::net::{IpAddr, SocketAddr};
 use std::process;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::runtime::Builder;
-use tracing_subscriber;
 
 extern crate clap;
 extern crate memcrs;
@@ -20,7 +18,7 @@ use jemallocator::Jemalloc;
 static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() {
-    let cpus = (num_cpus::get_physical() + 1).to_string();
+    let _cpus = (num_cpus::get_physical() + 1).to_string();
     let runtimes = (num_cpus::get_physical()).to_string();
 
     let app = App::new("memcrsd");

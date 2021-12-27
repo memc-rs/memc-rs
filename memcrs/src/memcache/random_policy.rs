@@ -17,8 +17,8 @@ pub struct RandomPolicy {
 impl RandomPolicy {
     pub fn new(store: Arc<dyn KVStore + Send + Sync>, memory_limit: u64) -> RandomPolicy {
         RandomPolicy {
-            store: store,
-            memory_limit: memory_limit,
+            store,
+            memory_limit,
             memory_usage: atomic::AtomicU64::new(0),
         }
     }
@@ -41,7 +41,7 @@ impl RandomPolicy {
             let res = self
                 .store
                 .remove_if(&mut move |_key: &KeyType, _value: &Record| -> bool {
-                    if number_of_calls < item || number_of_calls > item {
+                    if number_of_calls != item {
                         number_of_calls += 1;
                         return false;
                     }
@@ -86,8 +86,7 @@ impl KVStore for RandomPolicy {
     fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         let len = record.len() as u64;
         self.incr_mem_usage(len);
-        let result = self.store.set(key, record);
-        result
+        self.store.set(key, record)
     }
 
     fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
@@ -111,8 +110,8 @@ impl KVStore for RandomPolicy {
         self.store.flush(header)
     }
 
-    fn into_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
-        self.store.into_read_only()
+    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
+        self.store.as_read_only()
     }
 
     fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
@@ -121,6 +120,10 @@ impl KVStore for RandomPolicy {
 
     fn len(&self) -> usize {
         self.store.len()
+    }
+
+    fn is_empty(&self) -> bool {
+        self.store.is_empty()
     }
 }
 

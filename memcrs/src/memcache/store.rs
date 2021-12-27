@@ -48,9 +48,9 @@ impl MemcStore {
         self.store.get(key)
     }
 
-    fn touch_record(&self, _record: &mut Record) {
-        //let _timer = self.timer.secs();
-    }
+    // fn touch_record(&self, _record: &mut Record) {
+    //     let _timer = self.timer.secs();
+    // }
 
     pub fn add(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {

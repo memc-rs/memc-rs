@@ -18,8 +18,8 @@ pub enum StorageError {
 
 impl StorageError {
     pub fn to_static_string(&self) -> &'static str {
-        static NOT_FOUND: &'static str = "Not found";
-        static KEY_EXISTS: &'static str = "Key exists";
+        static NOT_FOUND: &str = "Not found";
+        static KEY_EXISTS: &str = "Key exists";
 
         match self {
             StorageError::NotFound => NOT_FOUND,

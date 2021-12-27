@@ -1,4 +1,3 @@
-use failure::Fail;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
@@ -18,7 +17,7 @@ use crate::protocol::binary_connection::MemcacheBinaryConnection;
 pub struct ClientConfig {
     pub(crate) item_memory_limit: u32,
     pub(crate) rx_timeout_secs: u32,
-    pub(crate) wx_timeout_secs: u32,
+    pub(crate) _wx_timeout_secs: u32,
 }
 pub struct Client {
     stream: MemcacheBinaryConnection,
@@ -88,13 +87,13 @@ impl Client {
                     None => {
                         // The connection will be closed at this point as `lines.next()` has returned `None`.
                         debug!("Connection closed: {}", self.addr);
-                        return true;
+                        true
                     }
                 }
             }
             Err(err) => {
                 error!("Error when reading frame; error = {:?}", err);
-                return true;
+                true
             }
         }
     }
@@ -129,11 +128,9 @@ impl Client {
                     if let Err(_e) = self.stream.shutdown().await.map_err(log_error) {}
                     return true;
                 }
-                return false;
+                false
             }
-            None => {
-                return false;
-            }
+            None => false,
         }
     }
 }

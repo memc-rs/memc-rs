@@ -9,6 +9,7 @@ pub trait SetableTimer {
     fn add_second(&self);
 }
 
+#[derive(Default)]
 pub struct SystemTimer {
     seconds: AtomicU64,
 }
@@ -21,7 +22,7 @@ impl SystemTimer {
         }
     }
 
-    pub async fn run(&self) -> () {
+    pub async fn run(&self) {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
         loop {

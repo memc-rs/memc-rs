@@ -13,11 +13,12 @@ impl MemcacheStoreConfig {
     pub fn new(memory_limit: u64) -> MemcacheStoreConfig {
         MemcacheStoreConfig {
             policy: EvictionPolicy::None,
-            memory_limit: memory_limit,
+            memory_limit,
         }
     }
 }
 
+#[derive(Default)]
 pub struct MemcacheStoreBuilder {}
 
 impl MemcacheStoreBuilder {

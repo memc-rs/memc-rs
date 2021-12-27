@@ -432,7 +432,7 @@ impl MemcacheBinaryCodec {
             value: src.split_to(value_len as usize).freeze(),
         };
 
-        let response = if self.header.opcode == binary::Command::Append as u8 {
+        if self.header.opcode == binary::Command::Append as u8 {
             Ok(Some(BinaryRequest::Append(append_request)))
         } else if self.header.opcode == binary::Command::AppendQuiet as u8 {
             Ok(Some(BinaryRequest::AppendQuietly(append_request)))
@@ -440,8 +440,7 @@ impl MemcacheBinaryCodec {
             Ok(Some(BinaryRequest::Prepend(append_request)))
         } else {
             Ok(Some(BinaryRequest::PrependQuietly(append_request)))
-        };
-        response
+        }
     }
 
     fn parse_inc_dec_request(
@@ -481,7 +480,7 @@ impl MemcacheBinaryCodec {
             key: src.split_to(self.header.key_length as usize).freeze(),
         };
 
-        let response = if self.header.opcode == binary::Command::Increment as u8 {
+        if self.header.opcode == binary::Command::Increment as u8 {
             Ok(Some(BinaryRequest::Increment(request)))
         } else if self.header.opcode == binary::Command::IncrementQuiet as u8 {
             Ok(Some(BinaryRequest::IncrementQuiet(request)))
@@ -489,8 +488,7 @@ impl MemcacheBinaryCodec {
             Ok(Some(BinaryRequest::Decrement(request)))
         } else {
             Ok(Some(BinaryRequest::DecrementQuiet(request)))
-        };
-        response
+        }
     }
 
     fn parse_item_too_large(
@@ -664,7 +662,7 @@ impl MemcacheBinaryCodec {
             | BinaryResponse::GetKeyQuietly(response)
             | BinaryResponse::GetQuietly(response) => {
                 dst.put_u32(response.flags);
-                if response.key.len() > 0 {
+                if !response.key.is_empty() {
                     dst.put_slice(&response.key[..]);
                 }
                 dst.put(response.value.clone());
