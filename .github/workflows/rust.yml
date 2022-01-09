@@ -52,8 +52,6 @@ jobs:
             OS: ubuntu-latest
           - TARGET: x86_64-apple-darwin # tested on a mac, is not properly signed so there are security warnings
             OS: macos-latest
-          - TARGET: x86_64-pc-windows-gnu # tested on a windows machine
-            OS: windows-latest
     needs: test
     runs-on: ${{ matrix.OS }}
     env:
