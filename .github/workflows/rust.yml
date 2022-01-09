@@ -57,7 +57,7 @@ jobs:
     needs: test
     runs-on: ${{ matrix.OS }}
     env:
-      NAME: rust-cross-compile-example
+      NAME: memcrsd
       TARGET: ${{ matrix.TARGET }}
       OS: ${{ matrix.OS }}
     steps:
