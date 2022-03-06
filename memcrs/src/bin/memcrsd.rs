@@ -123,12 +123,6 @@ fn main() {
                 clap::ErrorKind::InvalidValue,
                 e.to_string(),
             ).exit();
-            // clap::Error {
-            //     message: e.to_string(),
-            //     kind: clap::ErrorKind::InvalidValue,
-            //     info: None,
-            // };
-            //clap_error.exit()
         });
 
     // Vary the output based on how many times the user used the "verbose" flag
