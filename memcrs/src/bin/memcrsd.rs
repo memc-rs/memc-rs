@@ -8,7 +8,7 @@ use tokio::runtime::Builder;
 
 extern crate clap;
 extern crate memcrs;
-use clap::{value_t, App, Arg};
+use clap::{Arg, command};
 
 #[cfg(feature = "jemallocator")]
 use jemallocator::Jemalloc;
@@ -21,89 +21,85 @@ fn main() {
     let _cpus = (num_cpus::get_physical() + 1).to_string();
     let runtimes = (num_cpus::get_physical()).to_string();
 
-    let app = App::new("memcrsd");
+    let app = command!();
     let matches = app
         .version(memcrs::version::MEMCRS_VERSION)
-        .author("Dariusz Ostolski <dariusz.ostolski@gmail.com>")
+        .author("Dariusz Ostolski <memc-rs@memc.rs>")
         .about("memcrsd - memcached compatible server implementation in Rust")
         .arg(
-            Arg::with_name("port")
-                .short("p")
+            Arg::new("port")
+                .short('p')
                 .long("port")
                 .default_value("11211")
                 .help("TCP port to listen on")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("listen")
-                .short("l")
+            Arg::new("listen")
+                .short('l')
                 .long("listen")
                 .default_value("127.0.0.1")
                 .help("interface to listen on")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("conn-limit")
-                .short("c")
+            Arg::new("conn-limit")
+                .short('c')
                 .long("conn-limit")
                 .default_value("1024")
                 .help("max simultaneous connections")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("listen-backlog")
-                .short("b")
+            Arg::new("listen-backlog")
+                .short('b')
                 .long("listen-backlog")
                 .default_value("1024")
                 .help("set the backlog queue limit")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("v")
-                .short("v")
-                .multiple(true)
+            Arg::new("v")
+                .short('v')
+                .multiple_occurrences(true)
                 .help("Sets the level of verbosity"),
         )
         .arg(
-            Arg::with_name("memory-limit")
-                .short("m")
+            Arg::new("memory-limit")
+                .short('m')
                 .long("memory-limit")
                 .default_value("64")
                 .help("item memory in megabytes")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("max-item-size")
-                .short("I")
+            Arg::new("max-item-size")
+                .short('I')
                 .long("max-item-size")
                 .default_value("1m")
                 .help("adjusts max item size (min: 1k, max: 1024m)")
                 .takes_value(true),
         )
         .arg(
-            Arg::with_name("runtimes")
-                .short("r")
+            Arg::new("runtimes")
+                .short('r')
                 .long("runtimes")
                 .default_value(&runtimes)
                 .help("number of runtimes to use, each runtime will have n number of threads")
                 .takes_value(true),
         )
-        .get_matches();
+        .get_matches_mut();
 
-    let port: u16 = value_t!(matches.value_of("port"), u16).unwrap_or_else(|e| e.exit());
-    let connection_limit: u32 =
-        value_t!(matches.value_of("conn-limit"), u32).unwrap_or_else(|e| e.exit());
+    let port: u16 = matches.value_of_t("port").unwrap_or_else(|e| e.exit());
+    let connection_limit: u32 = matches.value_of_t("conn-limit").unwrap_or_else(|e| e.exit());
 
-    let backlog_limit: u32 =
-        value_t!(matches.value_of("listen-backlog"), u32).unwrap_or_else(|e| e.exit());
+    let backlog_limit: u32 = matches.value_of_t("listen-backlog").unwrap_or_else(|e| e.exit());
 
-    let memory_limit_mb =
-        value_t!(matches.value_of("memory-limit"), u64).unwrap_or_else(|e| e.exit());
+    let memory_limit_mb: u64 = matches.value_of_t("memory-limit").unwrap_or_else(|e| e.exit());
     let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
     let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
-    let item_size_limit_str =
-        value_t!(matches.value_of("max-item-size"), String).unwrap_or_else(|e| e.exit());
+    let item_size_limit_str: String = matches.value_of_t("max-item-size").unwrap_or_else(|e| e.exit());
     let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
     let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
 
@@ -115,19 +111,24 @@ fn main() {
         process::exit(1);
     }
 
-    let runtimes: u32 = value_t!(matches.value_of("runtimes"), u32).unwrap_or_else(|e| e.exit());
-
+    let runtimes: u32 = matches.value_of_t("runtimes").unwrap_or_else(|e| e.exit());
+    
     let listen_address = matches
         .value_of("listen")
         .unwrap()
         .parse::<IpAddr>()
         .unwrap_or_else(|e| {
-            let clap_error = clap::Error {
-                message: e.to_string(),
-                kind: clap::ErrorKind::InvalidValue,
-                info: None,
-            };
-            clap_error.exit()
+            let mut cmd = command!();
+            cmd.error(
+                clap::ErrorKind::InvalidValue,
+                e.to_string(),
+            ).exit();
+            // clap::Error {
+            //     message: e.to_string(),
+            //     kind: clap::ErrorKind::InvalidValue,
+            //     info: None,
+            // };
+            //clap_error.exit()
         });
 
     // Vary the output based on how many times the user used the "verbose" flag
