@@ -1,4 +1,4 @@
-extern crate failure;
+
 
 #[derive(Debug, PartialEq)]
 pub enum StorageError {
