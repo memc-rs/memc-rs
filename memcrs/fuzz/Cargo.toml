@@ -4,15 +4,15 @@ name = "memcrs-fuzz"
 version = "0.0.1"
 authors = ["Automatically generated"]
 publish = false
-edition = "2018"
+edition = "2021"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
-bytes = "1.0.1"
-tokio-util = { version = "0.6.3", features = ["full"] }
+libfuzzer-sys = "0.4.3"
+bytes = "1.1.0"
+tokio-util = { version = "0.7.3", features = ["full"] }
 
 [dependencies.memcrs]
 path = ".."
