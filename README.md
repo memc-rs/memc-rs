@@ -72,6 +72,21 @@ cd memc-rs
 docker build -m 512m .
 ```
 
+### Publishing docker image
+
+
+```sh
+git checkout memcrsd-0.0.1b
+docker pull rust
+docker build -m 4096m -t memcrsd .
+docker images
+# tag docker image
+docker tag 769dba683c8b memcrs/memc-rs:0.0.1b
+docker tag memcrs/memc-rs:0.0.1b memcrs/memc-rs:latest
+docker push memcrs/memc-rs:latest
+docker push memcrs/memc-rs:0.0.1b
+```
+
 ### Getting docker image from docker hub
 
 To get latest version of memcrsd run following command:
