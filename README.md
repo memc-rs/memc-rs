@@ -119,6 +119,12 @@ cd memcrs
 firefox ../target/debug/coverage/index.html
 ```
 
+To be able to produce coverage reports `grcov` tool needs to be installed:
+
+```sh
+cargo install grcov
+```
+
 The plan in the future is to have coverage ~90%.
 
 ### Integration testing
