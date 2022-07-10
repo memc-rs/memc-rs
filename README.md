@@ -96,6 +96,7 @@ docker memcrs/memc-rs:latest
 ```
 
 If you want specific version please take a look at available tags: [https://hub.docker.com/r/memcrs/memc-rs/tags](https://hub.docker.com/r/memcrs/memc-rs/tags)
+
 ## Testing
 
 memcrsd project is tested using different types of tests:
