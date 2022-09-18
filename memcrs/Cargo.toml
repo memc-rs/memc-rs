@@ -14,18 +14,18 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "4.0.14"
 bytes = "1.2.1"
-clap = { version = "3.2.16", features = ["cargo"] }
+clap = { version = "3.2.22", features = ["cargo"] }
 dashmap = "5.3.4"
-futures = "0.3.21"
-futures-util = "0.3.21"
+futures = "0.3.24"
+futures-util = "0.3.24"
 log = "0.4.17"
-socket2 = { version = "0.4.4", features = ["all"] }
+socket2 = { version = "0.4.7", features = ["all"] }
 num_cpus = "1.13.1"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
 rand = { version = "0.8.5", features = ["small_rng"] }
-serde = "1.0.142"
-serde_derive = "1.0.142"
+serde = "1.0.144"
+serde_derive = "1.0.144"
 tracing = "0.1.36"
 tracing-attributes = "0.1.22"
 tracing-log = "0.1.3"
