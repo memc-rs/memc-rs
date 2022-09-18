@@ -13,8 +13,8 @@ path = "src/lib.rs"
 
 [dependencies]
 byte-unit = "4.0.14"
-bytes = "1.2.0"
-clap = { version = "3.2.14", features = ["cargo"] }
+bytes = "1.2.1"
+clap = { version = "3.2.16", features = ["cargo"] }
 dashmap = "5.3.4"
 futures = "0.3.21"
 futures-util = "0.3.21"
