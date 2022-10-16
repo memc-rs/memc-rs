@@ -114,7 +114,7 @@ fn main() {
     if item_size_limit_res.get_bytes() > item_size_limit_max.get_bytes() {
         eprintln!(
             "Max item size cannot be greater than: {}",
-            item_size_limit_max.get_appropriate_unit(false).to_string()
+            item_size_limit_max.get_appropriate_unit(false)
         );
         process::exit(1);
     }

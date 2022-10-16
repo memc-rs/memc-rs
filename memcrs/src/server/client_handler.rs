@@ -83,7 +83,7 @@ impl Client {
         match req {
             Ok(re) => {
                 match re {
-                    Some(request) => return self.handle_request(request).await,
+                    Some(request) => self.handle_request(request).await,
                     None => {
                         // The connection will be closed at this point as `lines.next()` has returned `None`.
                         debug!("Connection closed: {}", self.addr);

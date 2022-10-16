@@ -538,7 +538,7 @@ impl MemcacheBinaryCodec {
             value: src.split_to(value_len as usize).freeze(),
         };
 
-        let result = match FromPrimitive::from_u8(self.header.opcode) {
+        match FromPrimitive::from_u8(self.header.opcode) {
             Some(binary::Command::Set) => Ok(Some(BinaryRequest::Set(set_request))),
             Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::SetQuietly(set_request))),
             Some(binary::Command::Add) => Ok(Some(BinaryRequest::Add(set_request))),
@@ -556,8 +556,7 @@ impl MemcacheBinaryCodec {
                 error!("Cannot parse set command opcode: {:?}", self.header.opcode);
                 Err(Error::new(ErrorKind::InvalidData, "Incorrect op code"))
             }
-        };
-        result
+        }
     }
 
     fn request_valid(&self, _src: &mut BytesMut, key_required: bool) -> bool {
@@ -597,10 +596,7 @@ impl Decoder for MemcacheBinaryCodec {
                 return Ok(None);
             }
             let result = self.parse_header(src);
-            match result {
-                Err(error) => return Err(error),
-                Ok(()) => {}
-            }
+            if let Err(error) = result { return Err(error) }
         }
 
         if self.header.body_length > self.item_size_limit {
