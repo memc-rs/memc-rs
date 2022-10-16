@@ -1,7 +1,7 @@
 use super::*;
 use crate::mock::mock_server::{create_server, SetableTimer};
 use crate::mock::value::{from_slice, from_string};
-use bytes::{BytesMut, BufMut};
+use bytes::{BufMut, BytesMut};
 
 #[test]
 fn if_not_defined_cas_should_be_1() {
@@ -109,9 +109,7 @@ fn delete_should_return_not_exists() {
     let found = server.storage.get(&key);
     assert!(found.is_ok());
     let header = Meta::new(0, 0, 0);
-    let deleted = server
-        .storage
-        .delete(Bytes::from("bad key"), header);
+    let deleted = server.storage.delete(Bytes::from("bad key"), header);
     match deleted {
         Ok(_) => unreachable!(),
         Err(err) => assert_eq!(err, StorageError::NotFound),
@@ -128,9 +126,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     let found = server.storage.get(&key);
     assert!(found.is_ok());
     let header = Meta::new(6, 0, 0);
-    let deleted = server
-        .storage
-        .delete(Bytes::from("key"), header);
+    let deleted = server.storage.delete(Bytes::from("key"), header);
     match deleted {
         Ok(_) => unreachable!(),
         Err(err) => assert_eq!(err, StorageError::KeyExists),
@@ -147,9 +143,7 @@ fn delete_if_cas_match_should_succeed() {
     let found = server.storage.get(&key);
     assert!(found.is_ok());
     let header = Meta::new(found.unwrap().header.cas, 0, 0);
-    let deleted = server
-        .storage
-        .delete(Bytes::from("key"), header);
+    let deleted = server.storage.delete(Bytes::from("key"), header);
     assert!(deleted.is_ok());
 }
 

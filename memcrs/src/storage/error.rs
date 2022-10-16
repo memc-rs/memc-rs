@@ -1,5 +1,3 @@
-
-
 #[derive(Debug, PartialEq)]
 pub enum StorageError {
     NotFound = 0x01,

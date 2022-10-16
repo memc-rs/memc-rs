@@ -8,7 +8,7 @@ use tokio::runtime::Builder;
 
 extern crate clap;
 extern crate memcrs;
-use clap::{Arg, command};
+use clap::{command, Arg};
 
 #[cfg(feature = "jemallocator")]
 use jemallocator::Jemalloc;
@@ -91,15 +91,23 @@ fn main() {
         .get_matches_mut();
 
     let port: u16 = matches.value_of_t("port").unwrap_or_else(|e| e.exit());
-    let connection_limit: u32 = matches.value_of_t("conn-limit").unwrap_or_else(|e| e.exit());
+    let connection_limit: u32 = matches
+        .value_of_t("conn-limit")
+        .unwrap_or_else(|e| e.exit());
 
-    let backlog_limit: u32 = matches.value_of_t("listen-backlog").unwrap_or_else(|e| e.exit());
+    let backlog_limit: u32 = matches
+        .value_of_t("listen-backlog")
+        .unwrap_or_else(|e| e.exit());
 
-    let memory_limit_mb: u64 = matches.value_of_t("memory-limit").unwrap_or_else(|e| e.exit());
+    let memory_limit_mb: u64 = matches
+        .value_of_t("memory-limit")
+        .unwrap_or_else(|e| e.exit());
     let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
     let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
-    let item_size_limit_str: String = matches.value_of_t("max-item-size").unwrap_or_else(|e| e.exit());
+    let item_size_limit_str: String = matches
+        .value_of_t("max-item-size")
+        .unwrap_or_else(|e| e.exit());
     let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
     let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
 
@@ -112,17 +120,15 @@ fn main() {
     }
 
     let runtimes: u32 = matches.value_of_t("runtimes").unwrap_or_else(|e| e.exit());
-    
+
     let listen_address = matches
         .value_of("listen")
         .unwrap()
         .parse::<IpAddr>()
         .unwrap_or_else(|e| {
             let mut cmd = command!();
-            cmd.error(
-                clap::ErrorKind::InvalidValue,
-                e.to_string(),
-            ).exit();
+            cmd.error(clap::ErrorKind::InvalidValue, e.to_string())
+                .exit();
         });
 
     // Vary the output based on how many times the user used the "verbose" flag
