@@ -54,7 +54,7 @@ impl MemcrsArgs {
         if item_size_limit_res.get_bytes() > item_size_limit_max.get_bytes() {
             return Err(format!(
                 "Max item size cannot be greater than: {}",
-                item_size_limit_max.get_appropriate_unit(false).to_string()
+                item_size_limit_max.get_appropriate_unit(false)
             ));
         }
 
@@ -69,7 +69,7 @@ impl MemcrsArgs {
             .parse::<IpAddr>()
         {
             Ok(ip_addr) => ip_addr,
-            Err(err) => return Err(format!("Invalid ip address: {}", err.to_string())),
+            Err(err) => return Err(format!("Invalid ip address: {}", err)),
         };
 
         // Vary the output based on how many times the user used the "verbose" flag
@@ -96,7 +96,7 @@ impl MemcrsArgs {
     }
 }
 
-fn cli_args<'help>(runtimes: &'help String) -> clap::Command<'help> {
+fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
     command!()
         .version(version::MEMCRS_VERSION)
         .author("Dariusz Ostolski <memc-rs@memc.rs>")
@@ -159,7 +159,7 @@ fn cli_args<'help>(runtimes: &'help String) -> clap::Command<'help> {
             Arg::new("runtimes")
                 .short('r')
                 .long("runtimes")
-                .default_value(&runtimes)
+                .default_value(runtimes)
                 .help("number of runtimes to use, each runtime will have n number of threads")
                 .takes_value(true),
         )

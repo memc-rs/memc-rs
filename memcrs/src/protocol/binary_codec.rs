@@ -596,7 +596,7 @@ impl Decoder for MemcacheBinaryCodec {
                 return Ok(None);
             }
             let result = self.parse_header(src);
-            if let Err(error) = result { return Err(error) }
+            result?
         }
 
         if self.header.body_length > self.item_size_limit {
