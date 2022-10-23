@@ -1,7 +1,7 @@
 [package]
 name = "memcrs"
 version = "0.0.1"
-authors = ["Dariusz Ostolski <dariusz.ostolski@gmail.com>"]
+authors = ["Dariusz Ostolski <memc-rs@memc.rs>"]
 edition = "2021"
 
 

@@ -2,7 +2,7 @@ use std::net::IpAddr;
 
 use crate::version;
 use byte_unit::{Byte, ByteUnit};
-use clap::{command, Arg};
+use clap::{command, Arg, crate_authors};
 
 pub struct MemcrsArgs {
     pub port: u16,
@@ -99,7 +99,7 @@ impl MemcrsArgs {
 fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
     command!()
         .version(version::MEMCRS_VERSION)
-        .author("Dariusz Ostolski <memc-rs@memc.rs>")
+        .author(crate_authors!("\n"))
         .about("memcrsd - memcached compatible server implementation in Rust")
         .arg(
             Arg::new("port")
