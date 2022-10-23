@@ -91,24 +91,50 @@ fn main() {
         )
         .get_matches_mut();
 
-    let port: u16 = matches.value_of_t("port").unwrap_or_else(|e| e.exit());
-    let connection_limit: u32 = matches
-        .value_of_t("conn-limit")
-        .unwrap_or_else(|e| e.exit());
+    let port: u16 = *matches.get_one::<u16>("port").unwrap_or_else(|| -> &u16 {
+        eprintln!(
+            "Port was not defined"
+        );
+        process::exit(1);
+    });
+    let connection_limit: u32 = *matches
+        .get_one::<u32>("conn-limit")
+        .unwrap_or_else(|| -> &u32 {
+            eprintln!(
+                "Conection limit not defined"
+            );
+            process::exit(1);
+        });
 
-    let backlog_limit: u32 = matches
-        .value_of_t("listen-backlog")
-        .unwrap_or_else(|e| e.exit());
+    let backlog_limit: u32 = *matches
+        .get_one::<u32>("listen-backlog")
+        .unwrap_or_else(|| -> &u32 {
+            eprintln!(
+                "Conection limit not defined"
+            );
+            process::exit(1);
+        });
 
-    let memory_limit_mb: u64 = matches
-        .value_of_t("memory-limit")
-        .unwrap_or_else(|e| e.exit());
+    let memory_limit_mb: u64 = *matches
+        .get_one::<u64>("memory-limit")
+        .unwrap_or_else(|| -> &u64 {
+            eprintln!(
+                "Conection limit not defined"
+            );
+            process::exit(1);
+        });
     let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
     let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
     let item_size_limit_str: String = matches
-        .value_of_t("max-item-size")
-        .unwrap_or_else(|e| e.exit());
+        .get_one::<String>("max-item-size")
+        .unwrap_or_else(|| -> &String {
+            eprintln!(
+                "Conection limit not defined"
+            );
+            process::exit(1);
+        }).clone();
+
     let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
     let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
 
@@ -120,7 +146,12 @@ fn main() {
         process::exit(1);
     }
 
-    let runtimes: u32 = matches.value_of_t("runtimes").unwrap_or_else(|e| e.exit());
+    let runtimes: u32 = *matches.get_one::<u32>("runtimes").unwrap_or_else(|| -> &u32 {
+        eprintln!(
+            "Runtimes limit reached"
+        );
+        process::exit(1);
+    });
 
     let listen_address = matches
         .get_one::<String>("listen")
