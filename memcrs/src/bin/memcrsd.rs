@@ -21,6 +21,7 @@ fn main() {
     let _cpus = (num_cpus::get_physical() + 1).to_string();
     let runtimes = (num_cpus::get_physical()).to_string();
 
+    // let matches = memcrs::memcache::cli::parser::parse(runtimes).get_matches_mut();
     let app = command!();
     let matches = app
         .version(memcrs::version::MEMCRS_VERSION)
@@ -61,7 +62,7 @@ fn main() {
         .arg(
             Arg::new("v")
                 .short('v')
-                .multiple_occurrences(true)
+                .action(clap::ArgAction::Count)
                 .help("Sets the level of verbosity"),
         )
         .arg(
@@ -122,7 +123,7 @@ fn main() {
     let runtimes: u32 = matches.value_of_t("runtimes").unwrap_or_else(|e| e.exit());
 
     let listen_address = matches
-        .value_of("listen")
+        .get_one::<String>("listen")
         .unwrap()
         .parse::<IpAddr>()
         .unwrap_or_else(|e| {
@@ -133,7 +134,7 @@ fn main() {
 
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
-    match matches.occurrences_of("v") {
+    match matches.get_count("v") {
         0 => {
             tracing_subscriber::fmt()
                 .with_max_level(tracing::Level::ERROR)
@@ -161,7 +162,7 @@ fn main() {
         }
     }
 
-    info!("Listen address: {}", matches.value_of("listen").unwrap());
+    info!("Listen address: {}", matches.get_one::<String>("listen").unwrap());
     info!("Listen port: {}", port);
     info!("Connection limit: {}", connection_limit);
     info!("Number of runtimes: {}", runtimes);
