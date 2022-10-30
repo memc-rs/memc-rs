@@ -1,8 +1,22 @@
-use std::net::IpAddr;
-
 use crate::version;
 use byte_unit::{Byte, ByteUnit};
-use clap::{command, Arg, crate_authors};
+use clap::{command, crate_authors, value_parser, Arg};
+use std::net::IpAddr;
+use tracing;
+
+pub enum RuntimeType {
+    CurrentThread,
+    MultiThread,
+}
+
+impl RuntimeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RuntimeType::CurrentThread => "Work handled withing current thread runtime",
+            RuntimeType::MultiThread => "Work stealing threadpool runtime",
+        }
+    }
+}
 
 pub struct MemcrsArgs {
     pub port: u16,
@@ -11,42 +25,47 @@ pub struct MemcrsArgs {
     pub memory_limit_mb: u64,
     pub item_size_limit: Byte,
     pub memory_limit: u64,
-    pub runtimes: u32,
+    pub threads: usize,
     pub log_level: tracing::Level,
     pub listen_address: IpAddr,
+    pub runtime_type: RuntimeType,
 }
 
+const DEFAULT_PORT: u16 = 11211;
+const DEFAULT_ADDRESS: &str = "127.0.0.1";
+const CONNECTION_LIMIT: u32 = 1024;
+const LISTEN_BACKLOG: u32 = 1024;
+const MEMORY_LIMIT: u64 = 64;
+const MAX_ITEM_SIZE: &str = "1m";
+const NUMBER_OF_THREADS: usize = 4;
+const RUNTIME_TYPE: &str = "current";
+
 impl MemcrsArgs {
-    fn from_args(runtimes: String, args: Vec<String>) -> Result<MemcrsArgs, String> {
-        let matches = cli_args(&runtimes).get_matches_from(args);
+    fn from_args(threads: String, args: Vec<String>) -> Result<MemcrsArgs, String> {
+        let number_of_threads: usize = threads.parse().unwrap_or(NUMBER_OF_THREADS);
+        let matches = cli_args(&threads).get_matches_from(args);
 
-        let port: u16 = match matches.get_one::<u16>("port") {
-            Some(value) => *value,
-            None => return Err("Port was not defined".to_string()),
-        };
+        let port: u16 = *matches.get_one::<u16>("port").unwrap_or(&DEFAULT_PORT);
 
-        let connection_limit: u32 = match matches.get_one::<u32>("conn-limit") {
-            Some(value) => *value,
-            None => return Err("Connection limit not defined".to_string()),
-        };
+        let connection_limit: u32 = *matches
+            .get_one::<u32>("connection-limit")
+            .unwrap_or(&CONNECTION_LIMIT);
 
-        let backlog_limit: u32 = match matches.get_one::<u32>("listen-backlog") {
-            Some(value) => *value,
-            None => return Err("Listeng backlog not defined".to_string()),
-        };
+        let backlog_limit: u32 = *matches
+            .get_one::<u32>("listen-backlog")
+            .unwrap_or(&LISTEN_BACKLOG);
 
-        let memory_limit_mb: u64 = match matches.get_one::<u64>("memory-limit") {
-            Some(value) => *value,
-            None => return Err("Memory limit in mega bytes not defined".to_string()),
-        };
+        let memory_limit_mb: u64 = *matches
+            .get_one::<u64>("memory-limit")
+            .unwrap_or(&MEMORY_LIMIT);
 
         let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
         let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
-        let item_size_limit_str: String = match matches.get_one::<String>("max-item-size") {
-            Some(value) => value.clone(),
-            None => return Err("Item size limit not defined".to_string()),
-        };
+        let item_size_limit_str: String = matches
+            .get_one::<String>("max-item-size")
+            .unwrap_or(&String::from(MAX_ITEM_SIZE))
+            .clone();
 
         let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
         let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
@@ -58,18 +77,27 @@ impl MemcrsArgs {
             ));
         }
 
-        let runtimes: u32 = match matches.get_one::<u32>("runtimes") {
-            Some(value) => *value,
-            None => return Err("Invalid number of runtimes defined".to_string()),
-        };
+        let threads: usize = *matches
+            .get_one::<usize>("threads")
+            .unwrap_or(&number_of_threads);
 
         let listen_address = match matches
             .get_one::<String>("listen")
-            .unwrap()
+            .unwrap_or(&String::from(DEFAULT_ADDRESS))
             .parse::<IpAddr>()
         {
             Ok(ip_addr) => ip_addr,
             Err(err) => return Err(format!("Invalid ip address: {}", err)),
+        };
+
+        let runtime_type = match matches
+            .get_one::<String>("runtime-type")
+            .unwrap_or(&String::from(RUNTIME_TYPE))
+            .as_str()
+        {
+            "current" => RuntimeType::CurrentThread,
+            "multi" => RuntimeType::MultiThread,
+            _ => unreachable!(),
         };
 
         // Vary the output based on how many times the user used the "verbose" flag
@@ -84,19 +112,20 @@ impl MemcrsArgs {
 
         Ok(MemcrsArgs {
             port,
-            backlog_limit,
             connection_limit,
-            item_size_limit: item_size_limit_res,
-            listen_address,
-            log_level,
-            memory_limit,
+            backlog_limit,
             memory_limit_mb,
-            runtimes,
+            item_size_limit: item_size_limit_res,
+            memory_limit,
+            threads,
+            log_level,
+            listen_address,
+            runtime_type,
         })
     }
 }
 
-fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
+fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
     command!()
         .version(version::MEMCRS_VERSION)
         .author(crate_authors!("\n"))
@@ -106,6 +135,7 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
                 .short('p')
                 .long("port")
                 .default_value("11211")
+                .value_parser(value_parser!(u16))
                 .help("TCP port to listen on")
                 .takes_value(true),
         )
@@ -118,9 +148,10 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
                 .takes_value(true),
         )
         .arg(
-            Arg::new("conn-limit")
+            Arg::new("connection-limit")
                 .short('c')
-                .long("conn-limit")
+                .long("connection-limit")
+                .value_parser(value_parser!(u32))
                 .default_value("1024")
                 .help("max simultaneous connections")
                 .takes_value(true),
@@ -129,6 +160,7 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
             Arg::new("listen-backlog")
                 .short('b')
                 .long("listen-backlog")
+                .value_parser(value_parser!(u32))
                 .default_value("1024")
                 .help("set the backlog queue limit")
                 .takes_value(true),
@@ -143,6 +175,7 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
             Arg::new("memory-limit")
                 .short('m')
                 .long("memory-limit")
+                .value_parser(value_parser!(u64))
                 .default_value("64")
                 .help("item memory in megabytes")
                 .takes_value(true),
@@ -156,11 +189,21 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
                 .takes_value(true),
         )
         .arg(
-            Arg::new("runtimes")
+            Arg::new("threads")
+                .short('t')
+                .long("threads")
+                .value_parser(value_parser!(usize))
+                .default_value(threads)
+                .help("number of threads to use")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("runtime-type")
                 .short('r')
-                .long("runtimes")
-                .default_value(runtimes)
-                .help("number of runtimes to use, each runtime will have n number of threads")
+                .long("runtime-type")
+                .default_value("current")
+                .value_parser(["current", "multi"])
+                .help("runtime type to use")
                 .takes_value(true),
         )
 }
