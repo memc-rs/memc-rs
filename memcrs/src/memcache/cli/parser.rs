@@ -31,37 +31,41 @@ pub struct MemcrsArgs {
     pub runtime_type: RuntimeType,
 }
 
+const DEFAULT_PORT: u16 = 11211;
+const DEFAULT_ADDRESS: &str = "127.0.0.1";
+const CONNECTION_LIMIT: u32 = 1024;
+const LISTEN_BACKLOG: u32 = 1024;
+const MEMORY_LIMIT: u64 = 64;
+const MAX_ITEM_SIZE: &str = "1m";
+const NUMBER_OF_THREADS: usize = 4;
+const RUNTIME_TYPE: &str = "current";
+
 impl MemcrsArgs {
-    fn from_args(runtimes: String, args: Vec<String>) -> Result<MemcrsArgs, String> {
-        let matches = cli_args(&runtimes).get_matches_from(args);
+    fn from_args(threads: String, args: Vec<String>) -> Result<MemcrsArgs, String> {
+        let number_of_threads: usize = threads.parse().unwrap_or(NUMBER_OF_THREADS);
+        let matches = cli_args(&threads).get_matches_from(args);
 
-        let port: u16 = match matches.get_one::<u16>("port") {
-            Some(value) => *value,
-            None => return Err("Port was not defined".to_string()),
-        };
+        let port: u16 = *matches.get_one::<u16>("port").unwrap_or(&DEFAULT_PORT);
 
-        let connection_limit: u32 = match matches.get_one::<u32>("connection-limit") {
-            Some(value) => *value,
-            None => return Err("Connection limit not defined".to_string()),
-        };
+        let connection_limit: u32 = *matches
+            .get_one::<u32>("connection-limit")
+            .unwrap_or(&CONNECTION_LIMIT);
 
-        let backlog_limit: u32 = match matches.get_one::<u32>("listen-backlog") {
-            Some(value) => *value,
-            None => return Err("Listeng backlog not defined".to_string()),
-        };
+        let backlog_limit: u32 = *matches
+            .get_one::<u32>("listen-backlog")
+            .unwrap_or(&LISTEN_BACKLOG);
 
-        let memory_limit_mb: u64 = match matches.get_one::<u64>("memory-limit") {
-            Some(value) => *value,
-            None => return Err("Memory limit in mega bytes not defined".to_string()),
-        };
+        let memory_limit_mb: u64 = *matches
+            .get_one::<u64>("memory-limit")
+            .unwrap_or(&MEMORY_LIMIT);
 
         let memory_limit_res = Byte::from_unit(memory_limit_mb as f64, ByteUnit::MiB).unwrap();
         let memory_limit: u64 = memory_limit_res.get_bytes() as u64;
 
-        let item_size_limit_str: String = match matches.get_one::<String>("max-item-size") {
-            Some(value) => value.clone(),
-            None => return Err("Item size limit not defined".to_string()),
-        };
+        let item_size_limit_str: String = matches
+            .get_one::<String>("max-item-size")
+            .unwrap_or(&String::from(MAX_ITEM_SIZE))
+            .clone();
 
         let item_size_limit_res = Byte::from_str(item_size_limit_str).unwrap();
         let item_size_limit_max = Byte::from_unit(1000f64, ByteUnit::MiB).unwrap();
@@ -73,14 +77,13 @@ impl MemcrsArgs {
             ));
         }
 
-        let threads: usize = match matches.get_one::<usize>("threads") {
-            Some(value) => *value,
-            None => return Err("Invalid number of runtimes defined".to_string()),
-        };
+        let threads: usize = *matches
+            .get_one::<usize>("threads")
+            .unwrap_or(&number_of_threads);
 
         let listen_address = match matches
             .get_one::<String>("listen")
-            .unwrap()
+            .unwrap_or(&String::from(DEFAULT_ADDRESS))
             .parse::<IpAddr>()
         {
             Ok(ip_addr) => ip_addr,
@@ -89,7 +92,7 @@ impl MemcrsArgs {
 
         let runtime_type = match matches
             .get_one::<String>("runtime-type")
-            .expect("'runtime-type' is required")
+            .unwrap_or(&String::from(RUNTIME_TYPE))
             .as_str()
         {
             "current" => RuntimeType::CurrentThread,

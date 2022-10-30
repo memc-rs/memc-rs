@@ -1,8 +1,7 @@
-use log::{info};
+use log::info;
 use std::env;
 use std::process;
 use std::sync::Arc;
-use tracing_subscriber::{fmt, filter::LevelFilter};
 extern crate clap;
 extern crate memcrs;
 
@@ -26,7 +25,7 @@ fn main() {
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::TRACE )
+        .with_max_level(tracing::Level::INFO)
         .init();
 
     info!("Listen address: {}", cli_config.listen_address.to_string());
@@ -36,9 +35,9 @@ fn main() {
     info!("Runtime type: {}", cli_config.runtime_type.as_str());
     info!("Max item size: {}", cli_config.item_size_limit.get_bytes());
     info!("Memory limit: {} MB", cli_config.memory_limit_mb);
+
     let system_timer: Arc<memcrs::storage::timer::SystemTimer> =
         Arc::new(memcrs::storage::timer::SystemTimer::new());
-
     let parent_runtime =
         memcrs::server::runtime_builder::create_memcrs_server(cli_config, system_timer.clone());
     parent_runtime.block_on(system_timer.run())

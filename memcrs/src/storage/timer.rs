@@ -1,6 +1,8 @@
+use log::debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::time::{interval_at, Instant};
+
 pub trait Timer {
     fn timestamp(&self) -> u64;
 }

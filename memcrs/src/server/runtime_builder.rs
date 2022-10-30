@@ -88,7 +88,7 @@ pub fn create_memcrs_server(
 ) -> tokio::runtime::Runtime {
     let store_config = memcache::builder::MemcacheStoreConfig::new(config.memory_limit);
     let memcache_store =
-        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
+        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
 
     match config.runtime_type {
         RuntimeType::CurrentThread => create_current_thread_server(config, memcache_store),
