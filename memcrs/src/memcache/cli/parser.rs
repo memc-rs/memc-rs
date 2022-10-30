@@ -25,7 +25,7 @@ pub struct MemcrsArgs {
     pub memory_limit_mb: u64,
     pub item_size_limit: Byte,
     pub memory_limit: u64,
-    pub threads: u32,
+    pub threads: usize,
     pub log_level: tracing::Level,
     pub listen_address: IpAddr,
     pub runtime_type: RuntimeType
@@ -73,7 +73,7 @@ impl MemcrsArgs {
             ));
         }
 
-        let threads: u32 = match matches.get_one::<u32>("runtimes") {
+        let threads: usize = match matches.get_one::<usize>("threads") {
             Some(value) => *value,
             None => return Err("Invalid number of runtimes defined".to_string()),
         };

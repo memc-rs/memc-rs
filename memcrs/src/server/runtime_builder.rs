@@ -56,6 +56,23 @@ fn create_current_thread_server(config: MemcrsArgs, store: Arc<dyn KVStore + Sen
   create_current_thread_runtime()
 }
 
+fn create_threadpool_server(config: MemcrsArgs, store: Arc<dyn KVStore + Send+ Sync>) -> tokio::runtime::Runtime {
+  let addr = SocketAddr::new(config.listen_address, config.port);
+  let memc_config = server::memc_tcp::MemcacheServerConfig::new(
+    60,
+    config.connection_limit,
+    config.item_size_limit.get_bytes() as u32,
+    config.backlog_limit,
+  );
+  let runtime = create_multi_thread_runtime(config.threads);
+  let store_rc = Arc::clone(&store);
+  let mut tcp_server = server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+  runtime.spawn(async move {
+    tcp_server.run(addr).await
+  });
+  runtime
+}
+
 pub fn create_memcrs_server(config: MemcrsArgs, system_timer: std::sync::Arc<storage::timer::SystemTimer>) -> tokio::runtime::Runtime {
   let store_config = memcache::builder::MemcacheStoreConfig::new(config.memory_limit);
   let memcache_store = memcache::builder::MemcacheStoreBuilder::from_config(
@@ -65,7 +82,6 @@ pub fn create_memcrs_server(config: MemcrsArgs, system_timer: std::sync::Arc<sto
   
   match (config.runtime_type) {
     RuntimeType::CurrentThread => create_current_thread_server(config, memcache_store),
-    RuntimeType::MultiThread => create_current_thread_runtime()
+    RuntimeType::MultiThread => create_threadpool_server(config, memcache_store)
   }
-
 }
