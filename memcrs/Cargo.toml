@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "4.0.14"
 bytes = "1.2.1"
-clap = { version = "3.2.22", features = ["cargo"] }
+clap = { version = "3.2.23", features = ["cargo"] }
 dashmap = "5.4.0"
 futures = "0.3.24"
 futures-util = "0.3.24"

@@ -1,8 +1,22 @@
 use std::net::IpAddr;
-
+use std::ffi::{OsStr, OsString};
 use crate::version;
 use byte_unit::{Byte, ByteUnit};
-use clap::{command, Arg, crate_authors};
+use clap::{command, Arg, crate_authors, value_parser};
+
+pub enum RuntimeType {
+    CurrentThread,
+    MultiThread
+}
+
+impl RuntimeType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RuntimeType::CurrentThread => "Multiple threads ",
+            RuntimeType::MultiThread => "World"
+        }
+    }
+}
 
 pub struct MemcrsArgs {
     pub port: u16,
@@ -11,9 +25,10 @@ pub struct MemcrsArgs {
     pub memory_limit_mb: u64,
     pub item_size_limit: Byte,
     pub memory_limit: u64,
-    pub runtimes: u32,
+    pub threads: u32,
     pub log_level: tracing::Level,
     pub listen_address: IpAddr,
+    pub runtime_type: RuntimeType
 }
 
 impl MemcrsArgs {
@@ -58,7 +73,7 @@ impl MemcrsArgs {
             ));
         }
 
-        let runtimes: u32 = match matches.get_one::<u32>("runtimes") {
+        let threads: u32 = match matches.get_one::<u32>("runtimes") {
             Some(value) => *value,
             None => return Err("Invalid number of runtimes defined".to_string()),
         };
@@ -70,6 +85,20 @@ impl MemcrsArgs {
         {
             Ok(ip_addr) => ip_addr,
             Err(err) => return Err(format!("Invalid ip address: {}", err)),
+        };
+
+        let runtime_type = match matches
+        .get_one::<String>("runtime-type")
+        .expect("'runtime-type' is required")
+        .as_str()
+        {
+            "current" => {
+                RuntimeType::CurrentThread
+            }
+            "multi" => {
+                RuntimeType::MultiThread
+            }
+            _ => unreachable!(),
         };
 
         // Vary the output based on how many times the user used the "verbose" flag
@@ -84,19 +113,20 @@ impl MemcrsArgs {
 
         Ok(MemcrsArgs {
             port,
-            backlog_limit,
             connection_limit,
-            item_size_limit: item_size_limit_res,
-            listen_address,
-            log_level,
-            memory_limit,
+            backlog_limit,
             memory_limit_mb,
-            runtimes,
+            item_size_limit: item_size_limit_res,
+            memory_limit,
+            threads,
+            log_level,
+            listen_address,
+            runtime_type
         })
     }
 }
 
-fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
+fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
     command!()
         .version(version::MEMCRS_VERSION)
         .author(crate_authors!("\n"))
@@ -106,6 +136,7 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
                 .short('p')
                 .long("port")
                 .default_value("11211")
+                .value_parser(value_parser!(u16))
                 .help("TCP port to listen on")
                 .takes_value(true),
         )
@@ -156,11 +187,20 @@ fn cli_args<'help>(runtimes: &'help str) -> clap::Command<'help> {
                 .takes_value(true),
         )
         .arg(
-            Arg::new("runtimes")
+            Arg::new("threads")
+                .short('t')
+                .long("threads")
+                .default_value(threads)
+                .help("number of threads to use")
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("runtime-type")
                 .short('r')
-                .long("runtimes")
-                .default_value(runtimes)
-                .help("number of runtimes to use, each runtime will have n number of threads")
+                .long("runtime-type")
+                .default_value("current")
+                .value_parser(["current", "multi"])
+                .help("runtime type to use ")
                 .takes_value(true),
         )
 }
