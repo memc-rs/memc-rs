@@ -1,8 +1,8 @@
-use log::info;
+use log::{info};
 use std::env;
 use std::process;
 use std::sync::Arc;
-
+use tracing_subscriber::{fmt, filter::LevelFilter};
 extern crate clap;
 extern crate memcrs;
 
@@ -14,7 +14,6 @@ use jemallocator::Jemalloc;
 static GLOBAL: Jemalloc = Jemalloc;
 
 fn main() {
-    let _cpus = (num_cpus::get_physical() + 1).to_string();
     let runtimes = (num_cpus::get_physical()).to_string();
 
     let cli_config = match memcrs::memcache::cli::parser::parse(runtimes, env::args().collect()) {
@@ -24,11 +23,10 @@ fn main() {
             process::exit(1);
         }
     };
-
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
     tracing_subscriber::fmt()
-        .with_max_level(cli_config.log_level)
+        .with_max_level(tracing::Level::TRACE )
         .init();
 
     info!("Listen address: {}", cli_config.listen_address.to_string());

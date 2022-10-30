@@ -2,6 +2,7 @@ use crate::version;
 use byte_unit::{Byte, ByteUnit};
 use clap::{command, crate_authors, value_parser, Arg};
 use std::net::IpAddr;
+use tracing;
 
 pub enum RuntimeType {
     CurrentThread,
@@ -11,8 +12,8 @@ pub enum RuntimeType {
 impl RuntimeType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RuntimeType::CurrentThread => "Multiple threads ",
-            RuntimeType::MultiThread => "World",
+            RuntimeType::CurrentThread => "Work handled withing current thread runtime",
+            RuntimeType::MultiThread => "Work stealing threadpool runtime",
         }
     }
 }
@@ -39,7 +40,7 @@ impl MemcrsArgs {
             None => return Err("Port was not defined".to_string()),
         };
 
-        let connection_limit: u32 = match matches.get_one::<u32>("conn-limit") {
+        let connection_limit: u32 = match matches.get_one::<u32>("connection-limit") {
             Some(value) => *value,
             None => return Err("Connection limit not defined".to_string()),
         };
@@ -144,9 +145,10 @@ fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
                 .takes_value(true),
         )
         .arg(
-            Arg::new("conn-limit")
+            Arg::new("connection-limit")
                 .short('c')
-                .long("conn-limit")
+                .long("connection-limit")
+                .value_parser(value_parser!(u32))
                 .default_value("1024")
                 .help("max simultaneous connections")
                 .takes_value(true),
@@ -155,6 +157,7 @@ fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
             Arg::new("listen-backlog")
                 .short('b')
                 .long("listen-backlog")
+                .value_parser(value_parser!(u32))
                 .default_value("1024")
                 .help("set the backlog queue limit")
                 .takes_value(true),
@@ -169,6 +172,7 @@ fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
             Arg::new("memory-limit")
                 .short('m')
                 .long("memory-limit")
+                .value_parser(value_parser!(u64))
                 .default_value("64")
                 .help("item memory in megabytes")
                 .takes_value(true),
@@ -185,6 +189,7 @@ fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
             Arg::new("threads")
                 .short('t')
                 .long("threads")
+                .value_parser(value_parser!(usize))
                 .default_value(threads)
                 .help("number of threads to use")
                 .takes_value(true),
@@ -195,7 +200,7 @@ fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
                 .long("runtime-type")
                 .default_value("current")
                 .value_parser(["current", "multi"])
-                .help("runtime type to use ")
+                .help("runtime type to use")
                 .takes_value(true),
         )
 }
