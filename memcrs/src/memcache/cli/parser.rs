@@ -1,19 +1,18 @@
-use std::net::IpAddr;
-use std::ffi::{OsStr, OsString};
 use crate::version;
 use byte_unit::{Byte, ByteUnit};
-use clap::{command, Arg, crate_authors, value_parser};
+use clap::{command, crate_authors, value_parser, Arg};
+use std::net::IpAddr;
 
 pub enum RuntimeType {
     CurrentThread,
-    MultiThread
+    MultiThread,
 }
 
 impl RuntimeType {
     pub fn as_str(&self) -> &'static str {
         match self {
             RuntimeType::CurrentThread => "Multiple threads ",
-            RuntimeType::MultiThread => "World"
+            RuntimeType::MultiThread => "World",
         }
     }
 }
@@ -28,7 +27,7 @@ pub struct MemcrsArgs {
     pub threads: usize,
     pub log_level: tracing::Level,
     pub listen_address: IpAddr,
-    pub runtime_type: RuntimeType
+    pub runtime_type: RuntimeType,
 }
 
 impl MemcrsArgs {
@@ -88,16 +87,12 @@ impl MemcrsArgs {
         };
 
         let runtime_type = match matches
-        .get_one::<String>("runtime-type")
-        .expect("'runtime-type' is required")
-        .as_str()
+            .get_one::<String>("runtime-type")
+            .expect("'runtime-type' is required")
+            .as_str()
         {
-            "current" => {
-                RuntimeType::CurrentThread
-            }
-            "multi" => {
-                RuntimeType::MultiThread
-            }
+            "current" => RuntimeType::CurrentThread,
+            "multi" => RuntimeType::MultiThread,
             _ => unreachable!(),
         };
 
@@ -121,7 +116,7 @@ impl MemcrsArgs {
             threads,
             log_level,
             listen_address,
-            runtime_type
+            runtime_type,
         })
     }
 }
