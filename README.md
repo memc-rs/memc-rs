@@ -109,6 +109,19 @@ memcrsd project is tested using different types of tests:
 
 At the moment decoding network packets is fuzzy tested.
 
+```sh
+cargo install -f cargo-fuzz
+cargo +nightly fuzz build
+cargo +nightly fuzz run  -j 8 fuzz_binary_decoder --  -rss_limit_mb=4192 -timeout=60
+cargo +nightly fuzz coverage fuzz_binary_decoder
+```
+
+Workaround to see fuzzing test results:
+
+```sh
+~/.rustup/toolchains/nightly-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-unknown-linux-gnu/bin/llvm-cov show fuzz/target/x86_64-unknown-linux-gnu/release/fuzz_binary_decoder  --format=html -Xdemangler=rustfilt --ignore-filename-regex="\.cargo" -instr-profile=fuzz/coverage/fuzz_binary_decoder/coverage.profdata > index.html
+```
+
 ### Generating test coverage reporting
 
 To generate test coverage there is a convenient shell script that compiles and executed unit tests:
