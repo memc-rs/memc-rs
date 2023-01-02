@@ -69,7 +69,7 @@ To build docker image memcrsd sources have to be cloned and `docker build -m 512
 ```sh
 git clone git@github.com:memc-rs/memc-rs.git memc-rs
 cd memc-rs
-docker build -m 512m .
+docker build -m 4096m .
 ```
 
 ### Publishing docker image
