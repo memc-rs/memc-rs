@@ -9,8 +9,8 @@
             "type": "lldb",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/memcrsd",
-            "args": ["-vvv"],        
-            "cwd": "${workspaceFolder}"                    
+            "args": ["-vvv"],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

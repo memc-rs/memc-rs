@@ -92,10 +92,16 @@ docker push memcrs/memc-rs:0.0.1b
 To get latest version of memcrsd run following command:
 
 ```sh
-docker memcrs/memc-rs:latest
+docker image pull memcrs/memc-rs:latest
 ```
 
 If you want specific version please take a look at available tags: [https://hub.docker.com/r/memcrs/memc-rs/tags](https://hub.docker.com/r/memcrs/memc-rs/tags)
+
+### Runnig docker image
+
+```sh
+docker run -p 127.0.0.1:11211:11211/tcp -d memcrs/memc-rs
+```
 
 ## Testing
 
