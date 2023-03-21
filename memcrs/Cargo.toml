@@ -20,7 +20,7 @@ dashmap = "5.4.0"
 futures = "0.3.27"
 futures-util = "0.3.27"
 log = "0.4.17"
-socket2 = { version = "0.5.1", features = ["all"] }
+socket2 = { version = "0.4.9", features = ["all"] }
 num_cpus = "1.15.0"
 num-derive = "0.3.3"
 num-traits = "0.2.15"
