@@ -37,12 +37,12 @@ impl SystemTimer {
 
 impl Timer for SystemTimer {
     fn timestamp(&self) -> u64 {
-        self.seconds.load(Ordering::SeqCst)
+        self.seconds.load(Ordering::Acquire)
     }
 }
 
 impl SetableTimer for SystemTimer {
     fn add_second(&self) {
-        self.seconds.fetch_add(1, Ordering::SeqCst);
+        self.seconds.fetch_add(1, Ordering::Release);
     }
 }
