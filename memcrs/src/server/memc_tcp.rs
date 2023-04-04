@@ -47,7 +47,7 @@ pub struct MemcacheTcpServer {
 impl MemcacheTcpServer {
     pub fn new(
         config: MemcacheServerConfig,
-        store: Arc<dyn KVStore + Send + Sync>,
+        store: Arc<dyn storage::MemCacheStoreType + Send + Sync>,
     ) -> MemcacheTcpServer {
         MemcacheTcpServer {
             storage: Arc::new(storage::MemcStore::new(store)),

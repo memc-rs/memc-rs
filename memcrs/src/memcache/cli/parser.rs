@@ -125,7 +125,7 @@ impl MemcrsArgs {
     }
 }
 
-fn cli_args<'help>(threads: &'help str) -> clap::Command<'help> {
+fn cli_args(threads: & str) -> clap::Command {
     command!()
         .version(version::MEMCRS_VERSION)
         .author(crate_authors!("\n"))

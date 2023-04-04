@@ -2,16 +2,15 @@ use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{StorageError, StorageResult};
 use crate::storage::store::{
-    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+    KVStore, SetStatus as KVSetStatus,
 };
 
 use std::str;
 use std::sync::Arc;
 
-pub type Record = KVRecord;
-pub type Meta = KVMeta;
 pub type SetStatus = KVSetStatus;
-pub type KeyType = KVKeyType;
+pub type ValueType = Bytes;
+pub type KeyType = Bytes;
 
 #[derive(Clone)]
 pub struct DeltaParam {
@@ -20,23 +19,88 @@ pub struct DeltaParam {
 }
 pub type IncrementParam = DeltaParam;
 pub type DecrementParam = IncrementParam;
-
 pub type DeltaResultValueType = u64;
 #[derive(Debug)]
 pub struct DeltaResult {
     pub cas: u64,
     pub value: DeltaResultValueType,
 }
+
+#[derive(Clone, Debug)]
+pub struct Meta {
+    pub(self) timestamp: u64,
+    pub(crate) cas: u64,
+    pub(crate) flags: u32,
+    pub(self) time_to_live: u32,
+}
+
+impl Meta {
+    pub fn new(cas: u64, flags: u32, time_to_live: u32) -> Meta {
+        Meta {
+            timestamp: 0,
+            cas,
+            flags,
+            time_to_live,
+        }
+    }
+
+    pub fn get_expiration(&self) -> u32 {
+        self.time_to_live
+    }
+
+    pub const fn len(&self) -> usize {
+        std::mem::size_of::<Meta>()
+    }
+
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+
+#[derive(Clone, Debug)]
+pub struct Record {
+    pub(crate) header: Meta,
+    pub(crate) value: ValueType,
+}
+
+impl Record {
+    pub fn new(value: ValueType, cas: u64, flags: u32, expiration: u32) -> Record {
+        let header = Meta::new(cas, flags, expiration);
+        Record { header, value }
+    }
+
+    pub fn len(&self) -> usize {
+        self.header.len() + self.value.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
+impl PartialEq for Record {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value
+    }
+}
+
+pub trait MemCacheStoreType : KVStore<KeyType, Record> {
+}
+
+impl MemCacheStoreType {
+    
+}
 /**
  * Implements Memcache commands based
  * on Key Value Store
  */
 pub struct MemcStore {
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn MemCacheStoreType + Send + Sync>,
 }
 
 impl MemcStore {
-    pub fn new(store: Arc<dyn KVStore + Send + Sync>) -> MemcStore {
+    pub fn new(store: Arc<dyn MemCacheStoreType + Send + Sync>) -> MemcStore {
         MemcStore { store }
     }
 
@@ -173,11 +237,11 @@ impl MemcStore {
     }
 
     pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
-        self.store.delete(key, header)
+        self.store.delete(key, header.cas)
     }
 
     pub fn flush(&self, header: Meta) {
-        self.store.flush(header)
+        self.store.flush(header.time_to_live)
     }
 }
 
