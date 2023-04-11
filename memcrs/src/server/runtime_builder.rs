@@ -3,7 +3,7 @@ use crate::memcache;
 use crate::server;
 use crate::{
     memcache::cli::parser::RuntimeType,
-    storage::{self, store::KVStore},
+    storage::{self, cache::KVStore},
 };
 use std::net::SocketAddr;
 use std::sync::{

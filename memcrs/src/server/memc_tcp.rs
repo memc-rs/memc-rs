@@ -12,7 +12,7 @@ use tracing::{debug, error};
 
 use super::client_handler;
 use crate::memcache::store as storage;
-use crate::storage::store::KVStore;
+use crate::storage::cache::KVStore;
 
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {

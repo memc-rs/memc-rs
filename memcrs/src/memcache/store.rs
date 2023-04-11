@@ -1,9 +1,10 @@
 use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{StorageError, StorageResult};
-use crate::storage::store::{
-    KVStore, KeyType as KVKeyType, Meta as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+use crate::storage::cache::{
+    KVStore, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
 };
+
 
 use std::str;
 use std::sync::Arc;

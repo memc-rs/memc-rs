@@ -1,7 +1,7 @@
 use crate::storage::error::StorageResult;
-use crate::storage::store::{
-    impl_details::StoreImplDetails, KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record,
-    RemoveIfResult, SetStatus,
+use crate::storage::cache::{
+    impl_details::StoreImplDetails, KVStore, KVStoreReadOnlyView, KeyType, CacheMetaData, Predicate, Record,
+    RemoveIfResult, SetStatus
 };
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -89,7 +89,7 @@ impl KVStore for RandomPolicy {
         self.store.set(key, record)
     }
 
-    fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
+    fn delete(&self, key: KeyType, header: CacheMetaData) -> StorageResult<Record> {
         let result = self.store.delete(key, header);
         if let Ok(record) = &result {
             self.decr_mem_usage(record.len() as u64);
@@ -106,7 +106,7 @@ impl KVStore for RandomPolicy {
         result
     }
 
-    fn flush(&self, header: Meta) {
+    fn flush(&self, header: CacheMetaData) {
         self.store.flush(header)
     }
 

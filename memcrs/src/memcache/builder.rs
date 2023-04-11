@@ -1,6 +1,7 @@
 use super::eviction_policy::EvictionPolicy;
 use super::random_policy::RandomPolicy;
-use crate::storage::store::{KVStore, KeyValueStore};
+use crate::storage::cache::{KVStore};
+use crate::storage::store::{KeyValueStore};
 use crate::storage::timer;
 use std::sync::Arc;
 
