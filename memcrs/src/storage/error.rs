@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq, Eq)]
-pub enum StorageError {
+pub enum CacheError {
     NotFound = 0x01,
     KeyExists = 0x02,
     ValueTooLarge = 0x03,
@@ -14,26 +14,26 @@ pub enum StorageError {
     TemporaryFailure = 0x86,
 }
 
-impl StorageError {
+impl CacheError {
     pub fn to_static_string(&self) -> &'static str {
         static NOT_FOUND: &str = "Not found";
         static KEY_EXISTS: &str = "Key exists";
 
         match self {
-            StorageError::NotFound => NOT_FOUND,
-            StorageError::KeyExists => KEY_EXISTS,
-            StorageError::ValueTooLarge => "Value too big",
-            StorageError::InvalidArguments => "Invalid arguments",
-            StorageError::ItemNotStored => "Item not stored",
-            StorageError::ArithOnNonNumeric => "Incr/Decr on non numeric value",
-            StorageError::UnkownCommand => "Invalid command",
-            StorageError::OutOfMemory => "Out of memory",
-            StorageError::NotSupported => "Not supported",
-            StorageError::InternalError => "Internal error",
-            StorageError::Busy => "Busy",
-            StorageError::TemporaryFailure => "Temporary failure",
+            CacheError::NotFound => NOT_FOUND,
+            CacheError::KeyExists => KEY_EXISTS,
+            CacheError::ValueTooLarge => "Value too big",
+            CacheError::InvalidArguments => "Invalid arguments",
+            CacheError::ItemNotStored => "Item not stored",
+            CacheError::ArithOnNonNumeric => "Incr/Decr on non numeric value",
+            CacheError::UnkownCommand => "Invalid command",
+            CacheError::OutOfMemory => "Out of memory",
+            CacheError::NotSupported => "Not supported",
+            CacheError::InternalError => "Internal error",
+            CacheError::Busy => "Busy",
+            CacheError::TemporaryFailure => "Temporary failure",
         }
     }
 }
 
-pub type StorageResult<T> = std::result::Result<T, StorageError>;
+pub type StorageResult<T> = std::result::Result<T, CacheError>;

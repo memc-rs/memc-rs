@@ -1,4 +1,4 @@
-use super::error::{StorageError, StorageResult};
+use super::error::{CacheError, StorageResult};
 use bytes::Bytes;
 
 /// Cache key type
@@ -84,7 +84,7 @@ pub trait CacheReadOnlyView<'a> {
 // Not a part of Store public API
 pub mod impl_details {
   use super::*;
-  pub trait StoreImplDetails {
+  pub trait CacheImplDetails {
       //
       fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
 
@@ -98,14 +98,14 @@ pub type CachePredicate = dyn FnMut(&KeyType, &Record) -> bool;
 
 
 // An abstraction over a generic store key <=> value store
-pub trait Cache: impl_details::StoreImplDetails {
+pub trait Cache: impl_details::CacheImplDetails {
   /// Returns a value associated with a key
   fn get(&self, key: &KeyType) -> StorageResult<Record> {
       let result = self.get_by_key(key);
       match result {
           Ok(record) => {
               if self.check_if_expired(key, &record) {
-                  return Err(StorageError::NotFound);
+                  return Err(CacheError::NotFound);
               }
               Ok(record)
           }

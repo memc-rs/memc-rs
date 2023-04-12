@@ -240,8 +240,8 @@ mod tests {
         ];
         let mut header = create_response_header(binary::Command::Get, 0, 0);
         header.body_length = "Not found".len() as u32;
-        let err = error::StorageError::NotFound;
-        header.status = error::StorageError::NotFound as u16;
+        let err = error::CacheError::NotFound;
+        header.status = error::CacheError::NotFound as u16;
         let response = BinaryResponse::Error(binary::ErrorResponse {
             header,
             error: err.to_static_string(),

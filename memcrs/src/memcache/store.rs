@@ -1,6 +1,6 @@
 use bytes::{Bytes, BytesMut};
 
-use crate::storage::error::{StorageError, StorageResult};
+use crate::storage::error::{CacheError, StorageResult};
 use crate::storage::cache::{
     Cache, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
 };
@@ -55,7 +55,7 @@ impl MemcStore {
 
     pub fn add(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
-            Ok(_record) => Err(StorageError::KeyExists),
+            Ok(_record) => Err(CacheError::KeyExists),
             Err(_err) => self.set(key, record),
         }
     }
@@ -63,7 +63,7 @@ impl MemcStore {
     pub fn replace(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
         match self.get(&key) {
             Ok(_record) => self.set(key, record),
-            Err(_err) => Err(StorageError::NotFound),
+            Err(_err) => Err(CacheError::NotFound),
         }
     }
 
@@ -78,7 +78,7 @@ impl MemcStore {
                 record.value = value.freeze();
                 self.set(key, record)
             }
-            Err(_err) => Err(StorageError::NotFound),
+            Err(_err) => Err(CacheError::NotFound),
         }
     }
 
@@ -93,7 +93,7 @@ impl MemcStore {
                 record.header.cas = new_record.header.cas;
                 self.set(key, record)
             }
-            Err(_err) => Err(StorageError::NotFound),
+            Err(_err) => Err(CacheError::NotFound),
         }
     }
 
@@ -128,10 +128,10 @@ impl MemcStore {
                     .map(|value: &str| {
                         value
                             .parse::<u64>()
-                            .map_err(|_err| StorageError::ArithOnNonNumeric)
+                            .map_err(|_err| CacheError::ArithOnNonNumeric)
                     })
-                    .map_err(|_err| StorageError::ArithOnNonNumeric)
-                    .and_then(|value: std::result::Result<u64, StorageError>| {
+                    .map_err(|_err| CacheError::ArithOnNonNumeric)
+                    .and_then(|value: std::result::Result<u64, CacheError>| {
                         //flatten result
                         value
                     })
@@ -150,7 +150,7 @@ impl MemcStore {
                             value,
                         })
                     })
-                    .and_then(|result: std::result::Result<DeltaResult, StorageError>| {
+                    .and_then(|result: std::result::Result<DeltaResult, CacheError>| {
                         //flatten result
                         result
                     })
@@ -168,7 +168,7 @@ impl MemcStore {
                         value: delta.value,
                     });
                 }
-                Err(StorageError::NotFound)
+                Err(CacheError::NotFound)
             }
         }
     }

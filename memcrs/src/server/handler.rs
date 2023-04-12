@@ -1,7 +1,7 @@
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
-use crate::storage::error::StorageError;
+use crate::storage::error::CacheError;
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -14,7 +14,7 @@ fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> 
 
 fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
-        if response.header.status == StorageError::NotFound as u16 {
+        if response.header.status == CacheError::NotFound as u16 {
             return None;
         }
     }
@@ -135,7 +135,7 @@ impl BinaryHandler {
                 ))
             }
             binary_codec::BinaryRequest::ItemTooLarge(_set_request) => Some(
-                storage_error_to_response(StorageError::ValueTooLarge, &mut response_header),
+                storage_error_to_response(CacheError::ValueTooLarge, &mut response_header),
             ),
         }
     }
@@ -442,7 +442,7 @@ mod tests {
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
-                    assert_eq!(response.header.status, error::StorageError::NotFound as u16);
+                    assert_eq!(response.header.status, error::CacheError::NotFound as u16);
                     assert_eq!(response.error, "Not found");
                     assert_eq!(response.header.body_length, response.error.len() as u32);
                 } else {
@@ -605,7 +605,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        error::StorageError::KeyExists as u16,
+                        error::CacheError::KeyExists as u16,
                         response.error.len() as u32,
                     );
                 } else {

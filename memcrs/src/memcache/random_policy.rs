@@ -1,6 +1,6 @@
 use crate::storage::error::StorageResult;
 use crate::storage::cache::{
-    impl_details::StoreImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
+    impl_details::CacheImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
     RemoveIfResult, SetStatus
 };
 use rand::rngs::SmallRng;
@@ -66,7 +66,7 @@ impl RandomPolicy {
     }
 }
 
-impl StoreImplDetails for RandomPolicy {
+impl CacheImplDetails for RandomPolicy {
     //
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
         self.store.get_by_key(key)

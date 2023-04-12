@@ -1,4 +1,4 @@
-use super::error::{StorageError, StorageResult};
+use super::error::{CacheError, StorageResult};
 use super::timer;
 use super::cache::{KeyType, Record, CacheReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, CachePredicate, RemoveIfResult};
 use dashmap::mapref::multiple::RefMulti;
@@ -44,11 +44,11 @@ impl KeyValueStore {
     }
 }
 
-impl impl_details::StoreImplDetails for KeyValueStore {
+impl impl_details::CacheImplDetails for KeyValueStore {
     fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
-            None => Err(StorageError::NotFound),
+            None => Err(CacheError::NotFound),
         }
     }
 
@@ -81,7 +81,7 @@ impl Cache for KeyValueStore {
             match self.memory.get_mut(&key) {
                 Some(mut key_value) => {
                     if key_value.header.cas != record.header.cas {
-                        Err(StorageError::KeyExists)
+                        Err(CacheError::KeyExists)
                     } else {
                         record.header.cas += 1;
                         record.header.timestamp = self.timer.timestamp();
@@ -116,8 +116,8 @@ impl Cache for KeyValueStore {
         }) {
             Some(key_value) => Ok(key_value.1),
             None => match cas_match {
-                Some(_value) => Err(StorageError::KeyExists),
-                None => Err(StorageError::NotFound),
+                Some(_value) => Err(CacheError::KeyExists),
+                None => Err(CacheError::NotFound),
             },
         }
     }

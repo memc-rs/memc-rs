@@ -1,7 +1,7 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
-use crate::storage::error::StorageError;
+use crate::storage::error::CacheError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
@@ -128,7 +128,7 @@ impl BinaryResponse {
 }
 
 pub fn storage_error_to_response(
-    err: StorageError,
+    err: CacheError,
     response_header: &mut binary::ResponseHeader,
 ) -> BinaryResponse {
     let message = err.to_static_string();
