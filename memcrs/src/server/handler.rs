@@ -1,7 +1,7 @@
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
-use crate::storage::error::CacheError;
+use crate::cache::error::CacheError;
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -351,7 +351,7 @@ mod tests {
     use super::*;
     use crate::mock::mock_server::create_storage;
     use crate::mock::value::from_string;
-    use crate::storage::error;
+    use crate::cache::error;
     use bytes::Bytes;
 
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;

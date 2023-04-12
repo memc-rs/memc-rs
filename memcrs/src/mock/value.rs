@@ -1,4 +1,4 @@
-use crate::storage::cache::ValueType;
+use crate::cache::cache::ValueType;
 use bytes::{BufMut, BytesMut};
 use std::str;
 

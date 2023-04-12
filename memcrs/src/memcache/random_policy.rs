@@ -1,5 +1,5 @@
-use crate::storage::error::Result;
-use crate::storage::cache::{
+use crate::cache::error::Result;
+use crate::cache::cache::{
     impl_details::CacheImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
     RemoveIfResult, SetStatus
 };

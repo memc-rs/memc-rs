@@ -1,7 +1,7 @@
 use bytes::{Bytes, BytesMut};
 
-use crate::storage::error::{CacheError, Result};
-use crate::storage::cache::{
+use crate::cache::error::{CacheError, Result};
+use crate::cache::cache::{
     Cache, KeyType as CacheKeyType, CacheMetaData as CacheMeta, Record as CacheRecord, SetStatus as CacheSetStatus,
 };
 

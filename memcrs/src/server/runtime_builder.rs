@@ -3,7 +3,7 @@ use crate::memcache;
 use crate::server;
 use crate::{
     memcache::cli::parser::RuntimeType,
-    storage::{self, cache::Cache},
+    cache::{self, cache::Cache},
 };
 use std::net::SocketAddr;
 use std::sync::{
@@ -101,7 +101,7 @@ fn create_threadpool_server(
 
 pub fn create_memcrs_server(
     config: MemcrsArgs,
-    system_timer: std::sync::Arc<storage::timer::SystemTimer>,
+    system_timer: std::sync::Arc<cache::timer::SystemTimer>,
 ) -> tokio::runtime::Runtime {
     let store_config = memcache::builder::MemcacheStoreConfig::new(config.memory_limit);
     let memcache_store =

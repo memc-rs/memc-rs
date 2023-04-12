@@ -5,7 +5,7 @@ use super::*;
 mod tests {
     use super::*;
     use crate::mock::value::from_string;
-    use crate::storage::error;
+    use crate::cache::error;
 
     fn create_response_header(
         cmd: binary::Command,

@@ -1,7 +1,7 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
-use crate::storage::error::CacheError;
+use crate::cache::error::CacheError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
