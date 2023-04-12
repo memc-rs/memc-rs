@@ -75,7 +75,7 @@ pub struct SetStatus {
 }
 
 /// Read only view over a store
-pub trait KVStoreReadOnlyView<'a> {
+pub trait CacheReadOnlyView<'a> {
   fn len(&self) -> usize;
   fn is_empty(&self) -> bool;
   fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
@@ -94,7 +94,7 @@ pub mod impl_details {
 }
 
 pub type RemoveIfResult = Vec<Option<(KeyType, Record)>>;
-pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
+pub type CachePredicate = dyn FnMut(&KeyType, &Record) -> bool;
 
 
 // An abstraction over a generic store key <=> value store
@@ -142,11 +142,11 @@ pub trait Cache: impl_details::StoreImplDetails {
   fn is_empty(&self) -> bool;
 
   /// Returns a read-only view over a stroe
-  fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
+  fn as_read_only(&self) -> Box<dyn CacheReadOnlyView>;
 
   /// Removes key-value pairs from a store for which
   /// f predicate returns true
-  fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult;
+  fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult;
 
   /// Removes key value and returns as an option
   fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;

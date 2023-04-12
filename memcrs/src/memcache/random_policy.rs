@@ -1,6 +1,6 @@
 use crate::storage::error::StorageResult;
 use crate::storage::cache::{
-    impl_details::StoreImplDetails, Cache, KVStoreReadOnlyView, KeyType, CacheMetaData, Predicate, Record,
+    impl_details::StoreImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
     RemoveIfResult, SetStatus
 };
 use rand::rngs::SmallRng;
@@ -110,11 +110,11 @@ impl Cache for RandomPolicy {
         self.store.flush(header)
     }
 
-    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
+    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
         self.store.as_read_only()
     }
 
-    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
+    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
         self.store.remove_if(f)
     }
 

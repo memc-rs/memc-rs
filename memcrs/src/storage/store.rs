@@ -1,6 +1,6 @@
 use super::error::{StorageError, StorageResult};
 use super::timer;
-use super::cache::{KeyType, Record, KVStoreReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, Predicate, RemoveIfResult};
+use super::cache::{KeyType, Record, CacheReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, CachePredicate, RemoveIfResult};
 use dashmap::mapref::multiple::RefMulti;
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -15,7 +15,7 @@ pub struct KeyValueStore {
 
 type StorageReadOnlyView = ReadOnlyView<KeyType, Record>;
 
-impl<'a> KVStoreReadOnlyView<'a> for StorageReadOnlyView {
+impl<'a> CacheReadOnlyView<'a> for StorageReadOnlyView {
     fn len(&self) -> usize {
         StorageReadOnlyView::len(self)
     }
@@ -133,12 +133,12 @@ impl Cache for KeyValueStore {
         }
     }
 
-    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
+    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
         let storage_clone = self.memory.clone();
         Box::new(storage_clone.into_read_only())
     }
 
-    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
+    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
         let items: Vec<KeyType> = self
             .memory
             .iter()
