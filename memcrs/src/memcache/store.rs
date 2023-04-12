@@ -2,17 +2,17 @@ use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{CacheError, Result};
 use crate::storage::cache::{
-    Cache, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+    Cache, KeyType as CacheKeyType, CacheMetaData as CacheMeta, Record as CacheRecord, SetStatus as CacheSetStatus,
 };
 
 
 use std::str;
 use std::sync::Arc;
 
-pub type Record = KVRecord;
-pub type Meta = KVMeta;
-pub type SetStatus = KVSetStatus;
-pub type KeyType = KVKeyType;
+pub type Record = CacheRecord;
+pub type Meta = CacheMeta;
+pub type SetStatus = CacheSetStatus;
+pub type KeyType = CacheKeyType;
 
 #[derive(Clone)]
 pub struct DeltaParam {
