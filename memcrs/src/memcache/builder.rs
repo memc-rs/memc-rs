@@ -1,8 +1,8 @@
 use super::eviction_policy::EvictionPolicy;
 use super::random_policy::RandomPolicy;
 use crate::cache::cache::{Cache};
-use crate::cache::store::{KeyValueStore};
-use crate::cache::timer;
+use crate::memory_store::store::{KeyValueStore};
+use crate::memory_store::timer;
 use std::sync::Arc;
 
 pub struct MemcacheStoreConfig {

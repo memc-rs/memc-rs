@@ -1,6 +1,6 @@
-use super::error::{CacheError, Result};
+use crate::cache::error::{CacheError, Result};
 use super::timer;
-use super::cache::{KeyType, Record, CacheReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, CachePredicate, RemoveIfResult};
+use crate::cache::cache::{KeyType, Record, CacheReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, CachePredicate, RemoveIfResult};
 use dashmap::mapref::multiple::RefMulti;
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
