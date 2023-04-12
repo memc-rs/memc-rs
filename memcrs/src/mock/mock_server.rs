@@ -1,5 +1,5 @@
 use crate::memcache::store::MemcStore;
-use crate::memory_store::store::KeyValueStore;
+use crate::memory_store::store::MemoryStore;
 use crate::memory_store::timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
@@ -40,7 +40,7 @@ pub struct MockServer {
 impl MockServer {
     pub fn new() -> Self {
         let timer = Arc::new(MockSystemTimer::new());
-        let store = Arc::new(KeyValueStore::new(timer.clone()));
+        let store = Arc::new(MemoryStore::new(timer.clone()));
         MockServer {
             timer: timer,
             storage: MemcStore::new(store),
@@ -54,5 +54,5 @@ pub fn create_server() -> MockServer {
 
 pub fn create_storage() -> Arc<MemcStore> {
     let timer = Arc::new(MockSystemTimer::new());
-    Arc::new(MemcStore::new(Arc::new(KeyValueStore::new(timer))))
+    Arc::new(MemcStore::new(Arc::new(MemoryStore::new(timer))))
 }

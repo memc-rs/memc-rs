@@ -1,7 +1,7 @@
 use super::eviction_policy::EvictionPolicy;
 use super::random_policy::RandomPolicy;
 use crate::cache::cache::{Cache};
-use crate::memory_store::store::{KeyValueStore};
+use crate::memory_store::store::{MemoryStore};
 use crate::memory_store::timer;
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ impl MemcacheStoreBuilder {
         config: MemcacheStoreConfig,
         timer: Arc<dyn timer::Timer + Send + Sync>,
     ) -> Arc<dyn Cache + Send + Sync> {
-        let store_engine = Arc::new(KeyValueStore::new(timer));
+        let store_engine = Arc::new(MemoryStore::new(timer));
         let store: Arc<dyn Cache + Send + Sync> = match config.policy {
             EvictionPolicy::Random => {
                 Arc::new(RandomPolicy::new(store_engine, config.memory_limit))

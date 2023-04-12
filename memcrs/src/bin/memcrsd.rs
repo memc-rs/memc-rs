@@ -41,6 +41,6 @@ fn main() {
     let system_timer: Arc<memcrs::memory_store::timer::SystemTimer> =
         Arc::new(memcrs::memory_store::timer::SystemTimer::new());
     let parent_runtime =
-        memcrs::server::runtime_builder::create_memcrs_server(cli_config, system_timer.clone());
+        memcrs::memcache_server::runtime_builder::create_memcrs_server(cli_config, system_timer.clone());
     parent_runtime.block_on(system_timer.run())
 }

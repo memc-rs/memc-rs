@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 type Storage = DashMap<KeyType, Record>;
-pub struct KeyValueStore {
+pub struct MemoryStore {
     memory: Storage,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
@@ -30,9 +30,9 @@ impl<'a> CacheReadOnlyView<'a> for StorageReadOnlyView {
     }
 }
 
-impl KeyValueStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> KeyValueStore {
-        KeyValueStore {
+impl MemoryStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> MemoryStore {
+        MemoryStore {
             memory: DashMap::new(),
             timer,
             cas_id: AtomicU64::new(1),
@@ -44,7 +44,7 @@ impl KeyValueStore {
     }
 }
 
-impl impl_details::CacheImplDetails for KeyValueStore {
+impl impl_details::CacheImplDetails for MemoryStore {
     fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
@@ -69,7 +69,7 @@ impl impl_details::CacheImplDetails for KeyValueStore {
     }
 }
 
-impl Cache for KeyValueStore {
+impl Cache for MemoryStore {
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         self.memory.remove(key)
