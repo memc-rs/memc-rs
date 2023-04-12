@@ -1,6 +1,6 @@
 use bytes::{Bytes, BytesMut};
 
-use crate::storage::error::{CacheError, StorageResult};
+use crate::storage::error::{CacheError, Result};
 use crate::storage::cache::{
     Cache, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
 };
@@ -41,11 +41,11 @@ impl MemcStore {
         MemcStore { store }
     }
 
-    pub fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
+    pub fn set(&self, key: KeyType, record: Record) -> Result<SetStatus> {
         self.store.set(key, record)
     }
 
-    pub fn get(&self, key: &KeyType) -> StorageResult<Record> {
+    pub fn get(&self, key: &KeyType) -> Result<Record> {
         self.store.get(key)
     }
 
@@ -53,21 +53,21 @@ impl MemcStore {
     //     let _timer = self.timer.secs();
     // }
 
-    pub fn add(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
+    pub fn add(&self, key: KeyType, record: Record) -> Result<SetStatus> {
         match self.get(&key) {
             Ok(_record) => Err(CacheError::KeyExists),
             Err(_err) => self.set(key, record),
         }
     }
 
-    pub fn replace(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
+    pub fn replace(&self, key: KeyType, record: Record) -> Result<SetStatus> {
         match self.get(&key) {
             Ok(_record) => self.set(key, record),
             Err(_err) => Err(CacheError::NotFound),
         }
     }
 
-    pub fn append(&self, key: KeyType, new_record: Record) -> StorageResult<SetStatus> {
+    pub fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {
                 record.header.cas = new_record.header.cas;
@@ -82,7 +82,7 @@ impl MemcStore {
         }
     }
 
-    pub fn prepend(&self, key: KeyType, new_record: Record) -> StorageResult<SetStatus> {
+    pub fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
         match self.get(&key) {
             Ok(mut record) => {
                 let mut value =
@@ -102,7 +102,7 @@ impl MemcStore {
         header: Meta,
         key: KeyType,
         increment: IncrementParam,
-    ) -> StorageResult<DeltaResult> {
+    ) -> Result<DeltaResult> {
         self.add_delta(header, key, increment, true)
     }
 
@@ -111,7 +111,7 @@ impl MemcStore {
         header: Meta,
         key: KeyType,
         decrement: DecrementParam,
-    ) -> StorageResult<DeltaResult> {
+    ) -> Result<DeltaResult> {
         self.add_delta(header, key, decrement, false)
     }
 
@@ -121,7 +121,7 @@ impl MemcStore {
         key: KeyType,
         delta: DeltaParam,
         increment: bool,
-    ) -> StorageResult<DeltaResult> {
+    ) -> Result<DeltaResult> {
         match self.get(&key) {
             Ok(mut record) => {
                 str::from_utf8(&record.value)
@@ -173,7 +173,7 @@ impl MemcStore {
         }
     }
 
-    pub fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
+    pub fn delete(&self, key: KeyType, header: Meta) -> Result<Record> {
         self.store.delete(key, header)
     }
 

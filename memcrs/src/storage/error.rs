@@ -36,4 +36,4 @@ impl CacheError {
     }
 }
 
-pub type StorageResult<T> = std::result::Result<T, CacheError>;
+pub type Result<T> = std::result::Result<T, CacheError>;

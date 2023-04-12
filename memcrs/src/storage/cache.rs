@@ -1,4 +1,4 @@
-use super::error::{CacheError, StorageResult};
+use super::error::{CacheError, Result};
 use bytes::Bytes;
 
 /// Cache key type
@@ -86,7 +86,7 @@ pub mod impl_details {
   use super::*;
   pub trait CacheImplDetails {
       //
-      fn get_by_key(&self, key: &KeyType) -> StorageResult<Record>;
+      fn get_by_key(&self, key: &KeyType) -> Result<Record>;
 
       //
       fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
@@ -100,7 +100,7 @@ pub type CachePredicate = dyn FnMut(&KeyType, &Record) -> bool;
 // An abstraction over a generic store key <=> value store
 pub trait Cache: impl_details::CacheImplDetails {
   /// Returns a value associated with a key
-  fn get(&self, key: &KeyType) -> StorageResult<Record> {
+  fn get(&self, key: &KeyType) -> Result<Record> {
       let result = self.get_by_key(key);
       match result {
           Ok(record) => {
@@ -120,14 +120,14 @@ pub trait Cache: impl_details::CacheImplDetails {
   /// - if CAS is equal to 0 value is always set
   /// - if CAS is not equal value is not set and there is an error
   ///   returned with status KeyExists
-  fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
+  fn set(&self, key: KeyType, record: Record) -> Result<SetStatus>;
 
   /// Removes a value associated with a key a returns it to a caller if CAS
   /// value comparison is successful or header.CAS is equal to 0:
   ///
   /// - if header.CAS != to stored record CAS KeyExists is returned
   /// - if key is not found NotFound is returned
-  fn delete(&self, key: KeyType, header: CacheMetaData) -> StorageResult<Record>;
+  fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record>;
 
   /// Removes all values from a store
   ///

@@ -1,4 +1,4 @@
-use crate::storage::error::StorageResult;
+use crate::storage::error::Result;
 use crate::storage::cache::{
     impl_details::CacheImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
     RemoveIfResult, SetStatus
@@ -68,7 +68,7 @@ impl RandomPolicy {
 
 impl CacheImplDetails for RandomPolicy {
     //
-    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
+    fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         self.store.get_by_key(key)
     }
 
@@ -79,17 +79,17 @@ impl CacheImplDetails for RandomPolicy {
 }
 
 impl Cache for RandomPolicy {
-    fn get(&self, key: &KeyType) -> StorageResult<Record> {
+    fn get(&self, key: &KeyType) -> Result<Record> {
         self.store.get(key)
     }
 
-    fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
+    fn set(&self, key: KeyType, record: Record) -> Result<SetStatus> {
         let len = record.len() as u64;
         self.incr_mem_usage(len);
         self.store.set(key, record)
     }
 
-    fn delete(&self, key: KeyType, header: CacheMetaData) -> StorageResult<Record> {
+    fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record> {
         let result = self.store.delete(key, header);
         if let Ok(record) = &result {
             self.decr_mem_usage(record.len() as u64);

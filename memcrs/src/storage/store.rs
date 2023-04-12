@@ -1,4 +1,4 @@
-use super::error::{CacheError, StorageResult};
+use super::error::{CacheError, Result};
 use super::timer;
 use super::cache::{KeyType, Record, CacheReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, CachePredicate, RemoveIfResult};
 use dashmap::mapref::multiple::RefMulti;
@@ -45,7 +45,7 @@ impl KeyValueStore {
 }
 
 impl impl_details::CacheImplDetails for KeyValueStore {
-    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
+    fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
             None => Err(CacheError::NotFound),
@@ -75,7 +75,7 @@ impl Cache for KeyValueStore {
         self.memory.remove(key)
     }
 
-    fn set(&self, key: KeyType, mut record: Record) -> StorageResult<SetStatus> {
+    fn set(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
         //trace!("Set: {:?}", &record.header);
         if record.header.cas > 0 {
             match self.memory.get_mut(&key) {
@@ -107,7 +107,7 @@ impl Cache for KeyValueStore {
         }
     }
 
-    fn delete(&self, key: KeyType, header: CacheMetaData) -> StorageResult<Record> {
+    fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record> {
         let mut cas_match: Option<bool> = None;
         match self.memory.remove_if(&key, |_key, record| -> bool {
             let result = header.cas == 0 || record.header.cas == header.cas;
