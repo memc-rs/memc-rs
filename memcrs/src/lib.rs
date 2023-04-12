@@ -6,6 +6,7 @@ pub mod memcache;
 pub mod protocol;
 pub mod memcache_server;
 pub mod cache;
+pub mod server;
 pub mod version;
 pub mod memory_store;
 
