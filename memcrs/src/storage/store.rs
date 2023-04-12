@@ -1,6 +1,6 @@
 use super::error::{StorageError, StorageResult};
 use super::timer;
-use super::cache::{KeyType, Record, KVStoreReadOnlyView, impl_details, KVStore, SetStatus, CacheMetaData, Predicate, RemoveIfResult};
+use super::cache::{KeyType, Record, KVStoreReadOnlyView, impl_details, Cache, SetStatus, CacheMetaData, Predicate, RemoveIfResult};
 use dashmap::mapref::multiple::RefMulti;
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -69,7 +69,7 @@ impl impl_details::StoreImplDetails for KeyValueStore {
     }
 }
 
-impl KVStore for KeyValueStore {
+impl Cache for KeyValueStore {
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         self.memory.remove(key)

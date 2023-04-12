@@ -98,8 +98,8 @@ pub type Predicate = dyn FnMut(&KeyType, &Record) -> bool;
 
 
 // An abstraction over a generic store key <=> value store
-pub trait KVStore: impl_details::StoreImplDetails {
-  // Returns a value associated with a key
+pub trait Cache: impl_details::StoreImplDetails {
+  /// Returns a value associated with a key
   fn get(&self, key: &KeyType) -> StorageResult<Record> {
       let result = self.get_by_key(key);
       match result {
@@ -113,41 +113,41 @@ pub trait KVStore: impl_details::StoreImplDetails {
       }
   }
 
-  // Sets value that will be associated with a store.
-  // If value already exists in a store CAS field is compared
-  // and depending on CAS value comparison value is set or rejected.
-  //
-  // - if CAS is equal to 0 value is always set
-  // - if CAS is not equal value is not set and there is an error
-  //   returned with status KeyExists
+  /// Sets value that will be associated with a store.
+  /// If value already exists in a store CAS field is compared
+  /// and depending on CAS value comparison value is set or rejected.
+  ///
+  /// - if CAS is equal to 0 value is always set
+  /// - if CAS is not equal value is not set and there is an error
+  ///   returned with status KeyExists
   fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus>;
 
-  // Removes a value associated with a key a returns it to a caller if CAS
-  // value comparison is successful or header.CAS is equal to 0:
-  //
-  // - if header.CAS != to stored record CAS KeyExists is returned
-  // - if key is not found NotFound is returned
+  /// Removes a value associated with a key a returns it to a caller if CAS
+  /// value comparison is successful or header.CAS is equal to 0:
+  ///
+  /// - if header.CAS != to stored record CAS KeyExists is returned
+  /// - if key is not found NotFound is returned
   fn delete(&self, key: KeyType, header: CacheMetaData) -> StorageResult<Record>;
 
-  // Removes all values from a store
-  //
-  // - if header.ttl is set to 0 values are removed immediately,
-  // - if header.ttl>0 values are removed from a store after
-  //   ttl expiration
+  /// Removes all values from a store
+  ///
+  /// - if header.ttl is set to 0 values are removed immediately,
+  /// - if header.ttl>0 values are removed from a store after
+  ///   ttl expiration
   fn flush(&self, header: CacheMetaData);
 
-  // Number of key value pairs stored in store
+  /// Number of key value pairs stored in store
   fn len(&self) -> usize;
 
   fn is_empty(&self) -> bool;
 
-  // Returns a read-only view over a stroe
+  /// Returns a read-only view over a stroe
   fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView>;
 
-  // Removes key-value pairs from a store for which
-  // f predicate returns true
+  /// Removes key-value pairs from a store for which
+  /// f predicate returns true
   fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult;
 
-  // Removes key value and returns as an option
+  /// Removes key value and returns as an option
   fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
 }

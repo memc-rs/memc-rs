@@ -1,6 +1,6 @@
 use crate::storage::error::StorageResult;
 use crate::storage::cache::{
-    impl_details::StoreImplDetails, KVStore, KVStoreReadOnlyView, KeyType, CacheMetaData, Predicate, Record,
+    impl_details::StoreImplDetails, Cache, KVStoreReadOnlyView, KeyType, CacheMetaData, Predicate, Record,
     RemoveIfResult, SetStatus
 };
 use rand::rngs::SmallRng;
@@ -9,13 +9,13 @@ use std::sync::atomic;
 use std::sync::Arc;
 
 pub struct RandomPolicy {
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
     memory_limit: u64,
     memory_usage: atomic::AtomicU64,
 }
 
 impl RandomPolicy {
-    pub fn new(store: Arc<dyn KVStore + Send + Sync>, memory_limit: u64) -> RandomPolicy {
+    pub fn new(store: Arc<dyn Cache + Send + Sync>, memory_limit: u64) -> RandomPolicy {
         RandomPolicy {
             store,
             memory_limit,
@@ -78,7 +78,7 @@ impl StoreImplDetails for RandomPolicy {
     }
 }
 
-impl KVStore for RandomPolicy {
+impl Cache for RandomPolicy {
     fn get(&self, key: &KeyType) -> StorageResult<Record> {
         self.store.get(key)
     }

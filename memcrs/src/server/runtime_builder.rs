@@ -3,7 +3,7 @@ use crate::memcache;
 use crate::server;
 use crate::{
     memcache::cli::parser::RuntimeType,
-    storage::{self, cache::KVStore},
+    storage::{self, cache::Cache},
 };
 use std::net::SocketAddr;
 use std::sync::{
@@ -44,7 +44,7 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
 
 fn create_current_thread_server(
     config: MemcrsArgs,
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = server::memc_tcp::MemcacheServerConfig::new(
@@ -83,7 +83,7 @@ fn create_current_thread_server(
 
 fn create_threadpool_server(
     config: MemcrsArgs,
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = server::memc_tcp::MemcacheServerConfig::new(

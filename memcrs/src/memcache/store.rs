@@ -2,7 +2,7 @@ use bytes::{Bytes, BytesMut};
 
 use crate::storage::error::{StorageError, StorageResult};
 use crate::storage::cache::{
-    KVStore, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
+    Cache, KeyType as KVKeyType, CacheMetaData as KVMeta, Record as KVRecord, SetStatus as KVSetStatus,
 };
 
 
@@ -33,11 +33,11 @@ pub struct DeltaResult {
  * on Key Value Store
  */
 pub struct MemcStore {
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
 }
 
 impl MemcStore {
-    pub fn new(store: Arc<dyn KVStore + Send + Sync>) -> MemcStore {
+    pub fn new(store: Arc<dyn Cache + Send + Sync>) -> MemcStore {
         MemcStore { store }
     }
 

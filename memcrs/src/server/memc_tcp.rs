@@ -12,7 +12,7 @@ use tracing::{debug, error};
 
 use super::client_handler;
 use crate::memcache::store as storage;
-use crate::storage::cache::KVStore;
+use crate::storage::cache::Cache;
 
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {
@@ -47,7 +47,7 @@ pub struct MemcacheTcpServer {
 impl MemcacheTcpServer {
     pub fn new(
         config: MemcacheServerConfig,
-        store: Arc<dyn KVStore + Send + Sync>,
+        store: Arc<dyn Cache + Send + Sync>,
     ) -> MemcacheTcpServer {
         MemcacheTcpServer {
             storage: Arc::new(storage::MemcStore::new(store)),
