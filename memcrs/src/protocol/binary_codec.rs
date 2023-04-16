@@ -429,7 +429,7 @@ impl MemcacheBinaryCodec {
         let append_request = binary::AppendRequest {
             header: self.header,
             key: src.split_to(self.header.key_length as usize).freeze(),
-            value: src.split_to(value_len as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         if self.header.opcode == binary::Command::Append as u8 {
@@ -535,7 +535,7 @@ impl MemcacheBinaryCodec {
             flags: src.get_u32(),
             expiration: src.get_u32(),
             key: src.split_to(self.header.key_length as usize).freeze(),
-            value: src.split_to(value_len as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         match FromPrimitive::from_u8(self.header.opcode) {

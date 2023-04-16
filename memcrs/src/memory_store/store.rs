@@ -40,7 +40,7 @@ impl MemoryStore {
     }
 
     fn get_cas_id(&self) -> u64 {
-        self.cas_id.fetch_add(1, Ordering::SeqCst) as u64
+        self.cas_id.fetch_add(1, Ordering::Release)
     }
 }
 
