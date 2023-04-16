@@ -24,7 +24,7 @@ impl RandomPolicy {
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
+        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::Release);
 
         let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
@@ -62,7 +62,7 @@ impl RandomPolicy {
     }
 
     fn decr_mem_usage(&self, value: u64) -> u64 {
-        self.memory_usage.fetch_sub(value, atomic::Ordering::SeqCst)
+        self.memory_usage.fetch_sub(value, atomic::Ordering::Release)
     }
 }
 
