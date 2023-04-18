@@ -404,10 +404,7 @@ mod tests {
         });
 
         let result = handler.handle_request(request);
-        match result {
-            Some(_rest) => unreachable!(),
-            None => {}
-        }
+        assert!(result.is_none());
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -454,6 +451,30 @@ mod tests {
     }
 
     #[test]
+    fn get_quiet_request_should_return_none_when_not_exists() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::GetQuiet, &key);
+
+        let request = binary_codec::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
+
+        let result = handler.handle_request(request);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn get_quiet_key_request_should_return_none_when_not_exists() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::GetQuiet, &key);
+
+        let request = binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest { header, key });
+
+        let result = handler.handle_request(request);
+        assert!(result.is_none());
+    }
+
+    #[test]
     fn get_key_request_should_return_key_and_record() {
         let handler = create_handler();
         let key = Bytes::from("test_key");
@@ -475,6 +496,44 @@ mod tests {
                     check_header(
                         &response.header,
                         binary::Command::GetKey,
+                        key.len() as u16,
+                        EXTRAS_LENGTH,
+                        0,
+                        0,
+                        key.len() as u32 + value.len() as u32 + EXTRAS_LENGTH as u32,
+                    );
+                    assert_eq!(response.key[..], key[..]);
+                    assert_eq!(response.value[..], value[..]);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn get_quiet_key_request_should_return_key_and_record() {
+        let handler = create_handler();
+        let key = Bytes::from("test_key");
+        let value = from_string("test value");
+
+        insert_value(&handler, key.clone(), value.clone());
+
+        let header = create_header(binary::Command::GetKeyQuiet, &key);
+        let request = binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest {
+            header,
+            key: key.clone(),
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Get(response) = resp {
+                    assert_ne!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::GetKeyQuiet,
                         key.len() as u16,
                         EXTRAS_LENGTH,
                         0,
@@ -552,6 +611,42 @@ mod tests {
                     unreachable!();
                 }
             }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn set_request_should_return_item_too_large_() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        let value = from_string("value");
+        let request = binary_codec::BinaryRequest::ItemTooLarge(binary::SetRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key,
+            value,
+        });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    assert_eq!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::Set,
+                        0,
+                        0,
+                        0,
+                        error::CacheError::ValueTooLarge as u16,
+                        response.error.len() as u32,
+                    );
+                } else {
+                    unreachable!();
+                }
+            },
             None => unreachable!(),
         }
     }
