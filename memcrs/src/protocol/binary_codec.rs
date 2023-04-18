@@ -1,7 +1,7 @@
 use std::{io, u8};
 
 use crate::protocol::binary;
-use crate::storage::error::StorageError;
+use crate::cache::error::CacheError;
 use bytes::{Buf, BufMut, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io::{Error, ErrorKind};
@@ -128,7 +128,7 @@ impl BinaryResponse {
 }
 
 pub fn storage_error_to_response(
-    err: StorageError,
+    err: CacheError,
     response_header: &mut binary::ResponseHeader,
 ) -> BinaryResponse {
     let message = err.to_static_string();
@@ -429,7 +429,7 @@ impl MemcacheBinaryCodec {
         let append_request = binary::AppendRequest {
             header: self.header,
             key: src.split_to(self.header.key_length as usize).freeze(),
-            value: src.split_to(value_len as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         if self.header.opcode == binary::Command::Append as u8 {
@@ -535,7 +535,7 @@ impl MemcacheBinaryCodec {
             flags: src.get_u32(),
             expiration: src.get_u32(),
             key: src.split_to(self.header.key_length as usize).freeze(),
-            value: src.split_to(value_len as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         match FromPrimitive::from_u8(self.header.opcode) {

@@ -54,7 +54,7 @@ fn insert_should_fail_on_cas_mismatch() {
     let result = storage.set(key, record);
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::KeyExists),
+        Err(err) => assert_eq!(err, CacheError::KeyExists),
     }
 }
 
@@ -75,7 +75,7 @@ fn record_should_expire_in_given_time() {
     assert!(found.is_err());
     match found {
         Ok(_r) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
 
@@ -93,7 +93,7 @@ fn delete_record() {
     match deleted {
         Ok(_) => match server.storage.get(&key) {
             Ok(_) => unreachable!(),
-            Err(err) => assert_eq!(err, StorageError::NotFound),
+            Err(err) => assert_eq!(err, CacheError::NotFound),
         },
         Err(_err) => unreachable!(),
     }
@@ -112,7 +112,7 @@ fn delete_should_return_not_exists() {
     let deleted = server.storage.delete(Bytes::from("bad key"), header);
     match deleted {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
 
@@ -129,7 +129,7 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     let deleted = server.storage.delete(Bytes::from("key"), header);
     match deleted {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::KeyExists),
+        Err(err) => assert_eq!(err, CacheError::KeyExists),
     }
 }
 
@@ -170,7 +170,7 @@ fn flush_should_remove_all_elements_in_cache() {
         let result = server.storage.get(&key_str.freeze());
         match result {
             Ok(_) => unreachable!(),
-            Err(err) => assert_eq!(err, StorageError::NotFound),
+            Err(err) => assert_eq!(err, CacheError::NotFound),
         }
     }
 }
@@ -194,7 +194,7 @@ fn add_should_fail_if_already_stored() {
     let add_result = server.storage.add(key, record);
     match add_result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::KeyExists),
+        Err(err) => assert_eq!(err, CacheError::KeyExists),
     }
 }
 
@@ -206,7 +206,7 @@ fn replace_should_fail_if_not_stored() {
     let result = server.storage.replace(key, record);
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
 
@@ -236,7 +236,7 @@ fn append_should_fail_if_not_exist() {
 
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
 
@@ -249,7 +249,7 @@ fn prepend_should_fail_if_not_exist() {
 
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, StorageError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
 
@@ -336,7 +336,7 @@ fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
             unreachable!();
         }
         Err(err) => {
-            assert_eq!(err, StorageError::NotFound);
+            assert_eq!(err, CacheError::NotFound);
         }
     }
 }
@@ -389,7 +389,7 @@ fn increment_if_value_is_not_number_it_should_be_error() {
             unreachable!();
         }
         Err(err) => {
-            assert_eq!(err, StorageError::ArithOnNonNumeric);
+            assert_eq!(err, CacheError::ArithOnNonNumeric);
         }
     }
 }
@@ -414,7 +414,7 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
             unreachable!();
         }
         Err(err) => {
-            assert_eq!(err, StorageError::ArithOnNonNumeric);
+            assert_eq!(err, CacheError::ArithOnNonNumeric);
         }
     }
 }

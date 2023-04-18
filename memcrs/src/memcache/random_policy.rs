@@ -1,7 +1,7 @@
-use crate::storage::error::StorageResult;
-use crate::storage::store::{
-    impl_details::StoreImplDetails, KVStore, KVStoreReadOnlyView, KeyType, Meta, Predicate, Record,
-    RemoveIfResult, SetStatus,
+use crate::cache::error::Result;
+use crate::cache::cache::{
+    impl_details::CacheImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
+    RemoveIfResult, SetStatus
 };
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -9,13 +9,13 @@ use std::sync::atomic;
 use std::sync::Arc;
 
 pub struct RandomPolicy {
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
     memory_limit: u64,
     memory_usage: atomic::AtomicU64,
 }
 
 impl RandomPolicy {
-    pub fn new(store: Arc<dyn KVStore + Send + Sync>, memory_limit: u64) -> RandomPolicy {
+    pub fn new(store: Arc<dyn Cache + Send + Sync>, memory_limit: u64) -> RandomPolicy {
         RandomPolicy {
             store,
             memory_limit,
@@ -24,7 +24,7 @@ impl RandomPolicy {
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::SeqCst);
+        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::Release);
 
         let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
@@ -62,13 +62,13 @@ impl RandomPolicy {
     }
 
     fn decr_mem_usage(&self, value: u64) -> u64 {
-        self.memory_usage.fetch_sub(value, atomic::Ordering::SeqCst)
+        self.memory_usage.fetch_sub(value, atomic::Ordering::Release)
     }
 }
 
-impl StoreImplDetails for RandomPolicy {
+impl CacheImplDetails for RandomPolicy {
     //
-    fn get_by_key(&self, key: &KeyType) -> StorageResult<Record> {
+    fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         self.store.get_by_key(key)
     }
 
@@ -78,18 +78,18 @@ impl StoreImplDetails for RandomPolicy {
     }
 }
 
-impl KVStore for RandomPolicy {
-    fn get(&self, key: &KeyType) -> StorageResult<Record> {
+impl Cache for RandomPolicy {
+    fn get(&self, key: &KeyType) -> Result<Record> {
         self.store.get(key)
     }
 
-    fn set(&self, key: KeyType, record: Record) -> StorageResult<SetStatus> {
+    fn set(&self, key: KeyType, record: Record) -> Result<SetStatus> {
         let len = record.len() as u64;
         self.incr_mem_usage(len);
         self.store.set(key, record)
     }
 
-    fn delete(&self, key: KeyType, header: Meta) -> StorageResult<Record> {
+    fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record> {
         let result = self.store.delete(key, header);
         if let Ok(record) = &result {
             self.decr_mem_usage(record.len() as u64);
@@ -106,15 +106,15 @@ impl KVStore for RandomPolicy {
         result
     }
 
-    fn flush(&self, header: Meta) {
+    fn flush(&self, header: CacheMetaData) {
         self.store.flush(header)
     }
 
-    fn as_read_only(&self) -> Box<dyn KVStoreReadOnlyView> {
+    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
         self.store.as_read_only()
     }
 
-    fn remove_if(&self, f: &mut Predicate) -> RemoveIfResult {
+    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
         self.store.remove_if(f)
     }
 

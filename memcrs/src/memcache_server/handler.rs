@@ -1,7 +1,7 @@
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
-use crate::storage::error::StorageError;
+use crate::cache::error::CacheError;
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -14,7 +14,7 @@ fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> 
 
 fn into_quiet_get(response: binary_codec::BinaryResponse) -> Option<binary_codec::BinaryResponse> {
     if let binary_codec::BinaryResponse::Error(response) = &response {
-        if response.header.status == StorageError::NotFound as u16 {
+        if response.header.status == CacheError::NotFound as u16 {
             return None;
         }
     }
@@ -135,7 +135,7 @@ impl BinaryHandler {
                 ))
             }
             binary_codec::BinaryRequest::ItemTooLarge(_set_request) => Some(
-                storage_error_to_response(StorageError::ValueTooLarge, &mut response_header),
+                storage_error_to_response(CacheError::ValueTooLarge, &mut response_header),
             ),
         }
     }
@@ -351,7 +351,7 @@ mod tests {
     use super::*;
     use crate::mock::mock_server::create_storage;
     use crate::mock::value::from_string;
-    use crate::storage::error;
+    use crate::cache::error;
     use bytes::Bytes;
 
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
@@ -404,10 +404,7 @@ mod tests {
         });
 
         let result = handler.handle_request(request);
-        match result {
-            Some(_rest) => unreachable!(),
-            None => {}
-        }
+        assert!(result.is_none());
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -442,7 +439,7 @@ mod tests {
         match result {
             Some(resp) => {
                 if let binary_codec::BinaryResponse::Error(response) = resp {
-                    assert_eq!(response.header.status, error::StorageError::NotFound as u16);
+                    assert_eq!(response.header.status, error::CacheError::NotFound as u16);
                     assert_eq!(response.error, "Not found");
                     assert_eq!(response.header.body_length, response.error.len() as u32);
                 } else {
@@ -451,6 +448,30 @@ mod tests {
             }
             None => unreachable!(),
         }
+    }
+
+    #[test]
+    fn get_quiet_request_should_return_none_when_not_exists() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::GetQuiet, &key);
+
+        let request = binary_codec::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
+
+        let result = handler.handle_request(request);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn get_quiet_key_request_should_return_none_when_not_exists() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::GetQuiet, &key);
+
+        let request = binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest { header, key });
+
+        let result = handler.handle_request(request);
+        assert!(result.is_none());
     }
 
     #[test]
@@ -475,6 +496,44 @@ mod tests {
                     check_header(
                         &response.header,
                         binary::Command::GetKey,
+                        key.len() as u16,
+                        EXTRAS_LENGTH,
+                        0,
+                        0,
+                        key.len() as u32 + value.len() as u32 + EXTRAS_LENGTH as u32,
+                    );
+                    assert_eq!(response.key[..], key[..]);
+                    assert_eq!(response.value[..], value[..]);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn get_quiet_key_request_should_return_key_and_record() {
+        let handler = create_handler();
+        let key = Bytes::from("test_key");
+        let value = from_string("test value");
+
+        insert_value(&handler, key.clone(), value.clone());
+
+        let header = create_header(binary::Command::GetKeyQuiet, &key);
+        let request = binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest {
+            header,
+            key: key.clone(),
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Get(response) = resp {
+                    assert_ne!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::GetKeyQuiet,
                         key.len() as u16,
                         EXTRAS_LENGTH,
                         0,
@@ -557,6 +616,42 @@ mod tests {
     }
 
     #[test]
+    fn set_request_should_return_item_too_large_() {
+        let handler = create_handler();
+        let key = Bytes::from("key");
+        let header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        let value = from_string("value");
+        let request = binary_codec::BinaryRequest::ItemTooLarge(binary::SetRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key,
+            value,
+        });
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    assert_eq!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::Set,
+                        0,
+                        0,
+                        0,
+                        error::CacheError::ValueTooLarge as u16,
+                        response.error.len() as u32,
+                    );
+                } else {
+                    unreachable!();
+                }
+            },
+            None => unreachable!(),
+        }
+    }
+
+    #[test]
     fn set_request_on_cas_mismatch_should_return_key_exists() {
         let handler = create_handler();
         let key = Bytes::from("key");
@@ -605,7 +700,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        error::StorageError::KeyExists as u16,
+                        error::CacheError::KeyExists as u16,
                         response.error.len() as u32,
                     );
                 } else {

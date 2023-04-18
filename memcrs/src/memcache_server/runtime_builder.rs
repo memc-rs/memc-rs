@@ -1,9 +1,10 @@
 extern crate core_affinity;
 use crate::memcache;
+use crate::memcache_server;
 use crate::server;
 use crate::{
     memcache::cli::parser::RuntimeType,
-    storage::{self, store::KVStore},
+    cache::{cache::Cache}
 };
 use std::net::SocketAddr;
 use std::sync::{
@@ -44,10 +45,10 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
 
 fn create_current_thread_server(
     config: MemcrsArgs,
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
-    let memc_config = server::memc_tcp::MemcacheServerConfig::new(
+    let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
         config.item_size_limit.get_bytes() as u32,
@@ -66,7 +67,7 @@ fn create_current_thread_server(
             let res = core_affinity::set_for_current(core_id);
             let create_runtime = || {
                 let child_runtime = create_current_thread_runtime();
-                let mut tcp_server = server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+                let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
                 child_runtime.block_on(tcp_server.run(addr)).unwrap()
             };
             if res {
@@ -83,10 +84,10 @@ fn create_current_thread_server(
 
 fn create_threadpool_server(
     config: MemcrsArgs,
-    store: Arc<dyn KVStore + Send + Sync>,
+    store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
-    let memc_config = server::memc_tcp::MemcacheServerConfig::new(
+    let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
         config.item_size_limit.get_bytes() as u32,
@@ -94,14 +95,14 @@ fn create_threadpool_server(
     );
     let runtime = create_multi_thread_runtime(config.threads);
     let store_rc = Arc::clone(&store);
-    let mut tcp_server = server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
     runtime.spawn(async move { tcp_server.run(addr).await });
     runtime
 }
 
 pub fn create_memcrs_server(
     config: MemcrsArgs,
-    system_timer: std::sync::Arc<storage::timer::SystemTimer>,
+    system_timer: std::sync::Arc<server::timer::SystemTimer>,
 ) -> tokio::runtime::Runtime {
     let store_config = memcache::builder::MemcacheStoreConfig::new(config.memory_limit);
     let memcache_store =
