@@ -19,7 +19,7 @@ core_affinity = "0.8.0"
 dashmap = "5.5.0"
 futures = "0.3.28"
 futures-util = "0.3.28"
-log = "0.4.17"
+log = "0.4.19"
 socket2 = { version = "0.5.3", features = ["all"] }
 num_cpus = "1.15.0"
 num-derive = "0.3.3"
