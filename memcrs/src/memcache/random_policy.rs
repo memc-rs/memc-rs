@@ -1,8 +1,8 @@
-use crate::cache::error::Result;
 use crate::cache::cache::{
-    impl_details::CacheImplDetails, Cache, CacheReadOnlyView, KeyType, CacheMetaData, CachePredicate, Record,
-    RemoveIfResult, SetStatus
+    impl_details::CacheImplDetails, Cache, CacheMetaData, CachePredicate, CacheReadOnlyView,
+    KeyType, Record, RemoveIfResult, SetStatus,
 };
+use crate::cache::error::Result;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::sync::atomic;
@@ -24,7 +24,9 @@ impl RandomPolicy {
     }
 
     fn incr_mem_usage(&self, value: u64) -> u64 {
-        let mut usage = self.memory_usage.fetch_add(value, atomic::Ordering::Release);
+        let mut usage = self
+            .memory_usage
+            .fetch_add(value, atomic::Ordering::Release);
 
         let mut small_rng = SmallRng::from_entropy();
         while usage > self.memory_limit {
@@ -62,7 +64,8 @@ impl RandomPolicy {
     }
 
     fn decr_mem_usage(&self, value: u64) -> u64 {
-        self.memory_usage.fetch_sub(value, atomic::Ordering::Release)
+        self.memory_usage
+            .fetch_sub(value, atomic::Ordering::Release)
     }
 }
 

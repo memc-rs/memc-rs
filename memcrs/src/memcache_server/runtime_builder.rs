@@ -2,10 +2,7 @@ extern crate core_affinity;
 use crate::memcache;
 use crate::memcache_server;
 use crate::server;
-use crate::{
-    memcache::cli::parser::RuntimeType,
-    cache::{cache::Cache}
-};
+use crate::{cache::cache::Cache, memcache::cli::parser::RuntimeType};
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -54,24 +51,28 @@ fn create_current_thread_server(
         config.item_size_limit.get_bytes() as u32,
         config.backlog_limit,
     );
-    
-    let core_ids = core_affinity::get_core_ids().unwrap();
 
+    let core_ids = core_affinity::get_core_ids().unwrap();
 
     for i in 0..config.threads {
         let store_rc = Arc::clone(&store);
-        let core_ids_clone = core_ids.clone(); 
+        let core_ids_clone = core_ids.clone();
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
-            let core_id = core_ids_clone[i%core_ids_clone.len()];
+            let core_id = core_ids_clone[i % core_ids_clone.len()];
             let res = core_affinity::set_for_current(core_id);
             let create_runtime = || {
                 let child_runtime = create_current_thread_runtime();
-                let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+                let mut tcp_server =
+                    memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
                 child_runtime.block_on(tcp_server.run(addr)).unwrap()
             };
             if res {
-                debug!("Thread pinned {:?} to core {:?}", std::thread::current().id(), core_id.id);
+                debug!(
+                    "Thread pinned {:?} to core {:?}",
+                    std::thread::current().id(),
+                    core_id.id
+                );
                 create_runtime();
             } else {
                 warn!("Cannot pin thread to core {}", core_id.id);

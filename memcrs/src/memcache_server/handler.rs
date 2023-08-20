@@ -1,7 +1,7 @@
+use crate::cache::error::CacheError;
 use crate::memcache::store;
 use crate::protocol::binary_codec::storage_error_to_response;
 use crate::protocol::{binary, binary_codec};
-use crate::cache::error::CacheError;
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -349,9 +349,9 @@ mod tests {
     use super::binary;
     use super::binary_codec;
     use super::*;
+    use crate::cache::error;
     use crate::mock::mock_server::create_storage;
     use crate::mock::value::from_string;
-    use crate::cache::error;
     use bytes::Bytes;
 
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
@@ -456,7 +456,8 @@ mod tests {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::GetQuiet, &key);
 
-        let request = binary_codec::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
+        let request =
+            binary_codec::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
 
         let result = handler.handle_request(request);
         assert!(result.is_none());
@@ -468,7 +469,8 @@ mod tests {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::GetQuiet, &key);
 
-        let request = binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest { header, key });
+        let request =
+            binary_codec::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest { header, key });
 
         let result = handler.handle_request(request);
         assert!(result.is_none());
@@ -646,7 +648,7 @@ mod tests {
                 } else {
                     unreachable!();
                 }
-            },
+            }
             None => unreachable!(),
         }
     }

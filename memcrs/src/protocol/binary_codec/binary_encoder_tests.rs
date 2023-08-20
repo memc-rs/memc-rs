@@ -4,8 +4,8 @@ use super::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock::value::from_string;
     use crate::cache::error;
+    use crate::mock::value::from_string;
 
     fn create_response_header(
         cmd: binary::Command,

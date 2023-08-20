@@ -11,8 +11,8 @@ use tracing::{debug, error};
 //use tracing_attributes::instrument;
 
 use super::client_handler;
-use crate::memcache::store as storage;
 use crate::cache::cache::Cache;
+use crate::memcache::store as storage;
 
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {

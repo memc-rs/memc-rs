@@ -14,7 +14,7 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "4.0.19"
 bytes = "1.4.0"
-clap = { version = "3.2.25", features = ["cargo"] }
+clap = { version = "4.3.23", features = ["derive", "cargo"] }
 core_affinity = "0.8.1"
 dashmap = "5.5.0"
 futures = "0.3.28"
@@ -26,7 +26,7 @@ num-derive = "0.4.0"
 num-traits = "0.2.16"
 rand = { version = "0.8.5", features = ["small_rng"] }
 serde = "1.0.183"
-serde_derive = "1.0.183"
+serde_derive = "1.0.183"  
 tracing = "0.1.37"
 tracing-attributes = "0.1.26"
 tracing-log = "0.1.3"

@@ -1,10 +1,10 @@
 use bytes::{Bytes, BytesMut};
 
-use crate::cache::error::{CacheError, Result};
 use crate::cache::cache::{
-    Cache, KeyType as CacheKeyType, CacheMetaData as CacheMeta, Record as CacheRecord, SetStatus as CacheSetStatus,
+    Cache, CacheMetaData as CacheMeta, KeyType as CacheKeyType, Record as CacheRecord,
+    SetStatus as CacheSetStatus,
 };
-
+use crate::cache::error::{CacheError, Result};
 
 use std::str;
 use std::sync::Arc;
