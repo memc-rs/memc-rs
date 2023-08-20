@@ -4,7 +4,6 @@ version = "0.0.1"
 authors = ["Dariusz Ostolski <memc-rs@memc.rs>"]
 edition = "2021"
 
-
 [lib]
 name = "memcrs"
 path = "src/lib.rs"
