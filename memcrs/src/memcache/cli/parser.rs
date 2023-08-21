@@ -1,6 +1,6 @@
-use byte_unit::{Byte, ByteUnit};
+use byte_unit::{Byte};
 use clap::{command, Parser, ValueEnum};
-use std::net::IpAddr;
+use std::{net::IpAddr, ops::RangeInclusive, fmt::Debug};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum RuntimeType {
@@ -23,8 +23,8 @@ const DEFAULT_PORT: u16 = 11211;
 const DEFAULT_ADDRESS: &str = "127.0.0.1";
 const CONNECTION_LIMIT: u32 = 1024;
 const LISTEN_BACKLOG: u32 = 1024;
-const MEMORY_LIMIT: u64 = 64;
-const MAX_ITEM_SIZE: &str = "1m";
+const MEMORY_LIMIT: &str = "64MiB";
+const MAX_ITEM_SIZE: &str = "1MiB";
 
 fn get_default_threads_number() -> usize {
     num_cpus::get_physical().to_string().parse().unwrap()
@@ -34,7 +34,7 @@ fn get_default_threads_number() -> usize {
 #[command(author, version, about, long_about = None)]
 /// memcached compatible server implementation in Rust
 pub struct MemcrsArgs {
-    #[arg(short, long, value_name = "PORT", default_value_t = DEFAULT_PORT)]
+    #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]
     /// TCP port to listen on
     pub port: u16,
 
@@ -46,8 +46,8 @@ pub struct MemcrsArgs {
     /// set the backlog queue limit
     pub backlog_limit: u32,
 
-    #[arg(short, long, value_name = "MEMORY-LIMIT", default_value_t = Byte::from_unit(MEMORY_LIMIT as f64, ByteUnit::MiB).unwrap().get_bytes().try_into().unwrap())]
-    /// item memory in megabytes
+    #[arg(short, long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
+    /// memory limit in megabytes
     pub memory_limit: u64,
 
     #[arg(short, long, value_name = "MAX-ITEM-SIZE", default_value_t = Byte::from_str(MAX_ITEM_SIZE).unwrap())]
@@ -69,6 +69,37 @@ pub struct MemcrsArgs {
     #[arg(short, long, value_name = "RUNTIME-TYPE", default_value_t = RuntimeType::CurrentThread, value_enum)]
     ///  runtime type to use
     pub runtime_type: RuntimeType,
+}
+
+const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
+
+fn port_in_range(s: &str) -> Result<u16, String> {
+    let port: usize = s
+        .parse()
+        .map_err(|_| format!("`{s}` isn't a port number"))?;
+    if PORT_RANGE.contains(&port) {
+        Ok(port as u16)
+    } else {
+        Err(format!(
+            "port not in range {}-{}",
+            PORT_RANGE.start(),
+            PORT_RANGE.end()
+        ))
+    }
+}
+
+fn parse_memory_mb(s: &str) -> Result<u64, String> {
+    match Byte::from_str(s) {
+        Ok(bytes) => {
+            Ok(bytes.get_bytes().try_into().unwrap())
+        },
+        Err(byte_error) => {
+            Err(format!(
+                "{}",
+                byte_error
+            ))
+        }
+    }
 }
 
 impl MemcrsArgs {

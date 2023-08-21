@@ -50,22 +50,20 @@ fn main() {
         "Max item size: {}",
         cli_config
             .item_size_limit
-            .get_appropriate_unit(false)
+            .get_appropriate_unit(true)
             .to_string()
     );
     info!(
-        "Memory limit: {} MB",
+        "Memory limit: {}",
         byte_unit::Byte::from_bytes(cli_config.memory_limit.into())
-            .get_appropriate_unit(false)
+            .get_appropriate_unit(true)
             .to_string()
     );
-
-    dbg!(cli_config.clone());
 
     let system_timer: Arc<memcrs::server::timer::SystemTimer> =
         Arc::new(memcrs::server::timer::SystemTimer::new());
     let parent_runtime = memcrs::memcache_server::runtime_builder::create_memcrs_server(
-        cli_config.clone(),
+        cli_config,
         system_timer.clone(),
     );
     parent_runtime.block_on(system_timer.run())
