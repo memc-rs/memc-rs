@@ -3,6 +3,7 @@ name = "memcrs"
 version = "0.0.1"
 authors = ["Dariusz Ostolski <memc-rs@memc.rs>"]
 edition = "2021"
+resolver = "2"
 
 [lib]
 name = "memcrs"
@@ -24,8 +25,8 @@ num_cpus = "1.16.0"
 num-derive = "0.4.1"
 num-traits = "0.2.17"
 rand = { version = "0.8.5", features = ["small_rng"] }
-serde = "1.0.192"
-serde_derive = "1.0.192"
+serde = "1.0.193"
+serde_derive = "1.0.193"
 tracing = "0.1.40"
 tracing-attributes = "0.1.27"
 tracing-log = "0.2.0"
