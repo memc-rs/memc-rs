@@ -1,6 +1,7 @@
 use byte_unit::{Byte};
 use clap::{command, Parser, ValueEnum};
 use std::{net::IpAddr, ops::RangeInclusive, fmt::Debug};
+use crate::memcache::eviction_policy::EvictionPolicy;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum RuntimeType {
@@ -69,6 +70,10 @@ pub struct MemcrsArgs {
     #[arg(short, long, value_name = "RUNTIME-TYPE", default_value_t = RuntimeType::CurrentThread, value_enum)]
     ///  runtime type to use
     pub runtime_type: RuntimeType,
+
+    #[arg(short, long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
+    /// eviction policy to use
+    pub eviction_policy: EvictionPolicy,
 }
 
 const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
@@ -99,6 +104,14 @@ fn parse_memory_mb(s: &str) -> Result<u64, String> {
                 byte_error
             ))
         }
+    }
+}
+
+fn parse_eviction_policy(s: &str) -> Result<EvictionPolicy, String> {
+    match s {
+        "random" => Ok(EvictionPolicy::Random),
+        "none" => Ok(EvictionPolicy::None),
+        _ => Err(format!("Invalid eviction policy: {}", s)),
     }
 }
 
