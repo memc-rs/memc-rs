@@ -1,6 +1,6 @@
-use byte_unit::{Byte};
+use byte_unit::Byte;
 use clap::{command, Parser, ValueEnum};
-use std::{net::IpAddr, ops::RangeInclusive, fmt::Debug};
+use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum RuntimeType {
@@ -90,15 +90,8 @@ fn port_in_range(s: &str) -> Result<u16, String> {
 
 fn parse_memory_mb(s: &str) -> Result<u64, String> {
     match Byte::parse_str(s, true) {
-        Ok(bytes) => {
-            Ok(bytes.as_u64())
-        },
-        Err(byte_error) => {
-            Err(format!(
-                "{}",
-                byte_error
-            ))
-        }
+        Ok(bytes) => Ok(bytes.as_u64()),
+        Err(byte_error) => Err(format!("{}", byte_error)),
     }
 }
 
