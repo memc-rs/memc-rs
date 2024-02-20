@@ -50,13 +50,13 @@ fn main() {
         "Max item size: {}",
         cli_config
             .item_size_limit
-            .get_appropriate_unit(true)
+            .get_appropriate_unit(byte_unit::UnitType::Decimal)
             .to_string()
     );
     info!(
         "Memory limit: {}",
-        byte_unit::Byte::from_bytes(cli_config.memory_limit.into())
-            .get_appropriate_unit(true)
+        byte_unit::Byte::from_u64(cli_config.memory_limit.into())
+            .get_appropriate_unit(byte_unit::UnitType::Decimal)
             .to_string()
     );
 

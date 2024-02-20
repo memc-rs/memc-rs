@@ -50,7 +50,7 @@ pub struct MemcrsArgs {
     /// memory limit in megabytes
     pub memory_limit: u64,
 
-    #[arg(short, long, value_name = "MAX-ITEM-SIZE", default_value_t = Byte::from_str(MAX_ITEM_SIZE).unwrap())]
+    #[arg(short, long, value_name = "MAX-ITEM-SIZE", default_value_t = Byte::parse_str(MAX_ITEM_SIZE, true).unwrap())]
     ///  adjusts max item size (min: 1k, max: 1024m)
     pub item_size_limit: Byte,
 
@@ -89,9 +89,9 @@ fn port_in_range(s: &str) -> Result<u16, String> {
 }
 
 fn parse_memory_mb(s: &str) -> Result<u64, String> {
-    match Byte::from_str(s) {
+    match Byte::parse_str(s, true) {
         Ok(bytes) => {
-            Ok(bytes.get_bytes().try_into().unwrap())
+            Ok(bytes.as_u64())
         },
         Err(byte_error) => {
             Err(format!(
