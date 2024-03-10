@@ -55,7 +55,7 @@ fn main() {
     );
     info!(
         "Memory limit: {}",
-        byte_unit::Byte::from_u64(cli_config.memory_limit.into())
+        byte_unit::Byte::from_u64(cli_config.memory_limit)
             .get_appropriate_unit(byte_unit::UnitType::Decimal)
             .to_string()
     );

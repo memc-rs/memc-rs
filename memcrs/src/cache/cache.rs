@@ -149,4 +149,8 @@ pub trait Cache: impl_details::CacheImplDetails {
 
     /// Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
+
+    /// runs pending tasks (if any)
+    /// will be scheudled periodicall
+    fn run_pending_tasks(&self);
 }

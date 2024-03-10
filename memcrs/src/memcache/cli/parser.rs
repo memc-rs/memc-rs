@@ -1,7 +1,7 @@
+use crate::memcache::eviction_policy::EvictionPolicy;
 use byte_unit::Byte;
 use clap::{command, Parser, ValueEnum};
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
-use crate::memcache::eviction_policy::EvictionPolicy;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum RuntimeType {

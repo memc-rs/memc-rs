@@ -161,4 +161,6 @@ impl Cache for MemoryStore {
     fn is_empty(&self) -> bool {
         self.memory.is_empty()
     }
+
+    fn run_pending_tasks(&self) {}
 }

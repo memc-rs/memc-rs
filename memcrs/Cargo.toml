@@ -23,6 +23,8 @@ socket2 = { version = "0.5.5", features = ["all"] }
 num_cpus = "1.16.0"
 num-derive = "0.4.2"
 num-traits = "0.2.18"
+quick_cache = "0.4.1"
+moka = { version = "0.12.5", features = ["sync"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
 serde = "1.0.197"
 serde_derive = "1.0.197"

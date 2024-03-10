@@ -1,4 +1,6 @@
 use crate::memcache::store::MemcStore;
+
+use crate::memory_store::moka_store::MemoryStore as MokaStore;
 use crate::memory_store::store::MemoryStore;
 use crate::server::timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -40,7 +42,7 @@ pub struct MockServer {
 impl MockServer {
     pub fn new() -> Self {
         let timer = Arc::new(MockSystemTimer::new());
-        let store = Arc::new(MemoryStore::new(timer.clone()));
+        let store = Arc::new(MokaStore::new(timer.clone(), 1024 * 1024));
         MockServer {
             timer: timer,
             storage: MemcStore::new(store),

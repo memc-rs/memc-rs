@@ -128,6 +128,10 @@ impl Cache for RandomPolicy {
     fn is_empty(&self) -> bool {
         self.store.is_empty()
     }
+
+    fn run_pending_tasks(&self) {
+        self.store.run_pending_tasks()
+    }
 }
 
 mod tests {}
