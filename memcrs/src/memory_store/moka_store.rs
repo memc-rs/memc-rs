@@ -86,18 +86,18 @@ impl Cache for MemoryStore {
 
         let mut result: Result<SetStatus> = Err(CacheError::KeyExists);
         let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
-            if record.header.cas == 0 {
-                let cas = self.get_cas_id();
-                record.header.cas = cas;
-            }
-
             if let Some(entry) = maybe_entry {
                 let key_value = entry.into_value();
                 if record.header.cas > 0 && key_value.header.cas != record.header.cas {
                     return Op::Nop;
                 }
             }
-            record.header.cas += 1;
+            if record.header.cas == 0 {
+                let cas = self.get_cas_id();
+                record.header.cas = cas;
+            } else {
+                record.header.cas += 1;
+            }
             record.header.timestamp = self.timer.timestamp();
             let cas = record.header.cas;
             result = Ok(SetStatus { cas });
