@@ -3,6 +3,7 @@ use crate::mock::mock_server::{create_server, SetableTimer};
 use crate::mock::value::{from_slice, from_string};
 use bytes::{BufMut, BytesMut};
 
+
 #[test]
 fn if_not_defined_cas_should_be_1() {
     let server = create_server();
@@ -17,6 +18,30 @@ fn if_not_defined_cas_should_be_1() {
         Ok(r) => {
             assert_eq!(r, record);
             assert_eq!(r.header.cas, 1)
+        }
+        Err(_er) => unreachable!(),
+    }
+}
+
+#[test]
+fn should_override_value_if_cas_is_0() {
+    let server = create_server();
+
+    let key = Bytes::from("key");
+    let record = Record::new(from_string("Test data"), 0, 0, 0);
+    let result = server.storage.set(key.clone(), record.clone());
+    assert!(result.is_ok());
+    
+
+    let new_record = Record::new(from_string("new test data"), 0, 0, 0);
+    let result = server.storage.set(key.clone(), new_record.clone());
+    assert!(result.is_ok());
+    let found = server.storage.get(&key);
+
+    assert!(found.is_ok());
+    match found {
+        Ok(r) => {
+            assert_eq!(r, new_record);
         }
         Err(_er) => unreachable!(),
     }
