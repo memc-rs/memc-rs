@@ -51,9 +51,9 @@ pub struct MemcrsArgs {
     /// memory limit in megabytes
     pub memory_limit: u64,
 
-    #[arg(short, long, value_name = "MAX-ITEM-SIZE", default_value_t = Byte::parse_str(MAX_ITEM_SIZE, true).unwrap())]
+    #[arg(short, long, value_name = "MAX-ITEM-SIZE", value_parser = parse_memory_mb, default_value = MAX_ITEM_SIZE)]
     ///  adjusts max item size (min: 1k, max: 1024m)
-    pub item_size_limit: Byte,
+    pub item_size_limit: u64,
 
     #[arg(short, long, value_name = "THREADS", default_value_t = get_default_threads_number())]
     /// number of threads to use

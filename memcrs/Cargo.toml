@@ -37,3 +37,6 @@ tokio-util = { version = "0.7.10", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version ="0.5.4", optional = true }
+
+[dev-dependencies]
+memcache = "0.17.2"

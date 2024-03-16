@@ -48,7 +48,7 @@ fn create_current_thread_server(
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
-        config.item_size_limit.as_u64() as u32,
+        config.item_size_limit as u32,
         config.backlog_limit,
     );
 
@@ -91,7 +91,7 @@ fn create_threadpool_server(
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
-        config.item_size_limit.as_u64() as u32,
+        config.item_size_limit as u32,
         config.backlog_limit,
     );
     let runtime = create_multi_thread_runtime(config.threads);
