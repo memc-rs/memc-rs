@@ -3,7 +3,6 @@ use crate::mock::mock_server::{create_server, SetableTimer};
 use crate::mock::value::{from_slice, from_string};
 use bytes::{BufMut, BytesMut};
 
-
 #[test]
 fn if_not_defined_cas_should_be_1() {
     let server = create_server();
@@ -31,7 +30,6 @@ fn should_override_value_if_cas_is_0() {
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
-    
 
     let new_record = Record::new(from_string("new test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), new_record.clone());

@@ -1,10 +1,10 @@
+use crate::memcache;
+use crate::memcache_server;
+use crate::server::timer;
 use log::info;
 use std::process;
 use std::sync::Arc;
 use tracing_log::LogTracer;
-use crate::memcache;
-use crate::memcache_server;
-use crate::server::timer;
 extern crate clap;
 
 #[cfg(feature = "jemallocator")]
@@ -60,11 +60,8 @@ pub fn run(args: Vec<String>) {
             .to_string()
     );
 
-    let system_timer: Arc<timer::SystemTimer> =
-        Arc::new(timer::SystemTimer::new());
-    let parent_runtime = memcache_server::runtime_builder::create_memcrs_server(
-        cli_config,
-        system_timer.clone(),
-    );
+    let system_timer: Arc<timer::SystemTimer> = Arc::new(timer::SystemTimer::new());
+    let parent_runtime =
+        memcache_server::runtime_builder::create_memcrs_server(cli_config, system_timer.clone());
     parent_runtime.block_on(system_timer.run())
 }
