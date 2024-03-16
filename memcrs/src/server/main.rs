@@ -1,5 +1,4 @@
 use log::info;
-use std::env;
 use std::process;
 use std::sync::Arc;
 use tracing_log::LogTracer;
@@ -27,10 +26,10 @@ fn get_log_level(verbose: u8) -> tracing::Level {
     }
 }
 
-pub fn server_main(args: env::Args) {
+pub fn run(args: Vec<String>) {
     LogTracer::init().expect("Cannot initialize logger");
 
-    let cli_config = match memcache::cli::parser::parse(args.collect()) {
+    let cli_config = match memcache::cli::parser::parse(args) {
         Ok(config) => config,
         Err(err) => {
             eprint!("{}", err);

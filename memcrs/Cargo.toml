@@ -40,3 +40,4 @@ jemallocator = { version ="0.5.4", optional = true }
 
 [dev-dependencies]
 memcache = "0.17.2"
+procspawn = { version = "1.0.0", features = ["test-support"] }
