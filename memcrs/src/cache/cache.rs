@@ -93,8 +93,6 @@ pub mod impl_details {
     }
 }
 
-pub type RemoveIfResult = Vec<Option<(KeyType, Record)>>;
-pub type CachePredicate = dyn FnMut(&KeyType, &Record) -> bool;
 
 // An abstraction over a generic store key <=> value store
 pub trait Cache: impl_details::CacheImplDetails {
@@ -138,14 +136,11 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// Number of key value pairs stored in store
     fn len(&self) -> usize;
 
+    // Is cache empty? 
     fn is_empty(&self) -> bool;
 
-    /// Returns a read-only view over a stroe
+    /// Returns a read-only view over a store
     fn as_read_only(&self) -> Box<dyn CacheReadOnlyView>;
-
-    /// Removes key-value pairs from a store for which
-    /// f predicate returns true
-    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult;
 
     /// Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;

@@ -1,4 +1,5 @@
-use crate::memcache::eviction_policy::EvictionPolicy;
+use crate::cache::eviction_policy::EvictionPolicy;
+use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
 use clap::{command, Parser, ValueEnum};
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
@@ -74,6 +75,10 @@ pub struct MemcrsArgs {
     #[arg(short, long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
     /// eviction policy to use
     pub eviction_policy: EvictionPolicy,
+
+    #[arg(short, long, value_name = "STORE-ENGINE", value_parser = parse_store_engine, default_value_t = StoreEngine::DashMap, value_enum)]
+    /// eviction policy to use
+    pub store_engine: StoreEngine,
 }
 
 const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
@@ -105,6 +110,14 @@ fn parse_eviction_policy(s: &str) -> Result<EvictionPolicy, String> {
         "random" => Ok(EvictionPolicy::Random),
         "none" => Ok(EvictionPolicy::None),
         _ => Err(format!("Invalid eviction policy: {}", s)),
+    }
+}
+
+fn parse_store_engine(s: &str) -> Result<StoreEngine, String> {
+    match s {
+        "moka" => Ok(StoreEngine::Moka),
+        "dash-map" => Ok(StoreEngine::DashMap),
+        _ => Err(format!("Invalid store engine selected: {}", s)),
     }
 }
 

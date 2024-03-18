@@ -1,10 +1,10 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, CachePredicate, CacheReadOnlyView, KeyType, Record,
-    RemoveIfResult, SetStatus,
+    impl_details, Cache, CacheMetaData,  CacheReadOnlyView, KeyType, Record,
+   SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
-use dashmap::mapref::multiple::RefMulti;
+
 use dashmap::{DashMap, ReadOnlyView};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -139,19 +139,6 @@ impl Cache for MemoryStore {
     fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
         let storage_clone = self.memory.clone();
         Box::new(storage_clone.into_read_only())
-    }
-
-    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
-        let items: Vec<KeyType> = self
-            .memory
-            .iter()
-            .filter(|record: &RefMulti<KeyType, Record>| f(record.key(), record.value()))
-            .map(|record: RefMulti<KeyType, Record>| record.key().clone())
-            .collect();
-
-        let result: Vec<Option<(KeyType, Record)>> =
-            items.iter().map(|key: &KeyType| self.remove(key)).collect();
-        result
     }
 
     fn len(&self) -> usize {

@@ -1,6 +1,6 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, CachePredicate, CacheReadOnlyView, KeyType, Record,
-    RemoveIfResult, SetStatus,
+    impl_details, Cache, CacheMetaData, CacheReadOnlyView, KeyType, Record,
+    SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
@@ -142,19 +142,6 @@ impl Cache for MemoryStore {
     fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
         // FIXME!!!
         Box::new(MokaStorageReadOnlyView {})
-    }
-
-    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
-        let items: Vec<KeyType> = self
-            .memory
-            .iter()
-            .filter(|record: &(Arc<bytes::Bytes>, Record)| f(&record.0, &record.1))
-            .map(|record: (Arc<bytes::Bytes>, Record)| (*record.0).clone())
-            .collect();
-
-        let result: Vec<Option<(KeyType, Record)>> =
-            items.iter().map(|key: &KeyType| self.remove(key)).collect();
-        result
     }
 
     fn len(&self) -> usize {
