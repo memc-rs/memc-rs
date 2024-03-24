@@ -2,7 +2,7 @@ extern crate core_affinity;
 use crate::memcache;
 use crate::memcache_server;
 use crate::server;
-use crate::{cache::cache::Cache, memcache::cli::parser::RuntimeType};
+use crate::{cache::cache::Cache, memcache::cli::parser::RuntimeType, cache::pending_tasks_runner::PendingTasksRunner};
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -53,6 +53,11 @@ fn create_current_thread_server(
     );
 
     let core_ids = core_affinity::get_core_ids().unwrap();
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    std::thread::spawn(move || {
+        let child_runtime = create_current_thread_runtime();
+        child_runtime.block_on(task_runner.run())
+    });
 
     for i in 0..config.threads {
         let store_rc = Arc::clone(&store);
@@ -95,8 +100,9 @@ fn create_threadpool_server(
         config.backlog_limit,
     );
     let runtime = create_multi_thread_runtime(config.threads);
-    let store_rc = Arc::clone(&store);
-    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, Arc::clone(&store));
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    runtime.spawn(async move { task_runner.run().await});
     runtime.spawn(async move { tcp_server.run(addr).await });
     runtime
 }

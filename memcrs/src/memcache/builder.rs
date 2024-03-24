@@ -5,7 +5,7 @@ use crate::memory_store::moka_store::{MemoryStore as MokaStore};
 use crate::memory_store::StoreEngine;
 use crate::server::timer;
 use std::sync::Arc;
-
+#[allow(dead_code)]
 pub struct MemcacheStoreConfig {
     engine: StoreEngine,
     policy: EvictionPolicy,

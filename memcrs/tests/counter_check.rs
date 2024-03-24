@@ -13,6 +13,8 @@ fn counter_check() {
     // using counter:
     client.set("counter", 40, 0).unwrap();
     client.increment("counter", 2).unwrap();
+    let answer: i32 = client.get("counter").unwrap().unwrap();
+    assert_eq!(answer, 42);
     client.decrement("counter", 4).unwrap();
     let answer: i32 = client.get("counter").unwrap().unwrap();
     assert_eq!(answer, 38);
