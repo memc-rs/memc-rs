@@ -107,7 +107,8 @@ fn parse_memory_mb(s: &str) -> Result<u64, String> {
 
 fn parse_eviction_policy(s: &str) -> Result<EvictionPolicy, String> {
     match s {
-        "random" => Ok(EvictionPolicy::Random),
+        "tiny_lfu" => Ok(EvictionPolicy::TinyLeastFrequentlyUsed),
+        "lru" => Ok(EvictionPolicy::LeastRecentylUsed),
         "none" => Ok(EvictionPolicy::None),
         _ => Err(format!("Invalid eviction policy: {}", s)),
     }
