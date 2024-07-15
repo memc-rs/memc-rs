@@ -5,7 +5,7 @@ mod common;
 fn delete_check() {
     let _server_handle = common::spawn_server();
     let client =
-        memcache::connect("memcache://127.0.0.1:11211?timeout=10&tcp_nodelay=true&protocol=binary")
+        memcache::connect(common::get_connection_string())
             .unwrap();
     // flush the database
     client.flush().unwrap();

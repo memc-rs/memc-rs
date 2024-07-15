@@ -92,3 +92,7 @@ pub fn spawn_server() -> MemcrsdTestServer {
     let handle = procspawn::spawn(args, |args| server::main::run(args));
     MemcrsdTestServer::new(handle)
 }
+
+pub fn get_connection_string() -> String {
+    String::from("memcache://127.0.0.1:11211?timeout=10&tcp_nodelay=true&protocol=binary")
+}
