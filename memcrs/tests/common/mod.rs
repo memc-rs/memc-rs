@@ -113,7 +113,7 @@ impl MemcrsdServerParamsBuilder {
     }
 }
 
-const STARTING_PORT: u16 = 11211;
+const STARTING_PORT: u16 = 10000;
 struct PseudoRandomMemcrsdPort {
     port: u16,
 }
@@ -147,5 +147,5 @@ pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer
 }
 
 pub fn get_connection_string() -> String {
-    String::from(format!("memcache://127.0.0.1:{}?timeout=1&tcp_nodelay=true&protocol=binary", pseudoRanomPort.lock().unwrap().get()))
+    String::from(format!("memcache://127.0.0.1:{}?timeout=5&tcp_nodelay=true&protocol=binary", pseudoRanomPort.lock().unwrap().get()))
 }
