@@ -3,7 +3,8 @@ mod common;
 
 #[test]
 fn set_get_check() {
-    let _server_handle = common::spawn_server();
+    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let _server_handle = common::spawn_server(params_builder);
     let client =
         memcache::connect(common::get_connection_string())
             .unwrap();
@@ -21,7 +22,8 @@ fn set_get_check() {
 
 #[test]
 fn set_gets_check() {
-    let _server_handle = common::spawn_server();
+    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let _server_handle = common::spawn_server(params_builder);
     let client =
         memcache::connect(common::get_connection_string())
             .unwrap();

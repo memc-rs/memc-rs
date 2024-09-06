@@ -77,7 +77,7 @@ pub struct MemcrsArgs {
     pub eviction_policy: EvictionPolicy,
 
     #[arg(short, long, value_name = "STORE-ENGINE", value_parser = parse_store_engine, default_value_t = StoreEngine::DashMap, value_enum)]
-    /// eviction policy to use
+    /// store engine to be used
     pub store_engine: StoreEngine,
 }
 

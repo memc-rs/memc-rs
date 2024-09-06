@@ -6,3 +6,13 @@ pub enum EvictionPolicy {
     TinyLeastFrequentlyUsed,
     LeastRecentylUsed
 }
+
+impl EvictionPolicy {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EvictionPolicy::None => "None",
+            EvictionPolicy::TinyLeastFrequentlyUsed => "Tiny LFU",
+            EvictionPolicy::LeastRecentylUsed => "LFU",
+        }
+    }
+}

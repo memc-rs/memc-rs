@@ -1,8 +1,7 @@
-use std::time::Duration;
-
-use futures::task::Spawn;
+use std::{sync::Mutex, time::Duration};
 use memcrs::{cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType, memory_store::StoreEngine, server};
 use procspawn::SpawnError;
+use lazy_static::lazy_static;
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
@@ -45,6 +44,7 @@ pub struct MemcrsdServerParamsBuilder {
     policy: EvictionPolicy,
     runtime: RuntimeType,
     memory_limit: u64,
+    port: u16
 }
 
 impl MemcrsdServerParamsBuilder {
@@ -53,27 +53,34 @@ impl MemcrsdServerParamsBuilder {
             engine: StoreEngine::DashMap,
             policy: EvictionPolicy::None,
             runtime: RuntimeType::CurrentThread,
-            memory_limit: 1024*1024*64
+            memory_limit: 1024*1024*64,
+            port: 11211,
         }
     }
 
-    pub fn with_engine(mut self, engine: StoreEngine) -> MemcrsdServerParamsBuilder {
+    pub fn with_engine(&mut self, engine: StoreEngine) -> &mut Self {
         self.engine = engine;
         self
     }
 
-    pub fn with_policy(mut self, policy: EvictionPolicy) -> MemcrsdServerParamsBuilder {
+    pub fn with_policy(&mut self, policy: EvictionPolicy) -> &mut Self {
         self.policy = policy;
         self
     }
 
-    pub fn with_memory_limit(mut self, memory_limit: u64) -> MemcrsdServerParamsBuilder {
+    pub fn with_memory_limit(&mut self, memory_limit: u64) -> &mut Self {
         self.memory_limit = memory_limit;
         self
     }
 
-    pub fn build(self) -> Vec<String> {
+    pub fn with_port(&mut self, port: u16) -> &mut Self {
+        self.port = port;
+        self
+    }
+
+    pub fn build(&self) -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
+        result.push(String::from("./target/debug/memcrsd"));
         match self.engine {
             StoreEngine::DashMap => {
                 result.push(String::from("--store-engine"));
@@ -98,16 +105,47 @@ impl MemcrsdServerParamsBuilder {
 
         result.push(String::from("--memory-limit"));
         result.push(self.memory_limit.to_string());
+
+        result.push(String::from("--port"));
+        result.push(self.port.to_string());
+
         result
     }
 }
 
-pub fn spawn_server() -> MemcrsdTestServer {
-    let args: Vec<String> = Vec::new();
+const STARTING_PORT: u16 = 11211;
+struct PseudoRandomMemcrsdPort {
+    port: u16,
+}
+
+impl PseudoRandomMemcrsdPort {
+    fn new() -> PseudoRandomMemcrsdPort {
+        PseudoRandomMemcrsdPort {
+            port: STARTING_PORT,
+        }
+    }
+    
+    fn get_next_port(&mut self) {
+        self.port += 10;
+    }
+
+    fn get(&mut self) -> u16 {
+        self.port
+    }
+}
+
+lazy_static! {
+    static ref pseudoRanomPort: Mutex<PseudoRandomMemcrsdPort> = Mutex::new(PseudoRandomMemcrsdPort::new());
+}
+
+pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer {
+    pseudoRanomPort.lock().unwrap().get_next_port();
+    params.with_port(pseudoRanomPort.lock().unwrap().get());
+    let args = params.build();
     let handle = procspawn::spawn(args, |args| server::main::run(args));
     MemcrsdTestServer::new(handle)
 }
 
 pub fn get_connection_string() -> String {
-    String::from("memcache://127.0.0.1:11211?timeout=10&tcp_nodelay=true&protocol=binary")
+    String::from(format!("memcache://127.0.0.1:{}?timeout=1&tcp_nodelay=true&protocol=binary", pseudoRanomPort.lock().unwrap().get()))
 }

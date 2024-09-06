@@ -15,7 +15,7 @@ byte-unit = "5.1.4"
 bytes = "1.6.1"
 clap = { version = "4.5.17", features = ["derive", "cargo"] }
 core_affinity = "0.8.1"
-dashmap = "5.5.3"
+dashmap = "6.1.0"
 futures = "0.3.30"
 futures-util = "0.3.30"
 log = "0.4.22"
@@ -41,3 +41,4 @@ jemallocator = { version ="0.5.4", optional = true }
 [dev-dependencies]
 memcache = "0.17.2"
 procspawn = { version = "1.0.1", features = ["test-support"] }
+lazy_static = "1.5.0"

@@ -29,6 +29,8 @@ fn get_log_level(verbose: u8) -> tracing::Level {
 pub fn run(args: Vec<String>) {
     LogTracer::init().expect("Cannot initialize logger");
 
+    println!("{:?}", args);
+    
     let cli_config = match memcache::cli::parser::parse(args) {
         Ok(config) => config,
         Err(err) => {
@@ -46,6 +48,8 @@ pub fn run(args: Vec<String>) {
     info!("Listen port: {}", cli_config.port);
     info!("Connection limit: {}", cli_config.connection_limit);
     info!("Number of threads: {}", cli_config.threads);
+    info!("Store engine: {}", cli_config.store_engine.as_str());
+    info!("Eviction policy: {}", cli_config.eviction_policy.as_str());
     info!("Runtime type: {}", cli_config.runtime_type.as_str());
     info!(
         "Max item size: {}",

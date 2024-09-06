@@ -10,3 +10,12 @@ pub enum StoreEngine {
     /// store based on moka library
     Moka,
 }
+
+impl StoreEngine {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            StoreEngine::DashMap => "DashMap backend",
+            StoreEngine::Moka => "Moka backend",
+        }
+    }
+}
