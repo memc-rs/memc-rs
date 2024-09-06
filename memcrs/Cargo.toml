@@ -13,7 +13,7 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "5.1.4"
 bytes = "1.6.1"
-clap = { version = "4.5.9", features = ["derive", "cargo"] }
+clap = { version = "4.5.17", features = ["derive", "cargo"] }
 core_affinity = "0.8.1"
 dashmap = "5.5.3"
 futures = "0.3.30"
@@ -23,21 +23,21 @@ socket2 = { version = "0.5.7", features = ["all"] }
 num_cpus = "1.16.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-quick_cache = "0.6.0"
+quick_cache = "0.6.6"
 moka = { version = "0.12.8", features = ["sync"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
-serde = "1.0.204"
-serde_derive = "1.0.204"
+serde = "1.0.209"
+serde_derive = "1.0.209"
 tracing = "0.1.40"
 tracing-attributes = "0.1.27"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.18", default-features = false, features = ["std", "fmt"] }
-tokio = { version = "1.38.0", features = ["full"] }
-tokio-util = { version = "0.7.11", features = ["full"] }
+tokio = { version = "1.40.0", features = ["full"] }
+tokio-util = { version = "0.7.12", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version ="0.5.4", optional = true }
 
 [dev-dependencies]
 memcache = "0.17.2"
-procspawn = { version = "1.0.0", features = ["test-support"] }
+procspawn = { version = "1.0.1", features = ["test-support"] }

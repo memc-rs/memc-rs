@@ -1,3 +1,6 @@
+use std::time::Duration;
+
+use futures::task::Spawn;
 use memcrs::{cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType, memory_store::StoreEngine, server};
 use procspawn::SpawnError;
 
@@ -6,11 +9,17 @@ pub struct MemcrsdTestServer {
 }
 
 impl MemcrsdTestServer {
+
     fn new(process_handle: procspawn::JoinHandle<()>) -> MemcrsdTestServer {
         MemcrsdTestServer { process_handle }
     }
+
     fn kill(&mut self) -> Result<(), SpawnError> {
         self.process_handle.kill()
+    }
+
+    fn join(&mut self) -> Result<(), SpawnError> {
+        self.process_handle.join_timeout(Duration::from_secs(1))
     }
 }
 
@@ -20,6 +29,12 @@ impl Drop for MemcrsdTestServer {
             Ok(_) => {}
             Err(err) => {
                 eprintln!("Problem when killing process: {err}");
+            }
+        }
+        match self.join() {
+            Ok(_) => {}
+            Err(err) => {
+                eprintln!("Problem when joining process: {err}");
             }
         }
     }
