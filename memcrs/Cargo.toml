@@ -11,34 +11,34 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byte-unit = "5.1.4"
-bytes = "1.6.1"
-clap = { version = "4.5.17", features = ["derive", "cargo"] }
+byte-unit = "5.1.6"
+bytes = "1.9.0"
+clap = { version = "4.5.23", features = ["derive", "cargo"] }
 core_affinity = "0.8.1"
 dashmap = "6.1.0"
-futures = "0.3.30"
-futures-util = "0.3.30"
+futures = "0.3.31"
+futures-util = "0.3.31"
 log = "0.4.22"
-socket2 = { version = "0.5.7", features = ["all"] }
+socket2 = { version = "0.5.8", features = ["all"] }
 num_cpus = "1.16.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-quick_cache = "0.6.6"
+quick_cache = "0.6.9"
 moka = { version = "0.12.8", features = ["sync"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
-serde = "1.0.209"
-serde_derive = "1.0.209"
-tracing = "0.1.40"
-tracing-attributes = "0.1.27"
+serde = "1.0.216"
+serde_derive = "1.0.216"
+tracing = "0.1.41"
+tracing-attributes = "0.1.28"
 tracing-log = "0.2.0"
-tracing-subscriber = { version = "0.3.18", default-features = false, features = ["std", "fmt"] }
-tokio = { version = "1.40.0", features = ["full"] }
-tokio-util = { version = "0.7.12", features = ["full"] }
+tracing-subscriber = { version = "0.3.19", default-features = false, features = ["std", "fmt"] }
+tokio = { version = "1.42.0", features = ["full"] }
+tokio-util = { version = "0.7.13", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version ="0.5.4", optional = true }
 
 [dev-dependencies]
-memcache = "0.17.2"
+memcache = "0.18.0"
 procspawn = { version = "1.0.1", features = ["test-support"] }
 lazy_static = "1.5.0"
