@@ -26,7 +26,10 @@ jobs:
       - name: List
         run: find ./
       - name: Run tests
-        run: cargo test --verbose
+        run:  |
+          export RUST_TEST_THREADS=1
+          export RUST_BACKTRACE=full
+          cargo test --verbose
 
   build:
     strategy:

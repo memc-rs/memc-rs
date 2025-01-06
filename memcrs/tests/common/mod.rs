@@ -30,12 +30,6 @@ impl Drop for MemcrsdTestServer {
                 eprintln!("Problem when killing process: {err}");
             }
         }
-        match self.join() {
-            Ok(_) => {}
-            Err(err) => {
-                eprintln!("Problem when joining process: {err}");
-            }
-        }
     }
 }
 
@@ -108,7 +102,7 @@ impl MemcrsdServerParamsBuilder {
 
         result.push(String::from("--port"));
         result.push(self.port.to_string());
-
+        //result.push(String::from("-vvv"));
         result
     }
 }
