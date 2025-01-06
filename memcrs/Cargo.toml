@@ -26,8 +26,8 @@ num-traits = "0.2.19"
 quick_cache = "0.6.9"
 moka = { version = "0.12.8", features = ["sync"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
-serde = "1.0.216"
-serde_derive = "1.0.216"
+serde = "1.0.217"
+serde_derive = "1.0.217"
 tracing = "0.1.41"
 tracing-attributes = "0.1.28"
 tracing-log = "0.2.0"

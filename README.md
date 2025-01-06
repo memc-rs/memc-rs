@@ -10,7 +10,7 @@ is using [memcapable](http://docs.libmemcached.org/bin/memcapable.html) tool fro
 Here is a capability status for memcrsd:
 
 ```sh
-./memcapable -h 127.0.0.1  -b -p 11211                 
+./memcapable -h 127.0.0.1  -b -p 11211
 Hostname was provided.127.0.0.1
 binary noop                             [pass]
 binary quit                             [pass]
@@ -73,7 +73,6 @@ docker build -m 4096m .
 ```
 
 ### Publishing docker image
-
 
 ```sh
 git checkout memcrsd-0.0.1b
@@ -148,8 +147,7 @@ The plan in the future is to have coverage ~90%.
 
 ### Integration testing
 
-For end-to-end integration testing at the moment memcrsd project is using memcapable tool from libmemcache 
-library. In the future memclt binary will be used to perform end-to-end tests.
+For end-to-end integration testing at the moment memcrsd see tests in tests directory.
 
 ## Measuring performance
 
