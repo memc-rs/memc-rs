@@ -27,10 +27,9 @@ jobs:
         run: find ./
       - name: Run tests
         run:  |
-          export RUST_TEST_THREADS=1
           export RUST_BACKTRACE=full
           cargo test --verbose
-
+          EOF
   build:
     strategy:
       fail-fast: false
@@ -121,7 +120,7 @@ jobs:
       - name: Archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: result
+          name: binaries-${{matrix.TARGET}}
           path: |
             ./artifacts
 
