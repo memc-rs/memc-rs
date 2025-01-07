@@ -24,7 +24,7 @@ num_cpus = "1.16.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
 quick_cache = "0.6.9"
-moka = { version = "0.12.8", features = ["sync"] }
+moka = { version = "0.12.10", features = ["sync"] }
 rand = { version = "0.8.5", features = ["small_rng"] }
 serde = "1.0.217"
 serde_derive = "1.0.217"
