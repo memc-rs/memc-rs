@@ -5,12 +5,13 @@ use lazy_static::lazy_static;
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
+    port: u16
 }
 
 impl MemcrsdTestServer {
 
-    fn new(process_handle: procspawn::JoinHandle<()>) -> MemcrsdTestServer {
-        MemcrsdTestServer { process_handle }
+    fn new(process_handle: procspawn::JoinHandle<()>, port: u16) -> MemcrsdTestServer {
+        MemcrsdTestServer { process_handle, port }
     }
 
     fn kill(&mut self) -> Result<(), SpawnError> {
@@ -19,6 +20,10 @@ impl MemcrsdTestServer {
 
     fn join(&mut self) -> Result<(), SpawnError> {
         self.process_handle.join_timeout(Duration::from_secs(1))
+    }
+
+    pub fn get_connection_string(&self) -> String {
+        String::from(format!("memcache://127.0.0.1:{}?timeout=5&tcp_nodelay=true&protocol=binary", self.port))
     }
 }
 
@@ -102,7 +107,7 @@ impl MemcrsdServerParamsBuilder {
 
         result.push(String::from("--port"));
         result.push(self.port.to_string());
-        //result.push(String::from("-vvv"));
+        ///result.push(String::from("-vvv"));
         result
     }
 }
@@ -119,8 +124,9 @@ impl PseudoRandomMemcrsdPort {
         }
     }
     
-    fn get_next_port(&mut self) {
+    fn get_next_port(&mut self) -> u16 {
         self.port += 10;
+        self.port
     }
 
     fn get(&mut self) -> u16 {
@@ -133,13 +139,9 @@ lazy_static! {
 }
 
 pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer {
-    pseudoRanomPort.lock().unwrap().get_next_port();
-    params.with_port(pseudoRanomPort.lock().unwrap().get());
+    let port = pseudoRanomPort.lock().unwrap().get_next_port();
+    params.with_port(port);
     let args = params.build();
     let handle = procspawn::spawn(args, |args| server::main::run(args));
-    MemcrsdTestServer::new(handle)
-}
-
-pub fn get_connection_string() -> String {
-    String::from(format!("memcache://127.0.0.1:{}?timeout=5&tcp_nodelay=true&protocol=binary", pseudoRanomPort.lock().unwrap().get()))
+    MemcrsdTestServer::new(handle, port)
 }

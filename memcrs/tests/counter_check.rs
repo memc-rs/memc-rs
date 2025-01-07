@@ -4,9 +4,9 @@ mod common;
 #[test]
 fn counter_check() {
     let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
-    let _server_handle = common::spawn_server(params_builder);
+    let server_handle = common::spawn_server(params_builder);
     let client =
-        memcache::connect(common::get_connection_string())
+        memcache::connect(server_handle.get_connection_string())
             .unwrap();
     // flush the database
     client.flush().unwrap();
