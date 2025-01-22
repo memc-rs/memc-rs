@@ -1,12 +1,13 @@
 use super::*;
-use crate::mock::mock_server::{create_server, SetableTimer};
+use crate::mock::mock_server::{MockServer, SetableTimer, create_moka_server, create_dash_map_server};
 use crate::mock::value::{from_slice, from_string};
 use bytes::{BufMut, BytesMut};
+use test_case::test_case;
 
-#[test]
-fn if_not_defined_cas_should_be_1() {
-    let server = create_server();
-
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn if_not_defined_cas_should_be_1(server: MockServer) {
+    
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result: std::result::Result<CacheSetStatus, CacheError> = server.storage.set(key.clone(), record.clone());
@@ -22,10 +23,9 @@ fn if_not_defined_cas_should_be_1() {
     }
 }
 
-#[test]
-fn should_override_value_if_cas_is_0() {
-    let server = create_server();
-
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn should_override_value_if_cas_is_0(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
@@ -45,9 +45,10 @@ fn should_override_value_if_cas_is_0() {
     }
 }
 
-#[test]
-fn if_cas_defined_it_should_be_returned() {
-    let storage = create_server().storage;
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn if_cas_defined_it_should_be_returned(server: MockServer) {
+    let storage = server.storage;
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), cas, 0, 0);
@@ -65,9 +66,10 @@ fn if_cas_defined_it_should_be_returned() {
     }
 }
 
-#[test]
-fn insert_should_fail_on_cas_mismatch() {
-    let storage = create_server().storage;
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn insert_should_fail_on_cas_mismatch(server: MockServer) {
+    let storage = server.storage;
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
     let mut record = Record::new(from_string("test data"), cas, 0, 0);
@@ -81,9 +83,9 @@ fn insert_should_fail_on_cas_mismatch() {
     }
 }
 
-#[test]
-fn record_should_expire_in_given_time() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn record_should_expire_in_given_time(server: MockServer) {
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), cas, 0, 123);
@@ -102,9 +104,9 @@ fn record_should_expire_in_given_time() {
     }
 }
 
-#[test]
-fn delete_record() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn delete_record(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -122,9 +124,9 @@ fn delete_record() {
     }
 }
 
-#[test]
-fn delete_should_return_not_exists() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn delete_should_return_not_exists(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -139,9 +141,9 @@ fn delete_should_return_not_exists() {
     }
 }
 
-#[test]
-fn delete_if_cas_doesnt_match_should_not_delete() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn delete_if_cas_doesnt_match_should_not_delete(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 1, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -156,9 +158,9 @@ fn delete_if_cas_doesnt_match_should_not_delete() {
     }
 }
 
-#[test]
-fn delete_if_cas_match_should_succeed() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn delete_if_cas_match_should_succeed(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -170,9 +172,9 @@ fn delete_if_cas_match_should_succeed() {
     assert!(deleted.is_ok());
 }
 
-#[test]
-fn flush_should_remove_all_elements_in_cache() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn flush_should_remove_all_elements_in_cache(server: MockServer) {
     for key_suffix in 1..10 {
         let mut key_str = BytesMut::from("key");
         key_str.reserve(8);
@@ -198,18 +200,18 @@ fn flush_should_remove_all_elements_in_cache() {
     }
 }
 
-#[test]
-fn add_should_succeed_if_not_already_stored() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn add_should_succeed_if_not_already_stored(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.add(key, record);
     assert!(result.is_ok());
 }
 
-#[test]
-fn add_should_fail_if_already_stored() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn add_should_fail_if_already_stored(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
@@ -221,9 +223,9 @@ fn add_should_fail_if_already_stored() {
     }
 }
 
-#[test]
-fn replace_should_fail_if_not_stored() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn replace_should_fail_if_not_stored(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 5, 0, 0);
     let result = server.storage.replace(key, record);
@@ -233,9 +235,9 @@ fn replace_should_fail_if_not_stored() {
     }
 }
 
-#[test]
-fn replace_should_succeed_if_stored() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn replace_should_succeed_if_stored(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -250,9 +252,9 @@ fn replace_should_succeed_if_stored() {
     }
 }
 
-#[test]
-fn append_should_fail_if_not_exist() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn append_should_fail_if_not_exist(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.append(key, record);
@@ -263,9 +265,9 @@ fn append_should_fail_if_not_exist() {
     }
 }
 
-#[test]
-fn prepend_should_fail_if_not_exist() {
-    let server = create_server();
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn prepend_should_fail_if_not_exist(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), 0, 0, 0);
     let result = server.storage.prepend(key, record);
@@ -276,9 +278,10 @@ fn prepend_should_fail_if_not_exist() {
     }
 }
 
-#[test]
-fn append_should_add_at_the_end() {
-    let server = create_server();
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn append_should_add_at_the_end(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Foo"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -301,9 +304,10 @@ fn append_should_add_at_the_end() {
     }
 }
 
-#[test]
-fn prepend_should_add_at_the_begining() {
-    let server = create_server();
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn prepend_should_add_at_the_begining(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Foo"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -326,10 +330,11 @@ fn prepend_should_add_at_the_begining() {
     }
 }
 
-#[test]
-fn increment_if_counter_doesnt_exists_it_should_created() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_if_counter_doesnt_exists_it_should_created(server: MockServer) {
     const COUNTER_INITIAL_VALUE: u64 = 5;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let counter = IncrementParam {
         delta: 0,
@@ -347,9 +352,10 @@ fn increment_if_counter_doesnt_exists_it_should_created() {
     }
 }
 
-#[test]
-fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
-    let server = create_server();
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_if_expire_equals_ffffffff_counter_should_not_be_created(server: MockServer) {
     let key = Bytes::from("counter1");
     let counter = IncrementParam { delta: 0, value: 0 };
     let header = Meta::new(0, 0, 0xffffffff);
@@ -364,11 +370,12 @@ fn increment_if_expire_equals_ffffffff_counter_should_not_be_created() {
     }
 }
 
-#[test]
-fn increment_value_should_be_incremented() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_value_should_be_incremented(server: MockServer) {
     const DELTA: u64 = 6;
     const EXPECTED_RESULT: u64 = 5 + DELTA;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let record = Record::new(from_string("5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -392,10 +399,11 @@ fn increment_value_should_be_incremented() {
     }
 }
 
-#[test]
-fn increment_if_value_is_not_number_it_should_be_error() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_if_value_is_not_number_it_should_be_error(server: MockServer) {
     const DELTA: u64 = 5;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let record = Record::new(from_string("asdas5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -417,10 +425,11 @@ fn increment_if_value_is_not_number_it_should_be_error() {
     }
 }
 
-#[test]
-fn increment_if_value_cannot_be_parsed_it_should_be_error() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_if_value_cannot_be_parsed_it_should_be_error(server: MockServer) {
     const DELTA: u64 = 5;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let record = Record::new(from_slice(&[0xc3, 0x28]), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -442,10 +451,11 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error() {
     }
 }
 
-#[test]
-fn decrement_should_not_result_in_negative_value() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn decrement_should_not_result_in_negative_value(server: MockServer) {
     const DELTA: u64 = 1;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let record = Record::new(from_string("0"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
@@ -469,11 +479,12 @@ fn decrement_should_not_result_in_negative_value() {
     }
 }
 
-#[test]
-fn decrement_value_should_be_decremented() {
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn decrement_value_should_be_decremented(server: MockServer) {
     const DELTA: u64 = 1;
     const EXPECTED_RESULT: u64 = 4;
-    let server = create_server();
     let key = Bytes::from("counter1");
     let record = Record::new(from_string("5"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record);
