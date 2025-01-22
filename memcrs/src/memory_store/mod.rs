@@ -1,7 +1,7 @@
 use clap::ValueEnum;
 
 pub mod moka_store;
-pub mod store;
+pub mod dash_map_store;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum StoreEngine {

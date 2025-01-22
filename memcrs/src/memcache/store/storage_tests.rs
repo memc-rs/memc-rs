@@ -9,7 +9,7 @@ fn if_not_defined_cas_should_be_1() {
 
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
-    let result = server.storage.set(key.clone(), record.clone());
+    let result: std::result::Result<CacheSetStatus, CacheError> = server.storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
