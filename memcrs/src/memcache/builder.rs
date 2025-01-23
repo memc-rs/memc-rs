@@ -1,7 +1,7 @@
 use crate::cache::eviction_policy::EvictionPolicy;
 use crate::cache::cache::Cache;
-use crate::memory_store::dash_map_store::{MemoryStore as DashMapStore};
-use crate::memory_store::moka_store::{MemoryStore as MokaStore};
+use crate::memory_store::dash_map_store::{DashMapMemoryStore as DashMapStore};
+use crate::memory_store::moka_store::{MokaMemoryStore as MokaStore};
 use crate::memory_store::StoreEngine;
 use crate::server::timer;
 use std::sync::Arc;

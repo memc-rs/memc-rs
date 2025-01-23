@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 type MokaStorage = MokaCache<KeyType, Record>;
 
-pub struct MemoryStore {
+pub struct MokaMemoryStore {
     memory: MokaStorage,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
@@ -36,9 +36,9 @@ impl<'a> CacheReadOnlyView<'a> for MokaStorageReadOnlyView {
     }
 }
 
-impl MemoryStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>, max_capacity: u64) -> MemoryStore {
-        MemoryStore {
+impl MokaMemoryStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>, max_capacity: u64) -> MokaMemoryStore {
+        MokaMemoryStore {
             memory: MokaCache::new(max_capacity),
             timer,
             cas_id: AtomicU64::new(1),
@@ -50,7 +50,7 @@ impl MemoryStore {
     }
 }
 
-impl impl_details::CacheImplDetails for MemoryStore {
+impl impl_details::CacheImplDetails for MokaMemoryStore {
     fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
@@ -75,7 +75,7 @@ impl impl_details::CacheImplDetails for MemoryStore {
     }
 }
 
-impl Cache for MemoryStore {
+impl Cache for MokaMemoryStore {
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         self.memory.remove(key).map(|record| (key.clone(), record))

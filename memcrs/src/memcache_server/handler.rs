@@ -350,14 +350,21 @@ mod tests {
     use super::binary_codec;
     use super::*;
     use crate::cache::error;
-    use crate::mock::mock_server::create_storage;
+    use crate::mock::mock_server::create_dash_map_storage;
+    use crate::mock::mock_server::create_moka_storage;
     use crate::mock::value::from_string;
+    use test_case::test_case;
+
     use bytes::Bytes;
 
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
-    fn create_handler() -> BinaryHandler {
-        BinaryHandler::new(create_storage())
+    fn create_dash_map_handler() -> BinaryHandler {
+        BinaryHandler::new(create_dash_map_storage())
+    }
+
+    fn create_moka_handler() -> BinaryHandler {
+        BinaryHandler::new(create_moka_storage())
     }
 
     fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
@@ -427,9 +434,9 @@ mod tests {
         assert_eq!(response.opaque, OPAQUE_VALUE);
     }
 
-    #[test]
-    fn get_request_should_return_not_found_when_not_exists() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_request_should_return_not_found_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::Get, &key);
 
@@ -450,9 +457,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn get_quiet_request_should_return_none_when_not_exists() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_quiet_request_should_return_none_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::GetQuiet, &key);
 
@@ -463,9 +470,9 @@ mod tests {
         assert!(result.is_none());
     }
 
-    #[test]
-    fn get_quiet_key_request_should_return_none_when_not_exists() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_quiet_key_request_should_return_none_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::GetQuiet, &key);
 
@@ -476,9 +483,9 @@ mod tests {
         assert!(result.is_none());
     }
 
-    #[test]
-    fn get_key_request_should_return_key_and_record() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_key_request_should_return_key_and_record(handler: BinaryHandler) {
         let key = Bytes::from("test_key");
         let value = from_string("test value");
 
@@ -514,9 +521,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn get_quiet_key_request_should_return_key_and_record() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_quiet_key_request_should_return_key_and_record(handler: BinaryHandler) {
         let key = Bytes::from("test_key");
         let value = from_string("test value");
 
@@ -552,9 +559,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn get_request_should_return_record() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn get_request_should_return_record(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
@@ -589,9 +596,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn set_request_should_succeed() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn set_request_should_succeed(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
@@ -617,9 +624,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn set_request_should_return_item_too_large_() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn set_request_should_return_item_too_large_(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
@@ -653,9 +660,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn set_request_on_cas_mismatch_should_return_key_exists() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn set_request_on_cas_mismatch_should_return_key_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
         let mut header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
@@ -713,9 +720,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn version_request_should_return_version() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn version_request_should_return_version(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
         let header = create_header(binary::Command::Version, &key);
         let request = binary_codec::BinaryRequest::Version(binary::VersionRequest { header });
@@ -741,10 +748,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn increment_request_should_return_cas() {
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn increment_request_should_return_cas(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 1;
-        let handler = create_handler();
         let key = Bytes::from("counter");
         let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
@@ -778,10 +785,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn increment_request_should_increment_value() {
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn increment_request_should_increment_value(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 101;
-        let handler = create_handler();
         let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
@@ -818,9 +825,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn increment_quiet_should_increment_value() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn increment_quiet_should_increment_value(handler: BinaryHandler) {
         let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
@@ -844,10 +851,10 @@ mod tests {
         assert_eq!(incremented_value[..], expected_value[..]);
     }
 
-    #[test]
-    fn decrement_request_should_return_cas() {
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn decrement_request_should_return_cas(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 1;
-        let handler = create_handler();
         let key = Bytes::from("counter");
         let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
@@ -881,10 +888,10 @@ mod tests {
         }
     }
 
-    #[test]
-    fn decrement_request_should_decrement_value() {
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn decrement_request_should_decrement_value(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 99;
-        let handler = create_handler();
         let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
@@ -921,9 +928,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn decrement_quiet_should_increment_value() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn decrement_quiet_should_increment_value(handler: BinaryHandler) {
         let key = Bytes::from("counter");
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
@@ -947,9 +954,9 @@ mod tests {
         assert_eq!(dec_value[..], expected_value[..]);
     }
 
-    #[test]
-    fn increment_request_should_error_when_expiration_is_ffffffff() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn increment_request_should_error_when_expiration_is_ffffffff(handler: BinaryHandler) {
         let key = Bytes::from("counter");
         let header = create_header(binary::Command::Increment, &key);
         let request = binary_codec::BinaryRequest::Increment(binary::IncrementRequest {
@@ -982,9 +989,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn decrement_request_should_error_when_expiration_is_ffffffff() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn decrement_request_should_error_when_expiration_is_ffffffff(handler: BinaryHandler) {
         let key = Bytes::from("counter");
         let header = create_header(binary::Command::Decrement, &key);
         let request = binary_codec::BinaryRequest::Decrement(binary::DecrementRequest {
@@ -1017,9 +1024,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn flush_should_remove_all() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn flush_should_remove_all(handler: BinaryHandler) {
         let value = from_string("test value");
         for key_suffix in 0..100 {
             let key = Bytes::from(String::from("test_key") + &key_suffix.to_string());
@@ -1046,9 +1053,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn delete_should_remove_from_store() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn delete_should_remove_from_store(handler: BinaryHandler) {
         let value = from_string("test value");
         let key = Bytes::from("test_key");
         insert_value(&handler, key.clone(), value.clone());
@@ -1071,9 +1078,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn delete_should_return_error_if_not_exists() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn delete_should_return_error_if_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("test_key");
 
         let header = create_header(binary::Command::DeleteQuiet, &key);
@@ -1102,9 +1109,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn noop_request() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn noop_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
         let header = create_header(binary::Command::Noop, &key);
@@ -1122,9 +1129,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn quit_request() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn quit_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
         let header = create_header(binary::Command::Quit, &key);
@@ -1142,9 +1149,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn quit_quiet_request() {
-        let handler = create_handler();
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn quit_quiet_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
         let header = create_header(binary::Command::QuitQuiet, &key);

@@ -1,7 +1,7 @@
 use crate::memcache::store::MemcStore;
 
-use crate::memory_store::moka_store::MemoryStore as MokaStore;
-use crate::memory_store::dash_map_store::MemoryStore;
+use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
+use crate::memory_store::dash_map_store::DashMapMemoryStore;
 use crate::server::timer;
 use crate::cache::cache::Cache;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -57,10 +57,15 @@ pub fn create_moka_server() -> MockServer {
 
 pub fn create_dash_map_server() -> MockServer {
     let timer = Arc::new(MockSystemTimer::new());
-    MockServer::new(Arc::new(MemoryStore::new(timer.clone())), timer)
+    MockServer::new(Arc::new(DashMapMemoryStore::new(timer.clone())), timer)
 }
 
-pub fn create_storage() -> Arc<MemcStore> {
+pub fn create_dash_map_storage() -> Arc<MemcStore> {
     let timer = Arc::new(MockSystemTimer::new());
-    Arc::new(MemcStore::new(Arc::new(MemoryStore::new(timer))))
+    Arc::new(MemcStore::new(Arc::new(DashMapMemoryStore::new(timer))))
+}
+
+pub fn create_moka_storage() -> Arc<MemcStore> {
+    let timer = Arc::new(MockSystemTimer::new());
+    Arc::new(MemcStore::new(Arc::new(DashMapMemoryStore::new(timer))))
 }
