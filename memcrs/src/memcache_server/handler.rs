@@ -1162,4 +1162,65 @@ mod tests {
             None => {}
         }
     }
+
+    #[test_case(create_moka_handler() ; "moka_backend")]
+    #[test_case(create_dash_map_handler() ; "dash_map_backend")]
+    fn add_request(handler: BinaryHandler) {
+        let key = Bytes::from("key");
+        let mut header = create_header(binary::Command::Add, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        let value = from_string("value");
+
+        let request = binary_codec::BinaryRequest::Add(binary::AddRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key: key.clone(),
+            value: value.clone(),
+        });
+
+        let result = handler.handle_request(request);
+
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Set(response) = resp {
+                    assert_ne!(response.header.cas, 0);
+                    check_header(&response.header, binary::Command::Add, 0, 0, 0, 0, 0);
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+        header.cas = 100;
+        let request = binary_codec::BinaryRequest::Add(binary::SetRequest {
+            header,
+            flags: FLAGS,
+            expiration: 0,
+            key,
+            value,
+        });
+
+        let result = handler.handle_request(request);
+        match result {
+            Some(resp) => {
+                if let binary_codec::BinaryResponse::Error(response) = resp {
+                    assert_eq!(response.header.cas, 0);
+                    check_header(
+                        &response.header,
+                        binary::Command::Add,
+                        0,
+                        0,
+                        0,
+                        error::CacheError::KeyExists as u16,
+                        response.error.len() as u32,
+                    );
+                } else {
+                    unreachable!();
+                }
+            }
+            None => unreachable!(),
+        }
+    }
+
 }
