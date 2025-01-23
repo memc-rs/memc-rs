@@ -1,4 +1,4 @@
-use std::{io, u8};
+use std::io;
 
 use crate::cache::error::CacheError;
 use crate::protocol::binary;

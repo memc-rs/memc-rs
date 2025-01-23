@@ -1,4 +1,4 @@
-use std::{sync::Mutex, time::Duration};
+use std::{sync::Mutex};
 use memcrs::{cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType, memory_store::StoreEngine, server};
 use procspawn::SpawnError;
 use lazy_static::lazy_static;
@@ -16,10 +16,6 @@ impl MemcrsdTestServer {
 
     fn kill(&mut self) -> Result<(), SpawnError> {
         self.process_handle.kill()
-    }
-
-    fn join(&mut self) -> Result<(), SpawnError> {
-        self.process_handle.join_timeout(Duration::from_secs(1))
     }
 
     pub fn get_connection_string(&self) -> String {
@@ -57,16 +53,19 @@ impl MemcrsdServerParamsBuilder {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_engine(&mut self, engine: StoreEngine) -> &mut Self {
         self.engine = engine;
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_policy(&mut self, policy: EvictionPolicy) -> &mut Self {
         self.policy = policy;
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_memory_limit(&mut self, memory_limit: u64) -> &mut Self {
         self.memory_limit = memory_limit;
         self
@@ -107,7 +106,7 @@ impl MemcrsdServerParamsBuilder {
 
         result.push(String::from("--port"));
         result.push(self.port.to_string());
-        ///result.push(String::from("-vvv"));
+        // result.push(String::from("-vvv"));
         result
     }
 }
@@ -126,10 +125,6 @@ impl PseudoRandomMemcrsdPort {
     
     fn get_next_port(&mut self) -> u16 {
         self.port += 10;
-        self.port
-    }
-
-    fn get(&mut self) -> u16 {
         self.port
     }
 }
