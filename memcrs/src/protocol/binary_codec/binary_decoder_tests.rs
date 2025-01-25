@@ -4,14 +4,30 @@ use super::*;
 mod tests {
 
     use super::*;
+    static ITEM_SIZE_LIMIT: u32 = 1024;
+
+    struct DecodeParams {
+        pub item_size_limit: u32,
+    }
+    
+    fn create_default_params() -> DecodeParams {
+        println!("Test setup ...");
+        DecodeParams {
+            item_size_limit: ITEM_SIZE_LIMIT
+        }
+    }
 
     fn decode_packet(src: &[u8]) -> Result<Option<BinaryRequest>, io::Error> {
-        let mut decoder = MemcacheBinaryCodec::new(1024);
+        let params = create_default_params();
+        decode_packet_with_params(src, params)
+    }
+
+    fn decode_packet_with_params(src: &[u8], decoder_params: DecodeParams) -> Result<Option<BinaryRequest>, io::Error> {
+        let mut decoder = MemcacheBinaryCodec::new(decoder_params.item_size_limit);
         let mut buf = BytesMut::with_capacity(src.len());
         buf.put_slice(&src);
         decoder.decode(&mut buf)
     }
-
     #[test]
     fn decode_set_request() {
         let set_request_packet: [u8; 39] = [
@@ -177,6 +193,7 @@ mod tests {
             Err(_) => unreachable!(),
         }
     }
+
     #[test]
     fn decode_get_quiet_request() {
         let get_request_packet: [u8; 27] = [
@@ -1034,6 +1051,57 @@ mod tests {
             Err(err) => {
                 assert_eq!(err.kind(), io::ErrorKind::InvalidData);
             }
+        }
+    }
+    #[test]
+    fn decode_item_too_large() {
+        let set_item_too_large_request_packet: [u8; 51] = [
+            0x80, // magic
+            0x01, // opcode
+            0x00, 0x03, // key length
+            0x08, // extras length
+            0x00, // data type
+            0x00, 0x00, // vbucket id
+            0x00, 0x00, 0x00, 0x1B, // total body length
+            0xDE, 0xAD, 0xBE, 0xEF, // opaque
+            0x00, 0x00, 0x00, 0x00, // cas
+            0x00, 0x00, 0x00, 0x01, // cas
+            0xAB, 0xAD, 0xCA, 0xFE, // flags
+            0x00, 0x00, 0x00, 0x32, // expiration
+            0x66, 0x6f, 0x6f, // key 'foo'
+            0x74, 0x65, 0x73, 0x74, // value 'test'
+            0x74, 0x65, 0x73, 0x74, // value 'test'
+            0x74, 0x65, 0x73, 0x74, // value 'test'
+            0x74, 0x65, 0x73, 0x74, // value 'test'
+        ];
+        let mut decode_params = create_default_params();
+        decode_params.item_size_limit = 0x0f;
+        let decode_result = decode_packet_with_params(&set_item_too_large_request_packet, decode_params);
+        match decode_result {
+            Ok(set_request) => {
+                assert!(set_request.is_some());
+                if let Some(request) = set_request {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.opcode, binary::Command::Set as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x08);
+                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x1b);
+                    assert_eq!(header.opaque, 0xDEADBEEF);
+                    assert_eq!(header.cas, 0x01);
+                    //
+                    match request {
+                        BinaryRequest::ItemTooLarge(req) => {
+                            assert_eq!(req.expiration, 0);
+                            assert_eq!(req.flags, 0);
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_) => unreachable!(),
         }
     }
 }
