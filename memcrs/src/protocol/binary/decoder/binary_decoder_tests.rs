@@ -23,7 +23,7 @@ mod tests {
     }
 
     fn decode_packet_with_params(src: &[u8], decoder_params: DecodeParams) -> Result<Option<BinaryRequest>, io::Error> {
-        let mut decoder = MemcacheBinaryCodec::new(decoder_params.item_size_limit);
+        let mut decoder = MemcacheBinaryDecoder::new(decoder_params.item_size_limit);
         let mut buf = BytesMut::with_capacity(src.len());
         buf.put_slice(&src);
         decoder.decode(&mut buf)
@@ -1108,7 +1108,7 @@ mod tests {
     #[test]
     fn test_parse_prepend_quietly_request() {
         // Initialize the codec with a reasonable item size limit
-        let mut codec = MemcacheBinaryCodec::new(1024);
+        let mut codec = MemcacheBinaryDecoder::new(1024);
 
         // Create a mock `binary::RequestHeader`
         let header = binary::RequestHeader {

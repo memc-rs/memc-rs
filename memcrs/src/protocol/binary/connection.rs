@@ -1,5 +1,5 @@
 use crate::protocol::binary::decoder::{
-    BinaryRequest, MemcacheBinaryCodec, 
+    BinaryRequest, MemcacheBinaryDecoder, 
 };
 use crate::protocol::binary::encoder::{
      BinaryResponse, MemcacheBinaryEncoder, ResponseMessage,
@@ -14,7 +14,7 @@ use tokio_util::codec::Decoder;
 
 pub struct MemcacheBinaryConnection {
     stream: TcpStream,
-    decoder: MemcacheBinaryCodec,
+    decoder: MemcacheBinaryDecoder,
     encoder: MemcacheBinaryEncoder,
     buffer: BytesMut,
 }
@@ -23,7 +23,7 @@ impl MemcacheBinaryConnection {
     pub fn new(socket: TcpStream, item_size_limit: u32) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
-            decoder: MemcacheBinaryCodec::new(item_size_limit),
+            decoder: MemcacheBinaryDecoder::new(item_size_limit),
             encoder: MemcacheBinaryEncoder::new(),
             buffer: BytesMut::with_capacity(4096),
         }

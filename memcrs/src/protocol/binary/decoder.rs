@@ -86,15 +86,15 @@ enum RequestParserState {
     HeaderParsed,
 }
 
-pub struct MemcacheBinaryCodec {
+pub struct MemcacheBinaryDecoder {
     header: binary::RequestHeader,
     state: RequestParserState,
     item_size_limit: u32,
 }
 
-impl MemcacheBinaryCodec {
-    pub fn new(item_size_limit: u32) -> MemcacheBinaryCodec {
-        MemcacheBinaryCodec {
+impl MemcacheBinaryDecoder {
+    pub fn new(item_size_limit: u32) -> MemcacheBinaryDecoder {
+        MemcacheBinaryDecoder {
             header: Default::default(),
             state: RequestParserState::None,
             item_size_limit,
@@ -107,7 +107,7 @@ impl MemcacheBinaryCodec {
     }
 
     fn parse_header(&mut self, src: &mut BytesMut) -> Result<(), io::Error> {
-        if src.len() < MemcacheBinaryCodec::HEADER_LEN {
+        if src.len() < MemcacheBinaryDecoder::HEADER_LEN {
             error!("Buffer len is less than MemcacheBinaryCodec::HEADER_LEN");
             return Err(Error::new(
                 ErrorKind::InvalidData,
@@ -522,17 +522,17 @@ impl MemcacheBinaryCodec {
     }
 }
 
-impl MemcacheBinaryCodec {
+impl MemcacheBinaryDecoder {
     const HEADER_LEN: usize = 24;
 }
 
-impl Decoder for MemcacheBinaryCodec {
+impl Decoder for MemcacheBinaryDecoder {
     type Item = BinaryRequest;
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state == RequestParserState::None {
-            if src.len() < MemcacheBinaryCodec::HEADER_LEN {
+            if src.len() < MemcacheBinaryDecoder::HEADER_LEN {
                 return Ok(None);
             }
             let result = self.parse_header(src);
