@@ -1,7 +1,7 @@
 use crate::cache::error::CacheError;
 use crate::memcache::store;
-use crate::protocol::binary::codec::storage_error_to_response;
-use crate::protocol::binary::{binary, codec};
+use crate::protocol::binary::encoder::storage_error_to_response;
+use crate::protocol::binary::{binary, codec, encoder};
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -12,8 +12,8 @@ fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> 
     store::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
 
-fn into_quiet_get(response: codec::BinaryResponse) -> Option<codec::BinaryResponse> {
-    if let codec::BinaryResponse::Error(response) = &response {
+fn into_quiet_get(response: encoder::BinaryResponse) -> Option<encoder::BinaryResponse> {
+    if let encoder::BinaryResponse::Error(response) = &response {
         if response.header.status == CacheError::NotFound as u16 {
             return None;
         }
@@ -22,9 +22,9 @@ fn into_quiet_get(response: codec::BinaryResponse) -> Option<codec::BinaryRespon
 }
 
 fn into_quiet_mutation(
-    response: codec::BinaryResponse,
-) -> Option<codec::BinaryResponse> {
-    if let codec::BinaryResponse::Error(_resp) = &response {
+    response: encoder::BinaryResponse,
+) -> Option<encoder::BinaryResponse> {
+    if let encoder::BinaryResponse::Error(_resp) = &response {
         return Some(response);
     }
     None
@@ -42,7 +42,7 @@ impl BinaryHandler {
     pub fn handle_request(
         &self,
         req: codec::BinaryRequest,
-    ) -> Option<codec::BinaryResponse> {
+    ) -> Option<encoder::BinaryResponse> {
         let request_header = req.get_header();
         let mut response_header =
             binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
@@ -81,22 +81,22 @@ impl BinaryHandler {
                 into_quiet_mutation(self.decrement(dec_request, &mut response_header))
             }
             codec::BinaryRequest::Noop(_noop_request) => {
-                Some(codec::BinaryResponse::Noop(binary::NoopResponse {
+                Some(encoder::BinaryResponse::Noop(binary::NoopResponse {
                     header: response_header,
                 }))
             }
             codec::BinaryRequest::Stats(_stat_request) => {
-                Some(codec::BinaryResponse::Stats(binary::StatsResponse {
+                Some(encoder::BinaryResponse::Stats(binary::StatsResponse {
                     header: response_header,
                 }))
             }
             codec::BinaryRequest::Quit(_quit_req) => {
-                Some(codec::BinaryResponse::Quit(binary::QuitResponse {
+                Some(encoder::BinaryResponse::Quit(binary::QuitResponse {
                     header: response_header,
                 }))
             }
             codec::BinaryRequest::QuitQuietly(_quit_req) => {
-                into_quiet_mutation(codec::BinaryResponse::Quit(binary::QuitResponse {
+                into_quiet_mutation(encoder::BinaryResponse::Quit(binary::QuitResponse {
                     header: response_header,
                 }))
             }
@@ -127,7 +127,7 @@ impl BinaryHandler {
             }
             codec::BinaryRequest::Version(_version_request) => {
                 response_header.body_length = MEMCRS_VERSION.len() as u32;
-                Some(codec::BinaryResponse::Version(
+                Some(encoder::BinaryResponse::Version(
                     binary::VersionResponse {
                         header: response_header,
                         version: String::from(MEMCRS_VERSION),
@@ -144,7 +144,7 @@ impl BinaryHandler {
         &self,
         request: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let record = store::Record::new(
             request.value,
             request.header.cas,
@@ -160,7 +160,7 @@ impl BinaryHandler {
         match result {
             Ok(command_status) => {
                 response_header.cas = command_status.cas;
-                codec::BinaryResponse::Set(binary::SetResponse {
+                encoder::BinaryResponse::Set(binary::SetResponse {
                     header: *response_header,
                 })
             }
@@ -176,7 +176,7 @@ impl BinaryHandler {
         &self,
         append_req: binary::AppendRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let record = store::Record::new(append_req.value, append_req.header.cas, 0, 0);
         let result = if self.is_append(append_req.header.opcode) {
             self.storage.append(append_req.key, record)
@@ -187,7 +187,7 @@ impl BinaryHandler {
         match result {
             Ok(status) => {
                 response_header.cas = status.cas;
-                codec::BinaryResponse::Append(binary::AppendResponse {
+                encoder::BinaryResponse::Append(binary::AppendResponse {
                     header: *response_header,
                 })
             }
@@ -203,7 +203,7 @@ impl BinaryHandler {
         &self,
         set_req: binary::SetRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let record = store::Record::new(
             set_req.value,
             set_req.header.cas,
@@ -214,7 +214,7 @@ impl BinaryHandler {
         match self.storage.set(set_req.key, record) {
             Ok(status) => {
                 response_header.cas = status.cas;
-                codec::BinaryResponse::Set(binary::SetResponse {
+                encoder::BinaryResponse::Set(binary::SetResponse {
                     header: *response_header,
                 })
             }
@@ -226,13 +226,13 @@ impl BinaryHandler {
         &self,
         delete_request: binary::DeleteRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let result = self.storage.delete(
             delete_request.key,
             into_record_meta(&delete_request.header, 0),
         );
         match result {
-            Ok(_record) => codec::BinaryResponse::Delete(binary::DeleteResponse {
+            Ok(_record) => encoder::BinaryResponse::Delete(binary::DeleteResponse {
                 header: *response_header,
             }),
             Err(err) => storage_error_to_response(err, response_header),
@@ -243,7 +243,7 @@ impl BinaryHandler {
         &self,
         get_request: binary::GetRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let result = self.storage.get(&get_request.key);
 
         match result {
@@ -258,7 +258,7 @@ impl BinaryHandler {
                 response_header.key_length = key.len() as u16;
                 response_header.extras_length = EXTRAS_LENGTH;
                 response_header.cas = record.header.cas;
-                codec::BinaryResponse::Get(binary::GetResponse {
+                encoder::BinaryResponse::Get(binary::GetResponse {
                     header: *response_header,
                     flags: record.header.flags,
                     key,
@@ -277,10 +277,10 @@ impl BinaryHandler {
         &self,
         flush_request: binary::FlushRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let meta: store::Meta = store::Meta::new(0, 0, flush_request.expiration);
         self.storage.flush(meta);
-        codec::BinaryResponse::Flush(binary::FlushResponse {
+        encoder::BinaryResponse::Flush(binary::FlushResponse {
             header: *response_header,
         })
     }
@@ -289,7 +289,7 @@ impl BinaryHandler {
         &self,
         inc_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let delta = store::IncrementParam {
             delta: inc_request.delta,
             value: inc_request.initial,
@@ -305,7 +305,7 @@ impl BinaryHandler {
                 response_header.body_length =
                     std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
-                codec::BinaryResponse::Increment(binary::IncrementResponse {
+                encoder::BinaryResponse::Increment(binary::IncrementResponse {
                     header: *response_header,
                     value: delta_result.value,
                 })
@@ -318,7 +318,7 @@ impl BinaryHandler {
         &self,
         dec_request: binary::IncrementRequest,
         response_header: &mut binary::ResponseHeader,
-    ) -> codec::BinaryResponse {
+    ) -> encoder::BinaryResponse {
         let delta = store::IncrementParam {
             delta: dec_request.delta,
             value: dec_request.initial,
@@ -334,7 +334,7 @@ impl BinaryHandler {
                 response_header.body_length =
                     std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
-                codec::BinaryResponse::Decrement(binary::DecrementResponse {
+                encoder::BinaryResponse::Decrement(binary::DecrementResponse {
                     header: *response_header,
                     value: delta_result.value,
                 })
@@ -388,7 +388,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Get(response) = resp {
+                if let encoder::BinaryResponse::Get(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     return response.value;
                 } else {
@@ -445,7 +445,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.status, error::CacheError::NotFound as u16);
                     assert_eq!(response.error, "Not found");
                     assert_eq!(response.header.body_length, response.error.len() as u32);
@@ -500,7 +500,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Get(response) = resp {
+                if let encoder::BinaryResponse::Get(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -538,7 +538,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Get(response) = resp {
+                if let encoder::BinaryResponse::Get(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -576,7 +576,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Get(response) = resp {
+                if let encoder::BinaryResponse::Get(response) = resp {
                     assert_eq!(response.flags, FLAGS);
                     assert_ne!(response.header.cas, 0);
                     check_header(
@@ -613,7 +613,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Set(response) = resp {
+                if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
@@ -641,7 +641,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -680,7 +680,7 @@ mod tests {
 
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Set(response) = resp {
+                if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
                 } else {
@@ -701,7 +701,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
@@ -730,7 +730,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Version(response) = resp {
+                if let encoder::BinaryResponse::Version(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Version,
@@ -765,7 +765,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Increment(response) = resp {
+                if let encoder::BinaryResponse::Increment(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -805,7 +805,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Increment(response) = resp {
+                if let encoder::BinaryResponse::Increment(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -868,7 +868,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Decrement(response) = resp {
+                if let encoder::BinaryResponse::Decrement(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -908,7 +908,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Decrement(response) = resp {
+                if let encoder::BinaryResponse::Decrement(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -970,7 +970,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Increment,
@@ -1005,7 +1005,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::Decrement,
@@ -1043,7 +1043,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Flush(response) = resp {
+                if let encoder::BinaryResponse::Flush(response) = resp {
                     check_header(&response.header, binary::Command::Flush, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
@@ -1068,7 +1068,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Delete(response) = resp {
+                if let encoder::BinaryResponse::Delete(response) = resp {
                     check_header(&response.header, binary::Command::Delete, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
@@ -1091,7 +1091,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
                         binary::Command::DeleteQuiet,
@@ -1119,7 +1119,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Noop(response) = resp {
+                if let encoder::BinaryResponse::Noop(response) = resp {
                     check_header(&response.header, binary::Command::Noop, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
@@ -1139,7 +1139,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Quit(response) = resp {
+                if let encoder::BinaryResponse::Quit(response) = resp {
                     check_header(&response.header, binary::Command::Quit, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
@@ -1183,7 +1183,7 @@ mod tests {
 
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Set(response) = resp {
+                if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
                     check_header(&response.header, binary::Command::Add, 0, 0, 0, 0, 0);
                 } else {
@@ -1204,7 +1204,7 @@ mod tests {
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
-                if let codec::BinaryResponse::Error(response) = resp {
+                if let encoder::BinaryResponse::Error(response) = resp {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,

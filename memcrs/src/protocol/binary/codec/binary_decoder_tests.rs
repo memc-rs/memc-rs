@@ -2,8 +2,8 @@ use super::*;
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use bytes::{BufMut, Bytes, BytesMut};
     static ITEM_SIZE_LIMIT: u32 = 1024;
 
     struct DecodeParams {

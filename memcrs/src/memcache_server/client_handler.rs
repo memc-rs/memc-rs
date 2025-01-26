@@ -11,7 +11,8 @@ use tracing::{debug, error};
 
 use super::handler;
 use crate::memcache::store as storage;
-use crate::protocol::binary::codec::{BinaryRequest, BinaryResponse};
+use crate::protocol::binary::codec::{BinaryRequest};
+use crate::protocol::binary::encoder::{BinaryResponse};
 use crate::protocol::binary::connection::MemcacheBinaryConnection;
 
 pub struct ClientConfig {
