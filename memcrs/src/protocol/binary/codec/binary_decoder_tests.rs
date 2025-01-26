@@ -1104,4 +1104,49 @@ mod tests {
             Err(_) => unreachable!(),
         }
     }
+
+    #[test]
+    fn test_parse_prepend_quietly_request() {
+        // Initialize the codec with a reasonable item size limit
+        let mut codec = MemcacheBinaryCodec::new(1024);
+
+        // Create a mock `binary::RequestHeader`
+        let header = binary::RequestHeader {
+            magic: binary::Magic::Request as u8,
+            opcode: binary::Command::PrependQuiet as u8, // Opcode for PrependQuietly
+            key_length: 5,
+            extras_length: 0,
+            data_type: binary::DataTypes::RawBytes as u8,
+            vbucket_id: 0,
+            body_length: 16, // 5 for key + 11 for value
+            opaque: 0,
+            cas: 0,
+        };
+
+        // Mock the input buffer (key + value)
+        let key = b"key12";
+        let value = b"value_value";
+        let mut src = BytesMut::new();
+        src.extend_from_slice(key);
+        src.extend_from_slice(value);
+
+        // Manually set the codec state and header
+        codec.state = RequestParserState::HeaderParsed;
+        codec.header = header;
+
+        // Parse the request
+        let result = codec.parse_append_prepend_request(&mut src);
+
+        // Assert the result is `PrependQuietly` with the expected key and value
+        assert!(result.is_ok());
+        let request = result.unwrap();
+        if let Some(BinaryRequest::PrependQuietly(prepend_request)) = request {
+            assert_eq!(prepend_request.header, header);
+            assert_eq!(prepend_request.key, Bytes::from_static(key));
+            assert_eq!(prepend_request.value, Bytes::from_static(value));
+        } else {
+            panic!("Expected BinaryRequest::PrependQuietly, but got {:?}", request);
+        }
+    }
 }
+

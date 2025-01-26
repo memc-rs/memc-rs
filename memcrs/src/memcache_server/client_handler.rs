@@ -11,8 +11,8 @@ use tracing::{debug, error};
 
 use super::handler;
 use crate::memcache::store as storage;
-use crate::protocol::binary_codec::{BinaryRequest, BinaryResponse};
-use crate::protocol::binary_connection::MemcacheBinaryConnection;
+use crate::protocol::binary::codec::{BinaryRequest, BinaryResponse};
+use crate::protocol::binary::connection::MemcacheBinaryConnection;
 
 pub struct ClientConfig {
     pub(crate) item_memory_limit: u32,

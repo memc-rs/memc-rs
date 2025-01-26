@@ -1,4 +1,4 @@
-use crate::protocol::binary_codec::{
+use crate::protocol::binary::codec::{
     BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
 };
 use bytes::BytesMut;
