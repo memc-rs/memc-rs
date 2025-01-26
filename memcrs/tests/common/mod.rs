@@ -1,6 +1,7 @@
-use std::{sync::Mutex};
+use std::sync::Mutex;
 use memcrs::{cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType, memory_store::StoreEngine, server};
 use procspawn::SpawnError;
+use rand::Rng;
 use lazy_static::lazy_static;
 
 pub struct MemcrsdTestServer {
@@ -139,4 +140,14 @@ pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer
     let args = params.build();
     let handle = procspawn::spawn(args, |args| server::main::run(args));
     MemcrsdTestServer::new(handle, port)
+}
+
+pub fn create_value_with_size(size: usize) -> String {
+    let mut rng = rand::thread_rng();
+    let mut value =  String::with_capacity(size);
+    for _ in 0..size {
+        let random_char = rng.gen_range(b'a'..=b'z') as char;
+        value.push(random_char);
+    }
+    value
 }
