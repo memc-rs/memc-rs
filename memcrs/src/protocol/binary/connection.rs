@@ -1,4 +1,4 @@
-use crate::protocol::binary::codec::{
+use crate::protocol::binary::decoder::{
     BinaryRequest, MemcacheBinaryCodec, 
 };
 use crate::protocol::binary::encoder::{
