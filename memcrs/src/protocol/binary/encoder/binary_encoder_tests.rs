@@ -17,23 +17,14 @@ mod tests {
         response_header
     }
 
-    fn encode_packet(src: BinaryResponse) -> Result<BytesMut, io::Error> {
-        let mut encoder = MemcacheBinaryEncoder::new();
-        let mut buf = BytesMut::with_capacity(128);
-        match encoder.encode(src, &mut buf) {
-            Ok(_) => Ok(buf),
-            Err(err) => Err(err),
-        }
+    fn encode_packet(src: BinaryResponse) -> ResponseMessage {
+        let encoder = MemcacheBinaryEncoder::new();
+        encoder.encode_message(&src)
     }
 
     fn test_encode(expected_result: &[u8], response: BinaryResponse) {
         let encode_result = encode_packet(response);
-        match encode_result {
-            Ok(buf) => {
-                assert_eq!(&buf[..], expected_result);
-            }
-            Err(_) => unreachable!(),
-        }
+        assert_eq!(encode_result.data, expected_result);
     }
 
     #[test]
@@ -93,7 +84,8 @@ mod tests {
 
     #[test]
     fn encode_get_key_quiet_response() {
-        let expected_result = [
+        let mut expected_result =  BytesMut::with_capacity(512);
+        expected_result.put_slice(&[
             0x81, 0x0d, 0x00, 0x03, // key len
             0x04, // extras len
             0x00, 0x00, 0x00, // status
@@ -103,7 +95,7 @@ mod tests {
             0x00, 0x00, 0x00, 0x00, // flags:
             0x66, 0x6f, 0x6f, // key: foo
             0x74, 0x65, 0x73, 0x74, // value: test
-        ];
+        ]);
         let mut header = create_response_header(binary::Command::GetKeyQuiet, 0, 1);
         header.key_length = "foo".len() as u16;
         header.extras_length = 4;
@@ -115,21 +107,17 @@ mod tests {
             value: from_string("test"),
         });
         let encode_result = encode_packet(response);
-        match encode_result {
-            Ok(buf) => {
-                assert_eq!(&buf[..], expected_result);
-            }
-            Err(_) => unreachable!(),
-        }
+        assert_eq!(encode_result.data, expected_result);
     }
 
     #[test]
     fn encode_get_response() {
-        let expected_result = [
+        let mut expected_result = BytesMut::with_capacity(512);
+        expected_result.put_slice(&[
             0x81, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0d, 0x00, 0x00, 0x00, 0x00,
             0x33, 0x30, 0x35, 0x30,
-        ];
+        ]);
         let mut header = create_response_header(binary::Command::Get, 0, 13);
         header.key_length = 0;
         header.extras_length = 4;
@@ -141,12 +129,7 @@ mod tests {
             value: from_string("3050"),
         });
         let encode_result = encode_packet(response);
-        match encode_result {
-            Ok(buf) => {
-                assert_eq!(&buf[..], expected_result);
-            }
-            Err(_) => unreachable!(),
-        }
+        assert_eq!(encode_result.data, expected_result);
     }
 
     #[test]

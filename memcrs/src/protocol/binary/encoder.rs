@@ -1,9 +1,6 @@
-use std::io;
 use bytes::{BufMut, Bytes, BytesMut};
-use tokio_util::codec::Encoder;
 use crate::protocol::binary::binary;
 use crate::cache::error::CacheError;
-
 
 /// Server response
 #[derive(Debug)]
@@ -72,7 +69,6 @@ pub struct ResponseMessage {
 }
 
 pub struct MemcacheBinaryEncoder {
-
 }
 
 impl MemcacheBinaryEncoder {
@@ -146,14 +142,6 @@ impl MemcacheBinaryEncoder {
         ResponseMessage { data: dst.freeze() }
     }
 
-    fn write_msg(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
-        self.write_header_impl(self.get_header(msg), dst);
-        self.write_data(msg, dst)
-    }
-
-    pub fn write_header(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
-        self.write_header_impl(self.get_header(msg), dst)
-    }
 
     fn write_header_impl(&self, header: &binary::ResponseHeader, dst: &mut BytesMut) {
         dst.put_u8(header.magic);
@@ -165,49 +153,6 @@ impl MemcacheBinaryEncoder {
         dst.put_u32(header.body_length);
         dst.put_u32(header.opaque);
         dst.put_u64(header.cas);
-    }
-
-    fn write_data(&self, msg: &BinaryResponse, dst: &mut BytesMut) {
-        match msg {
-            BinaryResponse::Error(response) => {
-                dst.put(response.error.as_bytes());
-            }
-            BinaryResponse::Get(response)
-            | BinaryResponse::GetKey(response)
-            | BinaryResponse::GetKeyQuietly(response)
-            | BinaryResponse::GetQuietly(response) => {
-                dst.put_u32(response.flags);
-                dst.put_slice(&response.key[..]);
-                dst.put(response.value.clone());
-            }
-            BinaryResponse::Set(_response)
-            | BinaryResponse::Replace(_response)
-            | BinaryResponse::Add(_response)
-            | BinaryResponse::Append(_response)
-            | BinaryResponse::Prepend(_response) => {}
-            BinaryResponse::Version(response) => {
-                dst.put_slice(response.version.as_bytes());
-            }
-            BinaryResponse::Noop(_response) => {}
-            BinaryResponse::Delete(_response) => {}
-            BinaryResponse::Flush(_response) => {}
-            BinaryResponse::Quit(_response) => {}
-            BinaryResponse::Stats(_response) => {}
-            BinaryResponse::Increment(response) | BinaryResponse::Decrement(response) => {
-                dst.put_u64(response.value);
-            }
-        }
-    }
-}
-
-impl Encoder<BinaryResponse> for MemcacheBinaryEncoder {
-    //type Item = BinaryResponse;
-    type Error = io::Error;
-
-    fn encode(&mut self, msg: BinaryResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        dst.reserve(self.get_length(&msg));
-        self.write_msg(&msg, dst);
-        Ok(())
     }
 }
 
