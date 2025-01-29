@@ -10,5 +10,6 @@ pub mod protocol;
 pub mod server;
 pub mod version;
 
-#[cfg(test)]
-mod mock;
+#[cfg(any(test, feature = "criterion"))]
+pub mod mock;
+

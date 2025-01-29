@@ -344,30 +344,31 @@ impl BinaryHandler {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(any(test, feature = "criterion"))]
+pub mod mock {
     use super::binary;
     use super::decoder;
     use super::*;
-    use crate::cache::error;
     use crate::mock::mock_server::create_dash_map_storage;
     use crate::mock::mock_server::create_moka_storage;
-    use crate::mock::value::from_string;
-    use test_case::test_case;
+    use crate::protocol::binary::decoder::BinaryRequest;
 
     use bytes::Bytes;
-
     const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
-    fn create_dash_map_handler() -> BinaryHandler {
+    pub fn create_dash_map_handler() -> BinaryHandler {
         BinaryHandler::new(create_dash_map_storage())
     }
 
-    fn create_moka_handler() -> BinaryHandler {
+    pub fn create_moka_handler() -> BinaryHandler {
         BinaryHandler::new(create_moka_storage())
     }
 
-    fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
+    pub fn create_get_request(header: binary::RequestHeader, key: Bytes) -> BinaryRequest {
+        decoder::BinaryRequest::Get(binary::GetRequest { header, key: key.clone() })
+    }
+
+    pub fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
         binary::RequestHeader {
             magic: binary::Magic::Request as u8,
             opcode: opcode as u8,
@@ -381,7 +382,7 @@ mod tests {
         }
     }
 
-    fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
+    pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
         let header = create_header(binary::Command::Get, &key);
         let request = decoder::BinaryRequest::Get(binary::GetRequest { header, key });
 
@@ -399,7 +400,7 @@ mod tests {
         }
     }
 
-    fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
+    pub fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let request = decoder::BinaryRequest::SetQuietly(binary::SetRequest {
@@ -415,7 +416,7 @@ mod tests {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn check_header(
+    pub fn check_header(
         response: &binary::ResponseHeader,
         opcode: binary::Command,
         key_length: u16,
@@ -433,6 +434,18 @@ mod tests {
         assert_eq!(response.body_length, body_length);
         assert_eq!(response.opaque, OPAQUE_VALUE);
     }
+}
+#[cfg(test)]
+mod tests {
+    use super::binary;
+    use super::decoder;
+    use super::*;
+    use super::mock::*;
+    use crate::cache::error;
+    use crate::mock::value::from_string;
+    use test_case::test_case;
+
+    use bytes::Bytes;
 
     #[test_case(create_moka_handler() ; "moka_backend")]
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
