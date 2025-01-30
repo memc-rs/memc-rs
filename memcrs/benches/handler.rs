@@ -90,7 +90,7 @@ fn criterion_simple_random_set(c: &mut Criterion) {
     let moka_handler: BinaryHandler = create_moka_handler();
     
     let mut group = c.benchmark_group("criterion_simple_random_set");
-    for size in [KB, 4*KB, 8*KB].iter() {
+    for size in [KB, 2*KB, 4*KB].iter() {
         group.throughput(Throughput::Elements(*size as u64));
         let values = generate_random_key_values(*size);
         group.bench_with_input(
