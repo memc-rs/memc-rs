@@ -400,6 +400,18 @@ pub mod mock {
         }
     }
 
+    pub fn create_set_request(key: Bytes, value: Bytes) -> decoder::BinaryRequest {
+        let header = create_header(binary::Command::Set, &key);
+        const FLAGS: u32 = 0xDEAD_BEEF;
+        decoder::BinaryRequest::Set(binary::SetRequest {
+            header,
+            key,
+            flags: FLAGS,
+            expiration: 0,
+            value: value.clone(),
+        })
+    }
+
     pub fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
         let header = create_header(binary::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
