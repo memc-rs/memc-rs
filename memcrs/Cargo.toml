@@ -25,14 +25,14 @@ num-derive = "0.4.2"
 num-traits = "0.2.19"
 quick_cache = "0.6.9"
 moka = { version = "0.12.10", features = ["sync"] }
-rand = { version = "0.8.5", features = ["small_rng"] }
+rand = { version = "0.9.0", features = ["small_rng"] }
 serde = "1.0.217"
 serde_derive = "1.0.217"
 tracing = "0.1.41"
 tracing-attributes = "0.1.28"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.19", default-features = false, features = ["std", "fmt"] }
-tokio = { version = "1.42.0", features = ["full"] }
+tokio = { version = "1.43.0", features = ["full"] }
 tokio-util = { version = "0.7.13", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]

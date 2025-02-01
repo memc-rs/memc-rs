@@ -143,10 +143,10 @@ pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer
 }
 
 pub fn create_value_with_size(size: usize) -> String {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut value =  String::with_capacity(size);
     for _ in 0..size {
-        let random_char = rng.gen_range(b'a'..=b'z') as char;
+        let random_char = rng.random_range(b'a'..=b'z') as char;
         value.push(random_char);
     }
     value

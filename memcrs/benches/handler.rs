@@ -23,10 +23,10 @@ fn generate_random_key_values(capacity: usize) -> Vec<KeyValue> {
 }
 
 pub fn create_random_value(capacity: usize) -> Bytes {
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     let mut value =  BytesMut::with_capacity(capacity);
     for _ in 0..capacity {
-        let random_char = rng.gen_range(b'a'..=b'z') as u8;
+        let random_char = rng.random_range(b'a'..=b'z') as u8;
         value.put_u8(random_char);
     }
     value.freeze()
