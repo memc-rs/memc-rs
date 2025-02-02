@@ -1,5 +1,8 @@
 procspawn::enable_test_support!();
+use std::time::{Instant};
+
 use common::create_value_with_size;
+use memcrs::{mock::key_value::generate_random_with_max_size};
 mod common;
 
 #[test]
@@ -111,16 +114,34 @@ fn set_item_too_large() {
 }
 
 #[test]
-fn insert_one_milion_keys() {
+fn insert_10k_values() {
     let params_builder: common::MemcrsdServerParamsBuilder =
-        common::MemcrsdServerParamsBuilder::new();
+    common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
-    // flush the database
-    client.flush().unwrap();
+    let connection_str = std::sync::Arc::new(std::sync::Mutex::new(server_handle.get_connection_string()));
+    let mut thread_handles: Vec<std::thread::JoinHandle<()>> = Vec::new();
+    
+    for _i in 0..4 {
+        let cs = std::sync::Arc::clone(&connection_str);
+        let handle = std::thread::spawn(move || {
+            let conn_str = cs.lock().unwrap().clone();
+            let client = memcache::connect(conn_str).unwrap();
 
-    assert_eq!(result.len(), 3);
-    assert_eq!(result["foo1"], "bar1");
-    assert_eq!(result["foo2"], "bar2");
-    assert_eq!(result["foo3"], "bar3");
+            let key_values = generate_random_with_max_size(10*1000, 200, 1024*5);
+            let start = Instant::now();
+            key_values.iter().for_each(|key_value| {
+                let key = std::str::from_utf8(&key_value.key).unwrap();
+                let value = std::str::from_utf8(&key_value.value).unwrap();
+                client.set(key, value, 0).unwrap();
+            });
+            let end = start.elapsed();
+            println!("[{:?}]: Time taken: {}", std::thread::current().id(), end.as_millis());
+        });
+        thread_handles.push(handle);
+    }
+
+    thread_handles.into_iter().for_each(|handler| {
+        handler.join().unwrap();
+    });
+
 }
