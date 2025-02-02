@@ -1,35 +1,15 @@
-use bytes::{BufMut, Bytes, BytesMut};
+
+use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, Criterion};
 use criterion::{BenchmarkId, Throughput};
+use memcrs::mock::key_value::{generate_random_with_max_size, KeyValue};
 use memcrs::memcache_server::handler::mock::{create_dash_map_handler, create_set_request};
 use memcrs::memcache_server::handler::mock::{create_get_request_by_key, create_moka_handler};
 use memcrs::memcache_server::handler::BinaryHandler;
 use memcrs::protocol::binary::encoder;
-use rand::Rng;
-
-struct KeyValue {
-    pub key: Bytes,
-    pub value: Bytes,
-}
 
 fn generate_random_key_values(capacity: usize) -> Vec<KeyValue> {
-    let mut values: Vec<KeyValue> = Vec::with_capacity(capacity);
-    for _idx in 0..capacity {
-        let key = create_random_value(200);
-        let value = create_random_value(1024);
-        values.push(KeyValue { key, value });
-    }
-    values
-}
-
-pub fn create_random_value(capacity: usize) -> Bytes {
-    let mut rng = rand::rng();
-    let mut value = BytesMut::with_capacity(capacity);
-    for _ in 0..capacity {
-        let random_char = rng.random_range(b'a'..=b'z') as u8;
-        value.put_u8(random_char);
-    }
-    value.freeze()
+    generate_random_with_max_size(capacity, 200, 1024)
 }
 
 fn test_get(handler: &BinaryHandler, key: &Bytes) {
