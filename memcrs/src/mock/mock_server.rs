@@ -1,9 +1,9 @@
 use crate::memcache::store::MemcStore;
 
-use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
-use crate::memory_store::dash_map_store::DashMapMemoryStore;
-use crate::server::timer;
 use crate::cache::cache::Cache;
+use crate::memory_store::dash_map_store::DashMapMemoryStore;
+use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
+use crate::server::timer;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 
@@ -42,7 +42,6 @@ pub struct MockServer {
 
 impl MockServer {
     pub fn new(store: Arc<dyn Cache + Send + Sync>, timer: Arc<MockSystemTimer>) -> Self {
-
         MockServer {
             timer: timer,
             storage: MemcStore::new(store),

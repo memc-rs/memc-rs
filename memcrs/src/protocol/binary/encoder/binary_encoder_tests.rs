@@ -84,7 +84,7 @@ mod tests {
 
     #[test]
     fn encode_get_key_quiet_response() {
-        let mut expected_result =  BytesMut::with_capacity(512);
+        let mut expected_result = BytesMut::with_capacity(512);
         expected_result.put_slice(&[
             0x81, 0x0d, 0x00, 0x03, // key len
             0x04, // extras len

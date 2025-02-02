@@ -1,6 +1,5 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData,  CacheReadOnlyView, KeyType, Record,
-   SetStatus,
+    impl_details, Cache, CacheMetaData, CacheReadOnlyView, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;

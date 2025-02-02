@@ -2,7 +2,10 @@ extern crate core_affinity;
 use crate::memcache;
 use crate::memcache_server;
 use crate::server;
-use crate::{cache::cache::Cache, memcache::cli::parser::RuntimeType, cache::pending_tasks_runner::PendingTasksRunner};
+use crate::{
+    cache::cache::Cache, cache::pending_tasks_runner::PendingTasksRunner,
+    memcache::cli::parser::RuntimeType,
+};
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -100,9 +103,10 @@ fn create_threadpool_server(
         config.backlog_limit,
     );
     let runtime = create_multi_thread_runtime(config.threads);
-    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, Arc::clone(&store));
+    let mut tcp_server =
+        memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, Arc::clone(&store));
     let task_runner = PendingTasksRunner::new(Arc::clone(&store));
-    runtime.spawn(async move { task_runner.run().await});
+    runtime.spawn(async move { task_runner.run().await });
     runtime.spawn(async move { tcp_server.run(addr).await });
     runtime
 }
@@ -111,8 +115,11 @@ pub fn create_memcrs_server(
     config: MemcrsdConfig,
     system_timer: std::sync::Arc<server::timer::SystemTimer>,
 ) -> tokio::runtime::Runtime {
-    let store_config =
-        memcache::builder::MemcacheStoreConfig::new(config.store_engine, config.memory_limit, config.eviction_policy);
+    let store_config = memcache::builder::MemcacheStoreConfig::new(
+        config.store_engine,
+        config.memory_limit,
+        config.eviction_policy,
+    );
     let memcache_store =
         memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
 

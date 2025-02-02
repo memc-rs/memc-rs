@@ -9,11 +9,11 @@ mod tests {
     struct DecodeParams {
         pub item_size_limit: u32,
     }
-    
+
     fn create_default_params() -> DecodeParams {
         println!("Test setup ...");
         DecodeParams {
-            item_size_limit: ITEM_SIZE_LIMIT
+            item_size_limit: ITEM_SIZE_LIMIT,
         }
     }
 
@@ -22,7 +22,10 @@ mod tests {
         decode_packet_with_params(src, params)
     }
 
-    fn decode_packet_with_params(src: &[u8], decoder_params: DecodeParams) -> Result<Option<BinaryRequest>, io::Error> {
+    fn decode_packet_with_params(
+        src: &[u8],
+        decoder_params: DecodeParams,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
         let mut decoder = MemcacheBinaryDecoder::new(decoder_params.item_size_limit);
         let mut buf = BytesMut::with_capacity(src.len());
         buf.put_slice(&src);
@@ -1076,7 +1079,8 @@ mod tests {
         ];
         let mut decode_params = create_default_params();
         decode_params.item_size_limit = 0x0f;
-        let decode_result = decode_packet_with_params(&set_item_too_large_request_packet, decode_params);
+        let decode_result =
+            decode_packet_with_params(&set_item_too_large_request_packet, decode_params);
         match decode_result {
             Ok(set_request) => {
                 assert!(set_request.is_some());
@@ -1145,8 +1149,10 @@ mod tests {
             assert_eq!(prepend_request.key, Bytes::from_static(key));
             assert_eq!(prepend_request.value, Bytes::from_static(value));
         } else {
-            panic!("Expected BinaryRequest::PrependQuietly, but got {:?}", request);
+            panic!(
+                "Expected BinaryRequest::PrependQuietly, but got {:?}",
+                request
+            );
         }
     }
 }
-

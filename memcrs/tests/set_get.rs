@@ -4,11 +4,10 @@ mod common;
 
 #[test]
 fn set_get_check() {
-    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client =
-        memcache::connect(server_handle.get_connection_string())
-            .unwrap();
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
     // flush the database
     client.flush().unwrap();
 
@@ -23,11 +22,10 @@ fn set_get_check() {
 
 #[test]
 fn set_gets_check() {
-    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client =
-        memcache::connect(server_handle.get_connection_string())
-            .unwrap();
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
     // flush the database
     client.flush().unwrap();
 
@@ -37,7 +35,8 @@ fn set_gets_check() {
     client.set("foo3", "bar3", 0).unwrap();
 
     // retrieve from memcached:
-    let result: std::collections::HashMap<String, String> = client.gets(&["foo1", "foo2", "foo3"]).unwrap();
+    let result: std::collections::HashMap<String, String> =
+        client.gets(&["foo1", "foo2", "foo3"]).unwrap();
     assert_eq!(result.len(), 3);
     assert_eq!(result["foo1"], "bar1");
     assert_eq!(result["foo2"], "bar2");
@@ -46,12 +45,11 @@ fn set_gets_check() {
 
 #[test]
 fn max_item_check() {
-    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client =
-        memcache::connect(server_handle.get_connection_string())
-            .unwrap();
-    
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
+
     // flush the database
     client.flush().unwrap();
 
@@ -60,7 +58,7 @@ fn max_item_check() {
 
     // set a string value
     client.set("foo", &value, 0).unwrap();
-    
+
     // retrieve from memcached:
     let server_value: Option<String> = client.get("foo").unwrap();
     assert_eq!(server_value, Some(value.clone()));
@@ -69,49 +67,45 @@ fn max_item_check() {
 
 #[test]
 fn set_item_too_large() {
-    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client =
-        memcache::connect(server_handle.get_connection_string())
-            .unwrap();
-    
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
+
     // flush the database
     client.flush().unwrap();
 
     let item_size = 1048565; // 3 characters reserved for key "foo" and binary protocol data
-    let value =  create_value_with_size(item_size);
-    
+    let value = create_value_with_size(item_size);
+
     // set a string value
     client.set("foo", &value, 0).unwrap();
-    
+
     // retrieve from memcached:
     let server_value: Option<String> = client.get("foo").unwrap();
-    
+
     assert_eq!(server_value.unwrap(), value.clone());
 
-    let item_size_too_large = 1024+(1024*1024); 
-    let value_too_large =  create_value_with_size(item_size_too_large);
+    let item_size_too_large = 1024 + (1024 * 1024);
+    let value_too_large = create_value_with_size(item_size_too_large);
 
     // set a string value
     let result = client.set("foo", &value_too_large, 0);
     match result {
         Ok(_res) => {
             unreachable!();
-        },
-        Err(err) => {
-            match err {
-                memcache::MemcacheError::CommandError(cmd) => {
-                    assert_eq!(cmd, memcache::CommandError::ValueTooLarge);
-                },
-                _ => {
-                    assert_eq!(true, false);
-                }
-            }
         }
+        Err(err) => match err {
+            memcache::MemcacheError::CommandError(cmd) => {
+                assert_eq!(cmd, memcache::CommandError::ValueTooLarge);
+            }
+            _ => {
+                assert_eq!(true, false);
+            }
+        },
     }
-    
+
     // retrieve from memcached:
     let server_value: Option<String> = client.get("foo").unwrap();
     assert_eq!(server_value.unwrap(), value.clone());
-    
 }

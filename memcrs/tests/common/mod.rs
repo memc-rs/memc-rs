@@ -1,18 +1,23 @@
-use std::sync::Mutex;
-use memcrs::{cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType, memory_store::StoreEngine, server};
+use lazy_static::lazy_static;
+use memcrs::{
+    cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType,
+    memory_store::StoreEngine, server,
+};
 use procspawn::SpawnError;
 use rand::Rng;
-use lazy_static::lazy_static;
+use std::sync::Mutex;
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
-    port: u16
+    port: u16,
 }
 
 impl MemcrsdTestServer {
-
     fn new(process_handle: procspawn::JoinHandle<()>, port: u16) -> MemcrsdTestServer {
-        MemcrsdTestServer { process_handle, port }
+        MemcrsdTestServer {
+            process_handle,
+            port,
+        }
     }
 
     fn kill(&mut self) -> Result<(), SpawnError> {
@@ -20,7 +25,10 @@ impl MemcrsdTestServer {
     }
 
     pub fn get_connection_string(&self) -> String {
-        String::from(format!("memcache://127.0.0.1:{}?timeout=5&tcp_nodelay=true&protocol=binary", self.port))
+        String::from(format!(
+            "memcache://127.0.0.1:{}?timeout=5&tcp_nodelay=true&protocol=binary",
+            self.port
+        ))
     }
 }
 
@@ -40,16 +48,16 @@ pub struct MemcrsdServerParamsBuilder {
     policy: EvictionPolicy,
     runtime: RuntimeType,
     memory_limit: u64,
-    port: u16
+    port: u16,
 }
 
 impl MemcrsdServerParamsBuilder {
     pub fn new() -> MemcrsdServerParamsBuilder {
-        MemcrsdServerParamsBuilder{
+        MemcrsdServerParamsBuilder {
             engine: StoreEngine::DashMap,
             policy: EvictionPolicy::None,
             runtime: RuntimeType::CurrentThread,
-            memory_limit: 1024*1024*64,
+            memory_limit: 1024 * 1024 * 64,
             port: 11211,
         }
     }
@@ -84,7 +92,7 @@ impl MemcrsdServerParamsBuilder {
             StoreEngine::DashMap => {
                 result.push(String::from("--store-engine"));
                 result.push(String::from("dash-map"));
-            },
+            }
             StoreEngine::Moka => {
                 result.push(String::from("--store-engine"));
                 result.push(String::from("moka"));
@@ -95,7 +103,7 @@ impl MemcrsdServerParamsBuilder {
             RuntimeType::CurrentThread => {
                 result.push(String::from("--runtime-type"));
                 result.push(String::from("current-thread"));
-            },
+            }
             RuntimeType::MultiThread => {
                 result.push(String::from("--runtime-type"));
                 result.push(String::from("multi-thread"));
@@ -123,7 +131,7 @@ impl PseudoRandomMemcrsdPort {
             port: STARTING_PORT,
         }
     }
-    
+
     fn get_next_port(&mut self) -> u16 {
         self.port += 10;
         self.port
@@ -131,7 +139,8 @@ impl PseudoRandomMemcrsdPort {
 }
 
 lazy_static! {
-    static ref pseudoRanomPort: Mutex<PseudoRandomMemcrsdPort> = Mutex::new(PseudoRandomMemcrsdPort::new());
+    static ref pseudoRanomPort: Mutex<PseudoRandomMemcrsdPort> =
+        Mutex::new(PseudoRandomMemcrsdPort::new());
 }
 
 pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer {
@@ -144,7 +153,7 @@ pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer
 
 pub fn create_value_with_size(size: usize) -> String {
     let mut rng = rand::rng();
-    let mut value =  String::with_capacity(size);
+    let mut value = String::with_capacity(size);
     for _ in 0..size {
         let random_char = rng.random_range(b'a'..=b'z') as char;
         value.push(random_char);

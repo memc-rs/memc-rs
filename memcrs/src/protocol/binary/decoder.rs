@@ -1,7 +1,7 @@
-use std::io;
 use crate::protocol::binary::binary;
 use bytes::{Buf, BytesMut};
 use num_traits::FromPrimitive;
+use std::io;
 use std::io::{Error, ErrorKind};
 use tokio_util::codec::Decoder;
 
@@ -76,9 +76,6 @@ impl BinaryRequest {
         }
     }
 }
-
-
-
 
 #[derive(PartialEq, Debug)]
 enum RequestParserState {
@@ -554,4 +551,3 @@ impl Decoder for MemcacheBinaryDecoder {
 
 #[cfg(test)]
 mod binary_decoder_tests;
-

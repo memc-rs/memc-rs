@@ -4,7 +4,7 @@ use clap::ValueEnum;
 pub enum EvictionPolicy {
     None,
     TinyLeastFrequentlyUsed,
-    LeastRecentylUsed
+    LeastRecentylUsed,
 }
 
 impl EvictionPolicy {

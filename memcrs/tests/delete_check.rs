@@ -3,11 +3,10 @@ mod common;
 
 #[test]
 fn delete_check() {
-    let params_builder: common::MemcrsdServerParamsBuilder = common::MemcrsdServerParamsBuilder::new();
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);
-    let client =
-        memcache::connect(server_handle.get_connection_string())
-            .unwrap();
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
     // flush the database
     client.flush().unwrap();
 

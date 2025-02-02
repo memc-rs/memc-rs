@@ -21,9 +21,7 @@ fn into_quiet_get(response: encoder::BinaryResponse) -> Option<encoder::BinaryRe
     Some(response)
 }
 
-fn into_quiet_mutation(
-    response: encoder::BinaryResponse,
-) -> Option<encoder::BinaryResponse> {
+fn into_quiet_mutation(response: encoder::BinaryResponse) -> Option<encoder::BinaryResponse> {
     if let encoder::BinaryResponse::Error(_resp) = &response {
         return Some(response);
     }
@@ -39,10 +37,7 @@ impl BinaryHandler {
         BinaryHandler { storage: store }
     }
 
-    pub fn handle_request(
-        &self,
-        req: decoder::BinaryRequest,
-    ) -> Option<encoder::BinaryResponse> {
+    pub fn handle_request(&self, req: decoder::BinaryRequest) -> Option<encoder::BinaryResponse> {
         let request_header = req.get_header();
         let mut response_header =
             binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
@@ -127,16 +122,15 @@ impl BinaryHandler {
             }
             decoder::BinaryRequest::Version(_version_request) => {
                 response_header.body_length = MEMCRS_VERSION.len() as u32;
-                Some(encoder::BinaryResponse::Version(
-                    binary::VersionResponse {
-                        header: response_header,
-                        version: String::from(MEMCRS_VERSION),
-                    },
-                ))
+                Some(encoder::BinaryResponse::Version(binary::VersionResponse {
+                    header: response_header,
+                    version: String::from(MEMCRS_VERSION),
+                }))
             }
-            decoder::BinaryRequest::ItemTooLarge(_set_request) => Some(
-                storage_error_to_response(CacheError::ValueTooLarge, &mut response_header),
-            ),
+            decoder::BinaryRequest::ItemTooLarge(_set_request) => Some(storage_error_to_response(
+                CacheError::ValueTooLarge,
+                &mut response_header,
+            )),
         }
     }
 
@@ -365,7 +359,10 @@ pub mod mock {
     }
 
     pub fn create_get_request(header: binary::RequestHeader, key: Bytes) -> BinaryRequest {
-        decoder::BinaryRequest::Get(binary::GetRequest { header, key: key.clone() })
+        decoder::BinaryRequest::Get(binary::GetRequest {
+            header,
+            key: key.clone(),
+        })
     }
 
     pub fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
@@ -414,7 +411,10 @@ pub mod mock {
 
     pub fn create_get_request_by_key(key: &Bytes) -> BinaryRequest {
         let header = create_header(binary::Command::Get, &key);
-        decoder::BinaryRequest::Get(binary::GetRequest { header, key: key.clone() })
+        decoder::BinaryRequest::Get(binary::GetRequest {
+            header,
+            key: key.clone(),
+        })
     }
 
     pub fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
@@ -456,8 +456,8 @@ pub mod mock {
 mod tests {
     use super::binary;
     use super::decoder;
-    use super::*;
     use super::mock::*;
+    use super::*;
     use crate::cache::error;
     use crate::mock::value::from_string;
     use test_case::test_case;
@@ -493,8 +493,7 @@ mod tests {
         let key = Bytes::from("key");
         let header = create_header(binary::Command::GetQuiet, &key);
 
-        let request =
-            decoder::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
+        let request = decoder::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
 
         let result = handler.handle_request(request);
         assert!(result.is_none());
@@ -1252,5 +1251,4 @@ mod tests {
             None => unreachable!(),
         }
     }
-
 }

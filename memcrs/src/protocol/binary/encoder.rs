@@ -1,6 +1,6 @@
-use bytes::{BufMut, Bytes, BytesMut};
-use crate::protocol::binary::binary;
 use crate::cache::error::CacheError;
+use crate::protocol::binary::binary;
+use bytes::{BufMut, Bytes, BytesMut};
 
 /// Server response
 #[derive(Debug)]
@@ -68,15 +68,13 @@ pub struct ResponseMessage {
     pub(crate) data: Bytes,
 }
 
-pub struct MemcacheBinaryEncoder {
-}
+pub struct MemcacheBinaryEncoder {}
 
 impl MemcacheBinaryEncoder {
     const RESPONSE_HEADER_LEN: usize = 24;
 
     pub fn new() -> MemcacheBinaryEncoder {
-        MemcacheBinaryEncoder {
-        }
+        MemcacheBinaryEncoder {}
     }
 
     pub fn get_length(&self, msg: &BinaryResponse) -> usize {
@@ -141,7 +139,6 @@ impl MemcacheBinaryEncoder {
         }
         ResponseMessage { data: dst.freeze() }
     }
-
 
     fn write_header_impl(&self, header: &binary::ResponseHeader, dst: &mut BytesMut) {
         dst.put_u8(header.magic);

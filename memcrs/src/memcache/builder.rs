@@ -1,7 +1,7 @@
-use crate::cache::eviction_policy::EvictionPolicy;
 use crate::cache::cache::Cache;
-use crate::memory_store::dash_map_store::{DashMapMemoryStore as DashMapStore};
-use crate::memory_store::moka_store::{MokaMemoryStore as MokaStore};
+use crate::cache::eviction_policy::EvictionPolicy;
+use crate::memory_store::dash_map_store::DashMapMemoryStore as DashMapStore;
+use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
 use crate::memory_store::StoreEngine;
 use crate::server::timer;
 use std::sync::Arc;
@@ -13,7 +13,11 @@ pub struct MemcacheStoreConfig {
 }
 
 impl MemcacheStoreConfig {
-    pub fn new(engine: StoreEngine, memory_limit: u64, policy: EvictionPolicy) -> MemcacheStoreConfig {
+    pub fn new(
+        engine: StoreEngine,
+        memory_limit: u64,
+        policy: EvictionPolicy,
+    ) -> MemcacheStoreConfig {
         MemcacheStoreConfig {
             engine,
             policy,
@@ -34,14 +38,9 @@ impl MemcacheStoreBuilder {
         config: MemcacheStoreConfig,
         timer: Arc<dyn timer::Timer + Send + Sync>,
     ) -> Arc<dyn Cache + Send + Sync> {
-
         let store: Arc<dyn Cache + Send + Sync> = match config.engine {
-            StoreEngine::DashMap => {
-                Arc::new(DashMapStore::new(timer))
-            },
-            StoreEngine::Moka => {
-                Arc::new(MokaStore::new(timer, config.memory_limit))
-            }
+            StoreEngine::DashMap => Arc::new(DashMapStore::new(timer)),
+            StoreEngine::Moka => Arc::new(MokaStore::new(timer, config.memory_limit)),
         };
         store
     }

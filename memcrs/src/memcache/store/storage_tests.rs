@@ -1,5 +1,7 @@
 use super::*;
-use crate::mock::mock_server::{MockServer, SetableTimer, create_moka_server, create_dash_map_server};
+use crate::mock::mock_server::{
+    create_dash_map_server, create_moka_server, MockServer, SetableTimer,
+};
 use crate::mock::value::{from_slice, from_string};
 use bytes::{BufMut, BytesMut};
 use test_case::test_case;
@@ -7,10 +9,10 @@ use test_case::test_case;
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn if_not_defined_cas_should_be_1(server: MockServer) {
-    
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
-    let result: std::result::Result<CacheSetStatus, CacheError> = server.storage.set(key.clone(), record.clone());
+    let result: std::result::Result<CacheSetStatus, CacheError> =
+        server.storage.set(key.clone(), record.clone());
     assert!(result.is_ok());
     let found = server.storage.get(&key);
     assert!(found.is_ok());
@@ -278,7 +280,6 @@ fn prepend_should_fail_if_not_exist(server: MockServer) {
     }
 }
 
-
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn append_should_add_at_the_end(server: MockServer) {
@@ -303,7 +304,6 @@ fn append_should_add_at_the_end(server: MockServer) {
         Err(_) => unreachable!(),
     }
 }
-
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
@@ -330,7 +330,6 @@ fn prepend_should_add_at_the_begining(server: MockServer) {
     }
 }
 
-
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn increment_if_counter_doesnt_exists_it_should_created(server: MockServer) {
@@ -352,7 +351,6 @@ fn increment_if_counter_doesnt_exists_it_should_created(server: MockServer) {
     }
 }
 
-
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn increment_if_expire_equals_ffffffff_counter_should_not_be_created(server: MockServer) {
@@ -369,7 +367,6 @@ fn increment_if_expire_equals_ffffffff_counter_should_not_be_created(server: Moc
         }
     }
 }
-
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
@@ -399,7 +396,6 @@ fn increment_value_should_be_incremented(server: MockServer) {
     }
 }
 
-
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn increment_if_value_is_not_number_it_should_be_error(server: MockServer) {
@@ -425,7 +421,6 @@ fn increment_if_value_is_not_number_it_should_be_error(server: MockServer) {
     }
 }
 
-
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn increment_if_value_cannot_be_parsed_it_should_be_error(server: MockServer) {
@@ -450,7 +445,6 @@ fn increment_if_value_cannot_be_parsed_it_should_be_error(server: MockServer) {
         }
     }
 }
-
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
@@ -478,7 +472,6 @@ fn decrement_should_not_result_in_negative_value(server: MockServer) {
         }
     }
 }
-
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]

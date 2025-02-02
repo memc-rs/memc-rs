@@ -1,9 +1,5 @@
-use crate::protocol::binary::decoder::{
-    BinaryRequest, MemcacheBinaryDecoder, 
-};
-use crate::protocol::binary::encoder::{
-     BinaryResponse, MemcacheBinaryEncoder, ResponseMessage,
-};
+use crate::protocol::binary::decoder::{BinaryRequest, MemcacheBinaryDecoder};
+use crate::protocol::binary::encoder::{BinaryResponse, MemcacheBinaryEncoder, ResponseMessage};
 use bytes::BytesMut;
 use std::cmp;
 use std::io;

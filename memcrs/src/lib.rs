@@ -12,4 +12,3 @@ pub mod version;
 
 #[cfg(any(test, feature = "criterion"))]
 pub mod mock;
-

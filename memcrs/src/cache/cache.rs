@@ -93,7 +93,6 @@ pub mod impl_details {
     }
 }
 
-
 // An abstraction over a generic store key <=> value store
 pub trait Cache: impl_details::CacheImplDetails {
     /// Returns a value associated with a key
@@ -136,7 +135,7 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// Number of key value pairs stored in store
     fn len(&self) -> usize;
 
-    // Is cache empty? 
+    // Is cache empty?
     fn is_empty(&self) -> bool;
 
     /// Returns a read-only view over a store

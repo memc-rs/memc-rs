@@ -30,7 +30,7 @@ pub fn run(args: Vec<String>) {
     LogTracer::init().expect("Cannot initialize logger");
 
     println!("{:?}", args);
-    
+
     let cli_config = match memcache::cli::parser::parse(args) {
         Ok(config) => config,
         Err(err) => {
