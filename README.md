@@ -110,6 +110,9 @@ memcrsd project is tested using different types of tests:
 * fuzzy testing,
 * end-2-end tests
 
+### Unit testing
+
+
 ### Fuzzy testing
 
 At the moment decoding network packets is fuzzy tested.
@@ -134,20 +137,20 @@ To generate test coverage there is a convenient shell script that compiles and e
 ```sh
 cd memcrs
 ./coverage.sh
-firefox ../target/debug/coverage/index.html
+firefox ./target/llvm-cov/html/index.html
 ```
 
-To be able to produce coverage reports `grcov` tool needs to be installed:
+Coverage reporting is generated using cargo llvm-cov tool. Alternatively one can execute it from shell:
 
 ```sh
-cargo install grcov
+cargo llvm-cov test --lib && cargo llvm-cov report --html
 ```
 
 The plan in the future is to have coverage ~90%.
 
 ### Integration testing
 
-For end-to-end integration testing at the moment memcrsd see tests in tests directory.
+For end-to-end integration testing we are using most popular Rust client library memcache[https://crates.io/crates/memcache]. See tests directory for further details.
 
 ## Measuring performance
 
