@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq)]
 pub enum EvictionPolicy {
     None,
     TinyLeastFrequentlyUsed,

@@ -76,8 +76,12 @@ pub struct MemcrsdConfig {
     /// eviction policy to use
     pub eviction_policy: EvictionPolicy,
 
-    #[arg(short, long, value_name = "STORE-ENGINE", value_parser = parse_store_engine, default_value_t = StoreEngine::DashMap, value_enum)]
+    #[arg(short, long, value_name = "STORE-ENGINE",  verbatim_doc_comment, value_parser = parse_store_engine, default_value_t = StoreEngine::DashMap, value_enum)]
     /// store engine to be used
+    ///
+    /// Possible values:
+    /// - dash-map: store will use dash-map implementation
+    /// - moka: store will use moka implementation 
     pub store_engine: StoreEngine,
 }
 
@@ -135,10 +139,132 @@ pub fn parse(args: Vec<String>) -> Result<MemcrsdConfig, String> {
 
 #[cfg(test)]
 mod tests {
+    use std::error::Error;
+
     use super::*;
     use clap::CommandFactory;
     #[test]
     fn verify_cli() {
         MemcrsdConfig::command().debug_assert()
     }
+
+    #[test]
+    fn test_default_config() {
+        // Test if the default values are parsed correctly
+        let args: Vec<String> = vec![];
+        let config = parse(args).unwrap();
+
+        // Assert default values
+        assert_eq!(config.port, DEFAULT_PORT);
+        assert_eq!(config.connection_limit, CONNECTION_LIMIT);
+        assert_eq!(config.backlog_limit, LISTEN_BACKLOG);
+        assert_eq!(config.memory_limit, parse_memory_mb(MEMORY_LIMIT).unwrap());
+        assert_eq!(config.item_size_limit, parse_memory_mb(MAX_ITEM_SIZE).unwrap());
+        assert_eq!(config.threads, get_default_threads_number());
+        assert_eq!(config.verbose, 1);
+        assert_eq!(config.listen_address, DEFAULT_ADDRESS.parse::<IpAddr>().unwrap());
+        assert_eq!(config.runtime_type, RuntimeType::CurrentThread);
+        assert_eq!(config.eviction_policy, EvictionPolicy::None);
+        assert_eq!(config.store_engine, StoreEngine::DashMap);
+    }
+
+    #[test]
+    fn test_custom_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "8080".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.port, 8080);
+    }
+
+    #[test]
+    fn test_invalid_port() {
+        // Test if an invalid port gives an error
+        let args = vec!["".to_string(), "--port".to_string(), "70000".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+        assert!(result.is_err());
+
+        let error = result.unwrap_err();
+        let source = error.source().unwrap();
+        assert_eq!(source.to_string(), "port not in range 1-65535");
+    }
+
+    #[test]
+    fn test_memory_limit_parsing() {
+        // Test if the memory limit is parsed correctly
+        let args = vec!["".to_string(), "--memory-limit".to_string(), "128MiB".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.memory_limit, parse_memory_mb("128MiB").unwrap());
+    }
+
+    #[test]
+    fn test_invalid_memory_limit() {
+        // Test if an invalid memory limit results in an error
+        let args = vec!["".to_string(), "--memory-limit".to_string(), "invalid".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_runtime_type() {
+        // Test if the runtime type is parsed correctly
+        let args = vec!["".to_string(), "--runtime-type".to_string(), "multi-thread".to_string()];
+        let config = MemcrsdConfig::try_parse_from(args).unwrap();
+
+        assert_eq!(config.runtime_type, RuntimeType::MultiThread);
+    }
+
+    #[test]
+    fn test_eviction_policy() {
+        // Test if the eviction policy is parsed correctly
+        let args = vec!["".to_string(), "--eviction-policy".to_string(), "lru".to_string()];
+        let config = MemcrsdConfig::try_parse_from(args).unwrap();
+
+        assert_eq!(config.eviction_policy, EvictionPolicy::LeastRecentylUsed);
+    }
+
+    #[test]
+    fn test_invalid_eviction_policy() {
+        // Test if an invalid eviction policy results in an error
+        let args = vec!["".to_string(), "--eviction-policy".to_string(), "invalid-policy".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let source = error.source().unwrap();
+        assert_eq!(source.to_string(), "Invalid eviction policy: invalid-policy");
+    }
+
+    #[test]
+    fn test_store_engine() {
+        // Test if the store engine is parsed correctly
+        let args = vec!["".to_string(), "--store-engine".to_string(), "moka".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.store_engine, StoreEngine::Moka);
+    }
+
+    #[test]
+    fn test_invalid_store_engine() {
+        // Test if an invalid store engine results in an error
+        let args = vec!["".to_string(), "--store-engine".to_string(), "invalid-store".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        let source = error.source().unwrap();
+        assert_eq!(source.to_string(), "Invalid store engine selected: invalid-store");
+    }
+
+    #[test]
+    fn test_verbose_flag() {
+        // Test if the verbose flag is parsed correctly
+        let args = vec!["".to_string(), "--verbose".to_string(), "--verbose".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.verbose, 2);
+    }
+
 }
