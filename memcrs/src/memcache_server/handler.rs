@@ -1,14 +1,14 @@
 use crate::cache::error::CacheError;
 use crate::memcache::store;
 use crate::protocol::binary::encoder::storage_error_to_response;
-use crate::protocol::binary::{binary, decoder, encoder};
+use crate::protocol::binary::{network, decoder, encoder};
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
 
 const EXTRAS_LENGTH: u8 = 4;
 
-fn into_record_meta(request_header: &binary::RequestHeader, expiration: u32) -> store::Meta {
+fn into_record_meta(request_header: &network::RequestHeader, expiration: u32) -> store::Meta {
     store::Meta::new(request_header.cas, request_header.opaque, expiration)
 }
 
@@ -40,7 +40,7 @@ impl BinaryHandler {
     pub fn handle_request(&self, req: decoder::BinaryRequest) -> Option<encoder::BinaryResponse> {
         let request_header = req.get_header();
         let mut response_header =
-            binary::ResponseHeader::new(request_header.opcode, request_header.opaque);
+            network::ResponseHeader::new(request_header.opcode, request_header.opaque);
 
         match req {
             decoder::BinaryRequest::Delete(delete_request) => {
@@ -76,22 +76,22 @@ impl BinaryHandler {
                 into_quiet_mutation(self.decrement(dec_request, &mut response_header))
             }
             decoder::BinaryRequest::Noop(_noop_request) => {
-                Some(encoder::BinaryResponse::Noop(binary::NoopResponse {
+                Some(encoder::BinaryResponse::Noop(network::NoopResponse {
                     header: response_header,
                 }))
             }
             decoder::BinaryRequest::Stats(_stat_request) => {
-                Some(encoder::BinaryResponse::Stats(binary::StatsResponse {
+                Some(encoder::BinaryResponse::Stats(network::StatsResponse {
                     header: response_header,
                 }))
             }
             decoder::BinaryRequest::Quit(_quit_req) => {
-                Some(encoder::BinaryResponse::Quit(binary::QuitResponse {
+                Some(encoder::BinaryResponse::Quit(network::QuitResponse {
                     header: response_header,
                 }))
             }
             decoder::BinaryRequest::QuitQuietly(_quit_req) => {
-                into_quiet_mutation(encoder::BinaryResponse::Quit(binary::QuitResponse {
+                into_quiet_mutation(encoder::BinaryResponse::Quit(network::QuitResponse {
                     header: response_header,
                 }))
             }
@@ -122,7 +122,7 @@ impl BinaryHandler {
             }
             decoder::BinaryRequest::Version(_version_request) => {
                 response_header.body_length = MEMCRS_VERSION.len() as u32;
-                Some(encoder::BinaryResponse::Version(binary::VersionResponse {
+                Some(encoder::BinaryResponse::Version(network::VersionResponse {
                     header: response_header,
                     version: String::from(MEMCRS_VERSION),
                 }))
@@ -136,8 +136,8 @@ impl BinaryHandler {
 
     fn add_replace(
         &self,
-        request: binary::SetRequest,
-        response_header: &mut binary::ResponseHeader,
+        request: network::SetRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let record = store::Record::new(
             request.value,
@@ -154,7 +154,7 @@ impl BinaryHandler {
         match result {
             Ok(command_status) => {
                 response_header.cas = command_status.cas;
-                encoder::BinaryResponse::Set(binary::SetResponse {
+                encoder::BinaryResponse::Set(network::SetResponse {
                     header: *response_header,
                 })
             }
@@ -163,13 +163,13 @@ impl BinaryHandler {
     }
 
     fn is_add_command(&self, opcode: u8) -> bool {
-        opcode == binary::Command::Add as u8 || opcode == binary::Command::AddQuiet as u8
+        opcode == network::Command::Add as u8 || opcode == network::Command::AddQuiet as u8
     }
 
     fn append_prepend(
         &self,
-        append_req: binary::AppendRequest,
-        response_header: &mut binary::ResponseHeader,
+        append_req: network::AppendRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let record = store::Record::new(append_req.value, append_req.header.cas, 0, 0);
         let result = if self.is_append(append_req.header.opcode) {
@@ -181,7 +181,7 @@ impl BinaryHandler {
         match result {
             Ok(status) => {
                 response_header.cas = status.cas;
-                encoder::BinaryResponse::Append(binary::AppendResponse {
+                encoder::BinaryResponse::Append(network::AppendResponse {
                     header: *response_header,
                 })
             }
@@ -190,13 +190,13 @@ impl BinaryHandler {
     }
 
     fn is_append(&self, opcode: u8) -> bool {
-        opcode == binary::Command::Append as u8 || opcode == binary::Command::AppendQuiet as u8
+        opcode == network::Command::Append as u8 || opcode == network::Command::AppendQuiet as u8
     }
 
     fn set(
         &self,
-        set_req: binary::SetRequest,
-        response_header: &mut binary::ResponseHeader,
+        set_req: network::SetRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let record = store::Record::new(
             set_req.value,
@@ -208,7 +208,7 @@ impl BinaryHandler {
         match self.storage.set(set_req.key, record) {
             Ok(status) => {
                 response_header.cas = status.cas;
-                encoder::BinaryResponse::Set(binary::SetResponse {
+                encoder::BinaryResponse::Set(network::SetResponse {
                     header: *response_header,
                 })
             }
@@ -218,15 +218,15 @@ impl BinaryHandler {
 
     fn delete(
         &self,
-        delete_request: binary::DeleteRequest,
-        response_header: &mut binary::ResponseHeader,
+        delete_request: network::DeleteRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let result = self.storage.delete(
             delete_request.key,
             into_record_meta(&delete_request.header, 0),
         );
         match result {
-            Ok(_record) => encoder::BinaryResponse::Delete(binary::DeleteResponse {
+            Ok(_record) => encoder::BinaryResponse::Delete(network::DeleteResponse {
                 header: *response_header,
             }),
             Err(err) => storage_error_to_response(err, response_header),
@@ -235,8 +235,8 @@ impl BinaryHandler {
 
     fn get(
         &self,
-        get_request: binary::GetRequest,
-        response_header: &mut binary::ResponseHeader,
+        get_request: network::GetRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let result = self.storage.get(&get_request.key);
 
@@ -252,7 +252,7 @@ impl BinaryHandler {
                 response_header.key_length = key.len() as u16;
                 response_header.extras_length = EXTRAS_LENGTH;
                 response_header.cas = record.header.cas;
-                encoder::BinaryResponse::Get(binary::GetResponse {
+                encoder::BinaryResponse::Get(network::GetResponse {
                     header: *response_header,
                     flags: record.header.flags,
                     key,
@@ -264,25 +264,25 @@ impl BinaryHandler {
     }
 
     fn is_get_key_command(&self, opcode: u8) -> bool {
-        opcode == binary::Command::GetKey as u8 || opcode == binary::Command::GetKeyQuiet as u8
+        opcode == network::Command::GetKey as u8 || opcode == network::Command::GetKeyQuiet as u8
     }
 
     fn flush(
         &self,
-        flush_request: binary::FlushRequest,
-        response_header: &mut binary::ResponseHeader,
+        flush_request: network::FlushRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let meta: store::Meta = store::Meta::new(0, 0, flush_request.expiration);
         self.storage.flush(meta);
-        encoder::BinaryResponse::Flush(binary::FlushResponse {
+        encoder::BinaryResponse::Flush(network::FlushResponse {
             header: *response_header,
         })
     }
 
     fn increment(
         &self,
-        inc_request: binary::IncrementRequest,
-        response_header: &mut binary::ResponseHeader,
+        inc_request: network::IncrementRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let delta = store::IncrementParam {
             delta: inc_request.delta,
@@ -299,7 +299,7 @@ impl BinaryHandler {
                 response_header.body_length =
                     std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
-                encoder::BinaryResponse::Increment(binary::IncrementResponse {
+                encoder::BinaryResponse::Increment(network::IncrementResponse {
                     header: *response_header,
                     value: delta_result.value,
                 })
@@ -310,8 +310,8 @@ impl BinaryHandler {
 
     fn decrement(
         &self,
-        dec_request: binary::IncrementRequest,
-        response_header: &mut binary::ResponseHeader,
+        dec_request: network::IncrementRequest,
+        response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
         let delta = store::IncrementParam {
             delta: dec_request.delta,
@@ -328,7 +328,7 @@ impl BinaryHandler {
                 response_header.body_length =
                     std::mem::size_of::<store::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
-                encoder::BinaryResponse::Decrement(binary::DecrementResponse {
+                encoder::BinaryResponse::Decrement(network::DecrementResponse {
                     header: *response_header,
                     value: delta_result.value,
                 })
@@ -340,7 +340,7 @@ impl BinaryHandler {
 
 #[cfg(any(test, feature = "criterion"))]
 pub mod mock {
-    use super::binary;
+    use super::network;
     use super::decoder;
     use super::*;
     use crate::mock::mock_server::create_dash_map_storage;
@@ -358,16 +358,16 @@ pub mod mock {
         BinaryHandler::new(create_moka_storage())
     }
 
-    pub fn create_get_request(header: binary::RequestHeader, key: Bytes) -> BinaryRequest {
-        decoder::BinaryRequest::Get(binary::GetRequest {
+    pub fn create_get_request(header: network::RequestHeader, key: Bytes) -> BinaryRequest {
+        decoder::BinaryRequest::Get(network::GetRequest {
             header,
             key: key.clone(),
         })
     }
 
-    pub fn create_header(opcode: binary::Command, key: &[u8]) -> binary::RequestHeader {
-        binary::RequestHeader {
-            magic: binary::Magic::Request as u8,
+    pub fn create_header(opcode: network::Command, key: &[u8]) -> network::RequestHeader {
+        network::RequestHeader {
+            magic: network::Magic::Request as u8,
             opcode: opcode as u8,
             key_length: key.len() as u16,
             extras_length: 0,
@@ -380,8 +380,8 @@ pub mod mock {
     }
 
     pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
-        let header = create_header(binary::Command::Get, &key);
-        let request = decoder::BinaryRequest::Get(binary::GetRequest { header, key });
+        let header = create_header(network::Command::Get, &key);
+        let request = decoder::BinaryRequest::Get(network::GetRequest { header, key });
 
         let result = handler.handle_request(request);
         match result {
@@ -398,9 +398,9 @@ pub mod mock {
     }
 
     pub fn create_set_request(key: Bytes, value: Bytes) -> decoder::BinaryRequest {
-        let header = create_header(binary::Command::Set, &key);
+        let header = create_header(network::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
-        decoder::BinaryRequest::Set(binary::SetRequest {
+        decoder::BinaryRequest::Set(network::SetRequest {
             header,
             key,
             flags: FLAGS,
@@ -410,17 +410,17 @@ pub mod mock {
     }
 
     pub fn create_get_request_by_key(key: &Bytes) -> BinaryRequest {
-        let header = create_header(binary::Command::Get, &key);
-        decoder::BinaryRequest::Get(binary::GetRequest {
+        let header = create_header(network::Command::Get, &key);
+        decoder::BinaryRequest::Get(network::GetRequest {
             header,
             key: key.clone(),
         })
     }
 
     pub fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
-        let header = create_header(binary::Command::Set, &key);
+        let header = create_header(network::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
-        let request = decoder::BinaryRequest::SetQuietly(binary::SetRequest {
+        let request = decoder::BinaryRequest::SetQuietly(network::SetRequest {
             header,
             key,
             flags: FLAGS,
@@ -434,15 +434,15 @@ pub mod mock {
 
     #[allow(clippy::too_many_arguments)]
     pub fn check_header(
-        response: &binary::ResponseHeader,
-        opcode: binary::Command,
+        response: &network::ResponseHeader,
+        opcode: network::Command,
         key_length: u16,
         extras_length: u8,
         data_type: u8,
         status: u16,
         body_length: u32,
     ) {
-        assert_eq!(response.magic, binary::Magic::Response as u8);
+        assert_eq!(response.magic, network::Magic::Response as u8);
         assert_eq!(response.opcode, opcode as u8);
         assert_eq!(response.key_length, key_length);
         assert_eq!(response.extras_length, extras_length);
@@ -454,7 +454,7 @@ pub mod mock {
 }
 #[cfg(test)]
 mod tests {
-    use super::binary;
+    use super::network;
     use super::decoder;
     use super::mock::*;
     use super::*;
@@ -468,9 +468,9 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn get_request_should_return_not_found_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::Get, &key);
+        let header = create_header(network::Command::Get, &key);
 
-        let request = decoder::BinaryRequest::Get(binary::GetRequest { header, key });
+        let request = decoder::BinaryRequest::Get(network::GetRequest { header, key });
 
         let result = handler.handle_request(request);
         match result {
@@ -491,9 +491,9 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn get_quiet_request_should_return_none_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::GetQuiet, &key);
+        let header = create_header(network::Command::GetQuiet, &key);
 
-        let request = decoder::BinaryRequest::GetQuietly(binary::GetQuietRequest { header, key });
+        let request = decoder::BinaryRequest::GetQuietly(network::GetQuietRequest { header, key });
 
         let result = handler.handle_request(request);
         assert!(result.is_none());
@@ -503,10 +503,10 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn get_quiet_key_request_should_return_none_when_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::GetQuiet, &key);
+        let header = create_header(network::Command::GetQuiet, &key);
 
         let request =
-            decoder::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest { header, key });
+            decoder::BinaryRequest::GetKeyQuietly(network::GetKeyQuietRequest { header, key });
 
         let result = handler.handle_request(request);
         assert!(result.is_none());
@@ -520,8 +520,8 @@ mod tests {
 
         insert_value(&handler, key.clone(), value.clone());
 
-        let header = create_header(binary::Command::GetKey, &key);
-        let request = decoder::BinaryRequest::GetKey(binary::GetKeyRequest {
+        let header = create_header(network::Command::GetKey, &key);
+        let request = decoder::BinaryRequest::GetKey(network::GetKeyRequest {
             header,
             key: key.clone(),
         });
@@ -533,7 +533,7 @@ mod tests {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::GetKey,
+                        network::Command::GetKey,
                         key.len() as u16,
                         EXTRAS_LENGTH,
                         0,
@@ -558,8 +558,8 @@ mod tests {
 
         insert_value(&handler, key.clone(), value.clone());
 
-        let header = create_header(binary::Command::GetKeyQuiet, &key);
-        let request = decoder::BinaryRequest::GetKeyQuietly(binary::GetKeyQuietRequest {
+        let header = create_header(network::Command::GetKeyQuiet, &key);
+        let request = decoder::BinaryRequest::GetKeyQuietly(network::GetKeyQuietRequest {
             header,
             key: key.clone(),
         });
@@ -571,7 +571,7 @@ mod tests {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::GetKeyQuiet,
+                        network::Command::GetKeyQuiet,
                         key.len() as u16,
                         EXTRAS_LENGTH,
                         0,
@@ -592,7 +592,7 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn get_request_should_return_record(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::Get, &key);
+        let header = create_header(network::Command::Get, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
         let record = store::Record::new(value.clone(), 0, FLAGS, 0);
@@ -600,7 +600,7 @@ mod tests {
         let set_result = handler.storage.set(key.clone(), record);
         assert!(set_result.is_ok());
 
-        let request = decoder::BinaryRequest::Get(binary::GetRequest { header, key });
+        let request = decoder::BinaryRequest::Get(network::GetRequest { header, key });
 
         let result = handler.handle_request(request);
         match result {
@@ -610,7 +610,7 @@ mod tests {
                     assert_ne!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::Get,
+                        network::Command::Get,
                         0,
                         EXTRAS_LENGTH,
                         0,
@@ -629,10 +629,10 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn set_request_should_succeed(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::Set, &key);
+        let header = create_header(network::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
-        let request = decoder::BinaryRequest::Set(binary::SetRequest {
+        let request = decoder::BinaryRequest::Set(network::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -644,7 +644,7 @@ mod tests {
             Some(resp) => {
                 if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -657,10 +657,10 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn set_request_should_return_item_too_large_(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let header = create_header(binary::Command::Set, &key);
+        let header = create_header(network::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
-        let request = decoder::BinaryRequest::ItemTooLarge(binary::SetRequest {
+        let request = decoder::BinaryRequest::ItemTooLarge(network::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -674,7 +674,7 @@ mod tests {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::Set,
+                        network::Command::Set,
                         0,
                         0,
                         0,
@@ -693,11 +693,11 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn set_request_on_cas_mismatch_should_return_key_exists(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let mut header = create_header(binary::Command::Set, &key);
+        let mut header = create_header(network::Command::Set, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
 
-        let request = decoder::BinaryRequest::Set(binary::SetRequest {
+        let request = decoder::BinaryRequest::Set(network::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -711,7 +711,7 @@ mod tests {
             Some(resp) => {
                 if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Set, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Set, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -719,7 +719,7 @@ mod tests {
             None => unreachable!(),
         }
         header.cas = 100;
-        let request = decoder::BinaryRequest::Set(binary::SetRequest {
+        let request = decoder::BinaryRequest::Set(network::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -734,7 +734,7 @@ mod tests {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::Set,
+                        network::Command::Set,
                         0,
                         0,
                         0,
@@ -753,8 +753,8 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn version_request_should_return_version(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
-        let header = create_header(binary::Command::Version, &key);
-        let request = decoder::BinaryRequest::Version(binary::VersionRequest { header });
+        let header = create_header(network::Command::Version, &key);
+        let request = decoder::BinaryRequest::Version(network::VersionRequest { header });
 
         let result = handler.handle_request(request);
         match result {
@@ -762,7 +762,7 @@ mod tests {
                 if let encoder::BinaryResponse::Version(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Version,
+                        network::Command::Version,
                         0,
                         0,
                         0,
@@ -782,8 +782,8 @@ mod tests {
     fn increment_request_should_return_cas(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 1;
         let key = Bytes::from("counter");
-        let header = create_header(binary::Command::Increment, &key);
-        let request = decoder::BinaryRequest::Increment(binary::IncrementRequest {
+        let header = create_header(network::Command::Increment, &key);
+        let request = decoder::BinaryRequest::Increment(network::IncrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -797,7 +797,7 @@ mod tests {
                 if let encoder::BinaryResponse::Increment(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Increment,
+                        network::Command::Increment,
                         0,
                         0,
                         0,
@@ -822,8 +822,8 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::Increment, &key);
-        let request = decoder::BinaryRequest::Increment(binary::IncrementRequest {
+        let header = create_header(network::Command::Increment, &key);
+        let request = decoder::BinaryRequest::Increment(network::IncrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -837,7 +837,7 @@ mod tests {
                 if let encoder::BinaryResponse::Increment(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Increment,
+                        network::Command::Increment,
                         0,
                         0,
                         0,
@@ -861,8 +861,8 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::IncrementQuiet, &key);
-        let request = decoder::BinaryRequest::IncrementQuiet(binary::IncrementRequest {
+        let header = create_header(network::Command::IncrementQuiet, &key);
+        let request = decoder::BinaryRequest::IncrementQuiet(network::IncrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -885,8 +885,8 @@ mod tests {
     fn decrement_request_should_return_cas(handler: BinaryHandler) {
         const EXPECTED_VALUE: u64 = 1;
         let key = Bytes::from("counter");
-        let header = create_header(binary::Command::Decrement, &key);
-        let request = decoder::BinaryRequest::Decrement(binary::DecrementRequest {
+        let header = create_header(network::Command::Decrement, &key);
+        let request = decoder::BinaryRequest::Decrement(network::DecrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -900,7 +900,7 @@ mod tests {
                 if let encoder::BinaryResponse::Decrement(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Decrement,
+                        network::Command::Decrement,
                         0,
                         0,
                         0,
@@ -925,8 +925,8 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::Decrement, &key);
-        let request = decoder::BinaryRequest::Decrement(binary::DecrementRequest {
+        let header = create_header(network::Command::Decrement, &key);
+        let request = decoder::BinaryRequest::Decrement(network::DecrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -940,7 +940,7 @@ mod tests {
                 if let encoder::BinaryResponse::Decrement(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Decrement,
+                        network::Command::Decrement,
                         0,
                         0,
                         0,
@@ -964,8 +964,8 @@ mod tests {
         let value = from_string("100");
         insert_value(&handler, key.clone(), value);
 
-        let header = create_header(binary::Command::DecrementQuiet, &key);
-        let request = decoder::BinaryRequest::DecrementQuiet(binary::DecrementRequest {
+        let header = create_header(network::Command::DecrementQuiet, &key);
+        let request = decoder::BinaryRequest::DecrementQuiet(network::DecrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -987,8 +987,8 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn increment_request_should_error_when_expiration_is_ffffffff(handler: BinaryHandler) {
         let key = Bytes::from("counter");
-        let header = create_header(binary::Command::Increment, &key);
-        let request = decoder::BinaryRequest::Increment(binary::IncrementRequest {
+        let header = create_header(network::Command::Increment, &key);
+        let request = decoder::BinaryRequest::Increment(network::IncrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -1002,11 +1002,11 @@ mod tests {
                 if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Increment,
+                        network::Command::Increment,
                         0,
                         0,
                         0,
-                        binary::ResponseStatus::KeyNotExists as u16,
+                        network::ResponseStatus::KeyNotExists as u16,
                         response.error.len() as u32,
                     );
                     assert_eq!(response.header.cas, 0);
@@ -1022,8 +1022,8 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn decrement_request_should_error_when_expiration_is_ffffffff(handler: BinaryHandler) {
         let key = Bytes::from("counter");
-        let header = create_header(binary::Command::Decrement, &key);
-        let request = decoder::BinaryRequest::Decrement(binary::DecrementRequest {
+        let header = create_header(network::Command::Decrement, &key);
+        let request = decoder::BinaryRequest::Decrement(network::DecrementRequest {
             header,
             delta: 1,
             initial: 1,
@@ -1037,11 +1037,11 @@ mod tests {
                 if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::Decrement,
+                        network::Command::Decrement,
                         0,
                         0,
                         0,
-                        binary::ResponseStatus::KeyNotExists as u16,
+                        network::ResponseStatus::KeyNotExists as u16,
                         response.error.len() as u32,
                     );
                     assert_eq!(response.header.cas, 0);
@@ -1063,8 +1063,8 @@ mod tests {
         }
 
         let key = String::from("").into_bytes();
-        let header = create_header(binary::Command::Flush, &key);
-        let request = decoder::BinaryRequest::Flush(binary::FlushRequest {
+        let header = create_header(network::Command::Flush, &key);
+        let request = decoder::BinaryRequest::Flush(network::FlushRequest {
             header,
             expiration: 0,
         });
@@ -1073,7 +1073,7 @@ mod tests {
         match result {
             Some(resp) => {
                 if let encoder::BinaryResponse::Flush(response) = resp {
-                    check_header(&response.header, binary::Command::Flush, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Flush, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1089,8 +1089,8 @@ mod tests {
         let key = Bytes::from("test_key");
         insert_value(&handler, key.clone(), value.clone());
 
-        let header = create_header(binary::Command::Delete, &key);
-        let request = decoder::BinaryRequest::Delete(binary::DeleteRequest {
+        let header = create_header(network::Command::Delete, &key);
+        let request = decoder::BinaryRequest::Delete(network::DeleteRequest {
             header,
             key: key.clone(),
         });
@@ -1098,7 +1098,7 @@ mod tests {
         match result {
             Some(resp) => {
                 if let encoder::BinaryResponse::Delete(response) = resp {
-                    check_header(&response.header, binary::Command::Delete, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Delete, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1112,8 +1112,8 @@ mod tests {
     fn delete_should_return_error_if_not_exists(handler: BinaryHandler) {
         let key = Bytes::from("test_key");
 
-        let header = create_header(binary::Command::DeleteQuiet, &key);
-        let request = decoder::BinaryRequest::DeleteQuiet(binary::DeleteRequest {
+        let header = create_header(network::Command::DeleteQuiet, &key);
+        let request = decoder::BinaryRequest::DeleteQuiet(network::DeleteRequest {
             header,
             key: key.clone(),
         });
@@ -1123,11 +1123,11 @@ mod tests {
                 if let encoder::BinaryResponse::Error(response) = resp {
                     check_header(
                         &response.header,
-                        binary::Command::DeleteQuiet,
+                        network::Command::DeleteQuiet,
                         0,
                         0,
                         0,
-                        binary::ResponseStatus::KeyNotExists as u16,
+                        network::ResponseStatus::KeyNotExists as u16,
                         response.error.len() as u32,
                     );
                 } else {
@@ -1143,13 +1143,13 @@ mod tests {
     fn noop_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
-        let header = create_header(binary::Command::Noop, &key);
-        let request = decoder::BinaryRequest::Noop(binary::NoopRequest { header });
+        let header = create_header(network::Command::Noop, &key);
+        let request = decoder::BinaryRequest::Noop(network::NoopRequest { header });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let encoder::BinaryResponse::Noop(response) = resp {
-                    check_header(&response.header, binary::Command::Noop, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Noop, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1163,13 +1163,13 @@ mod tests {
     fn quit_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
-        let header = create_header(binary::Command::Quit, &key);
-        let request = decoder::BinaryRequest::Quit(binary::QuitRequest { header });
+        let header = create_header(network::Command::Quit, &key);
+        let request = decoder::BinaryRequest::Quit(network::QuitRequest { header });
         let result = handler.handle_request(request);
         match result {
             Some(resp) => {
                 if let encoder::BinaryResponse::Quit(response) = resp {
-                    check_header(&response.header, binary::Command::Quit, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Quit, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1183,8 +1183,8 @@ mod tests {
     fn quit_quiet_request(handler: BinaryHandler) {
         let key = String::from("").into_bytes();
 
-        let header = create_header(binary::Command::QuitQuiet, &key);
-        let request = decoder::BinaryRequest::QuitQuietly(binary::QuitRequest { header });
+        let header = create_header(network::Command::QuitQuiet, &key);
+        let request = decoder::BinaryRequest::QuitQuietly(network::QuitRequest { header });
         let result = handler.handle_request(request);
         match result {
             Some(_resp) => unreachable!(),
@@ -1196,11 +1196,11 @@ mod tests {
     #[test_case(create_dash_map_handler() ; "dash_map_backend")]
     fn add_request(handler: BinaryHandler) {
         let key = Bytes::from("key");
-        let mut header = create_header(binary::Command::Add, &key);
+        let mut header = create_header(network::Command::Add, &key);
         const FLAGS: u32 = 0xDEAD_BEEF;
         let value = from_string("value");
 
-        let request = decoder::BinaryRequest::Add(binary::AddRequest {
+        let request = decoder::BinaryRequest::Add(network::AddRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -1214,7 +1214,7 @@ mod tests {
             Some(resp) => {
                 if let encoder::BinaryResponse::Set(response) = resp {
                     assert_ne!(response.header.cas, 0);
-                    check_header(&response.header, binary::Command::Add, 0, 0, 0, 0, 0);
+                    check_header(&response.header, network::Command::Add, 0, 0, 0, 0, 0);
                 } else {
                     unreachable!();
                 }
@@ -1222,7 +1222,7 @@ mod tests {
             None => unreachable!(),
         }
         header.cas = 100;
-        let request = decoder::BinaryRequest::Add(binary::SetRequest {
+        let request = decoder::BinaryRequest::Add(network::SetRequest {
             header,
             flags: FLAGS,
             expiration: 0,
@@ -1237,7 +1237,7 @@ mod tests {
                     assert_eq!(response.header.cas, 0);
                     check_header(
                         &response.header,
-                        binary::Command::Add,
+                        network::Command::Add,
                         0,
                         0,
                         0,

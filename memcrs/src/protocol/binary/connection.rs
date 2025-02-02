@@ -21,7 +21,7 @@ impl MemcacheBinaryConnection {
             stream: socket,
             decoder: MemcacheBinaryDecoder::new(item_size_limit),
             encoder: MemcacheBinaryEncoder::new(),
-            buffer: BytesMut::with_capacity(4096),
+            buffer: BytesMut::with_capacity(item_size_limit as usize),
         }
     }
 

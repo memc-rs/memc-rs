@@ -109,3 +109,18 @@ fn set_item_too_large() {
     let server_value: Option<String> = client.get("foo").unwrap();
     assert_eq!(server_value.unwrap(), value.clone());
 }
+
+#[test]
+fn insert_one_milion_keys() {
+    let params_builder: common::MemcrsdServerParamsBuilder =
+        common::MemcrsdServerParamsBuilder::new();
+    let server_handle = common::spawn_server(params_builder);
+    let client = memcache::connect(server_handle.get_connection_string()).unwrap();
+    // flush the database
+    client.flush().unwrap();
+
+    assert_eq!(result.len(), 3);
+    assert_eq!(result["foo1"], "bar1");
+    assert_eq!(result["foo2"], "bar2");
+    assert_eq!(result["foo3"], "bar3");
+}

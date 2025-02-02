@@ -1,32 +1,32 @@
 use crate::cache::error::CacheError;
-use crate::protocol::binary::binary;
+use crate::protocol::binary::network;
 use bytes::{BufMut, Bytes, BytesMut};
 
 /// Server response
 #[derive(Debug)]
 pub enum BinaryResponse {
-    Error(binary::ErrorResponse),
-    Get(binary::GetResponse),
-    GetQuietly(binary::GetQuietlyResponse),
-    GetKey(binary::GetKeyResponse),
-    GetKeyQuietly(binary::GetKeyQuietlyResponse),
-    Set(binary::SetResponse),
-    Add(binary::AddResponse),
-    Replace(binary::ReplaceResponse),
-    Append(binary::AppendResponse),
-    Prepend(binary::PrependResponse),
-    Version(binary::VersionResponse),
-    Noop(binary::NoopResponse),
-    Delete(binary::DeleteResponse),
-    Flush(binary::FlushResponse),
-    Increment(binary::IncrementResponse),
-    Decrement(binary::DecrementResponse),
-    Quit(binary::QuitResponse),
-    Stats(binary::StatsResponse),
+    Error(network::ErrorResponse),
+    Get(network::GetResponse),
+    GetQuietly(network::GetQuietlyResponse),
+    GetKey(network::GetKeyResponse),
+    GetKeyQuietly(network::GetKeyQuietlyResponse),
+    Set(network::SetResponse),
+    Add(network::AddResponse),
+    Replace(network::ReplaceResponse),
+    Append(network::AppendResponse),
+    Prepend(network::PrependResponse),
+    Version(network::VersionResponse),
+    Noop(network::NoopResponse),
+    Delete(network::DeleteResponse),
+    Flush(network::FlushResponse),
+    Increment(network::IncrementResponse),
+    Decrement(network::DecrementResponse),
+    Quit(network::QuitResponse),
+    Stats(network::StatsResponse),
 }
 
 impl BinaryResponse {
-    pub fn get_header(&'_ self) -> &'_ binary::ResponseHeader {
+    pub fn get_header(&'_ self) -> &'_ network::ResponseHeader {
         match self {
             BinaryResponse::Error(response) => &response.header,
             BinaryResponse::Get(response) => &response.header,
@@ -52,12 +52,12 @@ impl BinaryResponse {
 
 pub fn storage_error_to_response(
     err: CacheError,
-    response_header: &mut binary::ResponseHeader,
+    response_header: &mut network::ResponseHeader,
 ) -> BinaryResponse {
     let message = err.to_static_string();
     response_header.status = err as u16;
     response_header.body_length = message.len() as u32;
-    BinaryResponse::Error(binary::ErrorResponse {
+    BinaryResponse::Error(network::ErrorResponse {
         header: *response_header,
         error: message,
     })
@@ -81,11 +81,11 @@ impl MemcacheBinaryEncoder {
         self.get_len_from_header(self.get_header(msg))
     }
 
-    fn get_header<'a>(&self, msg: &'a BinaryResponse) -> &'a binary::ResponseHeader {
+    fn get_header<'a>(&self, msg: &'a BinaryResponse) -> &'a network::ResponseHeader {
         msg.get_header()
     }
 
-    fn get_len_from_header(&self, header: &binary::ResponseHeader) -> usize {
+    fn get_len_from_header(&self, header: &network::ResponseHeader) -> usize {
         MemcacheBinaryEncoder::RESPONSE_HEADER_LEN
             + (header.body_length as usize)
             + (header.extras_length as usize)
@@ -140,7 +140,7 @@ impl MemcacheBinaryEncoder {
         ResponseMessage { data: dst.freeze() }
     }
 
-    fn write_header_impl(&self, header: &binary::ResponseHeader, dst: &mut BytesMut) {
+    fn write_header_impl(&self, header: &network::ResponseHeader, dst: &mut BytesMut) {
         dst.put_u8(header.magic);
         dst.put_u8(header.opcode);
         dst.put_u16(header.key_length);

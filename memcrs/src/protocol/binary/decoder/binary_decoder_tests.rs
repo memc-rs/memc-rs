@@ -55,11 +55,11 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Set as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Set as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x08);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x0f);
                     assert_eq!(header.opaque, 0xDEADBEEF);
@@ -104,8 +104,8 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Replace as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Replace as u8);
 
                     match request {
                         BinaryRequest::Replace(req) => {
@@ -135,8 +135,8 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Add as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Add as u8);
 
                     match request {
                         BinaryRequest::Add(req) => {
@@ -175,11 +175,11 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Get as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Get as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x03);
                     assert_eq!(header.opaque, 0x00000000);
@@ -219,11 +219,11 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::GetQuiet as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::GetQuiet as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x03);
                     assert_eq!(header.opaque, 0x00000000);
@@ -263,8 +263,8 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::GetKey as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::GetKey as u8);
                     //
                     match request {
                         BinaryRequest::GetKey(req) => {
@@ -300,8 +300,8 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::GetKeyQuiet as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::GetKeyQuiet as u8);
                     //
                     match request {
                         BinaryRequest::GetKeyQuietly(req) => {
@@ -536,11 +536,11 @@ mod tests {
                 assert!(append_request.is_some());
                 if let Some(request) = append_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Append as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Append as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x06);
                     assert_eq!(header.opaque, 0x00000000);
@@ -582,11 +582,11 @@ mod tests {
                 assert!(prepend_request.is_some());
                 if let Some(request) = prepend_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Prepend as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Prepend as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x06);
                     assert_eq!(header.opaque, 0x00000000);
@@ -627,11 +627,11 @@ mod tests {
                 assert!(delete_request.is_some());
                 if let Some(request) = delete_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Delete as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Delete as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x03);
                     assert_eq!(header.opaque, 0x00000000);
@@ -671,11 +671,11 @@ mod tests {
                 assert!(delete_request.is_some());
                 if let Some(request) = delete_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::DeleteQuiet as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::DeleteQuiet as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x03);
                     assert_eq!(header.opaque, 0x00000000);
@@ -695,18 +695,18 @@ mod tests {
 
     fn inc_dec_request_check_header(
         decode_result: &Result<Option<BinaryRequest>, io::Error>,
-        opcode: binary::Command,
+        opcode: network::Command,
     ) {
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
                 if let Some(request) = incr_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
                     assert_eq!(header.opcode, opcode as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x14);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x17);
                     assert_eq!(header.opaque, 0x00000000);
@@ -738,7 +738,7 @@ mod tests {
         ];
 
         let decode_result = decode_packet(&increment_request_packet);
-        inc_dec_request_check_header(&decode_result, binary::Command::Increment);
+        inc_dec_request_check_header(&decode_result, network::Command::Increment);
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
@@ -779,7 +779,7 @@ mod tests {
         ];
 
         let decode_result = decode_packet(&increment_request_packet);
-        inc_dec_request_check_header(&decode_result, binary::Command::IncrementQuiet);
+        inc_dec_request_check_header(&decode_result, network::Command::IncrementQuiet);
         match decode_result {
             Ok(incr_request) => {
                 assert!(incr_request.is_some());
@@ -820,7 +820,7 @@ mod tests {
         ];
 
         let decode_result = decode_packet(&decrement_request_packet);
-        inc_dec_request_check_header(&decode_result, binary::Command::Decrement);
+        inc_dec_request_check_header(&decode_result, network::Command::Decrement);
         match decode_result {
             Ok(decr_request) => {
                 assert!(decr_request.is_some());
@@ -861,7 +861,7 @@ mod tests {
         ];
 
         let decode_result = decode_packet(&decrement_request_packet);
-        inc_dec_request_check_header(&decode_result, binary::Command::DecrementQuiet);
+        inc_dec_request_check_header(&decode_result, network::Command::DecrementQuiet);
         match decode_result {
             Ok(decr_request) => {
                 assert!(decr_request.is_some());
@@ -884,15 +884,15 @@ mod tests {
 
     #[test]
     fn decode_noop_request() {
-        decode_header_only_request(binary::Command::Noop);
+        decode_header_only_request(network::Command::Noop);
     }
 
     #[test]
     fn decode_version_request() {
-        decode_header_only_request(binary::Command::Version);
+        decode_header_only_request(network::Command::Version);
     }
 
-    fn decode_header_only_request(opcode: binary::Command) {
+    fn decode_header_only_request(opcode: network::Command) {
         let noop_request_packet: [u8; 24] = [
             0x80,         // magic
             opcode as u8, // opcode
@@ -926,11 +926,11 @@ mod tests {
                 assert!(noop_request.is_some());
                 if let Some(request) = noop_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
                     assert_eq!(header.opcode, opcode as u8);
                     assert_eq!(header.key_length, 0x00);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x00);
                     assert_eq!(header.opaque, 0x00000000);
@@ -964,11 +964,11 @@ mod tests {
                 assert!(flush_request.is_some());
                 if let Some(request) = flush_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Flush as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Flush as u8);
                     assert_eq!(header.key_length, 0x00);
                     assert_eq!(header.extras_length, 0x04);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x04);
                     assert_eq!(header.opaque, 0x00000000);
@@ -1007,11 +1007,11 @@ mod tests {
                 assert!(flush_request.is_some());
                 if let Some(request) = flush_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Flush as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Flush as u8);
                     assert_eq!(header.key_length, 0x00);
                     assert_eq!(header.extras_length, 0x00);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x00);
                     assert_eq!(header.opaque, 0x00000000);
@@ -1086,11 +1086,11 @@ mod tests {
                 assert!(set_request.is_some());
                 if let Some(request) = set_request {
                     let header = request.get_header();
-                    assert_eq!(header.magic, binary::Magic::Request as u8);
-                    assert_eq!(header.opcode, binary::Command::Set as u8);
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::Set as u8);
                     assert_eq!(header.key_length, 0x03);
                     assert_eq!(header.extras_length, 0x08);
-                    assert_eq!(header.data_type, binary::DataTypes::RawBytes as u8);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
                     assert_eq!(header.vbucket_id, 0x00);
                     assert_eq!(header.body_length, 0x1b);
                     assert_eq!(header.opaque, 0xDEADBEEF);
@@ -1115,12 +1115,12 @@ mod tests {
         let mut codec = MemcacheBinaryDecoder::new(1024);
 
         // Create a mock `binary::RequestHeader`
-        let header = binary::RequestHeader {
-            magic: binary::Magic::Request as u8,
-            opcode: binary::Command::PrependQuiet as u8, // Opcode for PrependQuietly
+        let header = network::RequestHeader {
+            magic: network::Magic::Request as u8,
+            opcode: network::Command::PrependQuiet as u8, // Opcode for PrependQuietly
             key_length: 5,
             extras_length: 0,
-            data_type: binary::DataTypes::RawBytes as u8,
+            data_type: network::DataTypes::RawBytes as u8,
             vbucket_id: 0,
             body_length: 16, // 5 for key + 11 for value
             opaque: 0,

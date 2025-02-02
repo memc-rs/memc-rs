@@ -1,4 +1,4 @@
-use crate::protocol::binary::binary;
+use crate::protocol::binary::network;
 use bytes::{Buf, BytesMut};
 use num_traits::FromPrimitive;
 use std::io;
@@ -8,38 +8,38 @@ use tokio_util::codec::Decoder;
 /// Client request
 #[derive(Debug)]
 pub enum BinaryRequest {
-    Delete(binary::DeleteRequest),
-    DeleteQuiet(binary::DeleteRequest),
-    Get(binary::GetRequest),
-    GetQuietly(binary::GetQuietRequest),
-    GetKey(binary::GetKeyRequest),
-    GetKeyQuietly(binary::GetKeyQuietRequest),
-    Set(binary::SetRequest),
-    SetQuietly(binary::SetRequest),
-    Append(binary::AppendRequest),
-    AppendQuietly(binary::AppendRequest),
-    Prepend(binary::PrependRequest),
-    PrependQuietly(binary::PrependRequest),
-    Add(binary::AddRequest),
-    AddQuietly(binary::AddRequest),
-    Replace(binary::ReplaceRequest),
-    ReplaceQuietly(binary::ReplaceRequest),
-    Increment(binary::IncrementRequest),
-    IncrementQuiet(binary::IncrementRequest),
-    Decrement(binary::DecrementRequest),
-    DecrementQuiet(binary::DecrementRequest),
-    Noop(binary::NoopRequest),
-    Flush(binary::FlushRequest),
-    FlushQuietly(binary::FlushRequest),
-    Version(binary::VersionRequest),
-    Quit(binary::QuitRequest),
-    QuitQuietly(binary::QuitRequest),
-    ItemTooLarge(binary::SetRequest),
-    Stats(binary::StatsRequest),
+    Delete(network::DeleteRequest),
+    DeleteQuiet(network::DeleteRequest),
+    Get(network::GetRequest),
+    GetQuietly(network::GetQuietRequest),
+    GetKey(network::GetKeyRequest),
+    GetKeyQuietly(network::GetKeyQuietRequest),
+    Set(network::SetRequest),
+    SetQuietly(network::SetRequest),
+    Append(network::AppendRequest),
+    AppendQuietly(network::AppendRequest),
+    Prepend(network::PrependRequest),
+    PrependQuietly(network::PrependRequest),
+    Add(network::AddRequest),
+    AddQuietly(network::AddRequest),
+    Replace(network::ReplaceRequest),
+    ReplaceQuietly(network::ReplaceRequest),
+    Increment(network::IncrementRequest),
+    IncrementQuiet(network::IncrementRequest),
+    Decrement(network::DecrementRequest),
+    DecrementQuiet(network::DecrementRequest),
+    Noop(network::NoopRequest),
+    Flush(network::FlushRequest),
+    FlushQuietly(network::FlushRequest),
+    Version(network::VersionRequest),
+    Quit(network::QuitRequest),
+    QuitQuietly(network::QuitRequest),
+    ItemTooLarge(network::SetRequest),
+    Stats(network::StatsRequest),
 }
 
 impl BinaryRequest {
-    pub fn get_header(&'_ self) -> &'_ binary::RequestHeader {
+    pub fn get_header(&'_ self) -> &'_ network::RequestHeader {
         match self {
             BinaryRequest::Delete(request)
             | BinaryRequest::DeleteQuiet(request)
@@ -84,7 +84,7 @@ enum RequestParserState {
 }
 
 pub struct MemcacheBinaryDecoder {
-    header: binary::RequestHeader,
+    header: network::RequestHeader,
     state: RequestParserState,
     item_size_limit: u32,
 }
@@ -113,7 +113,7 @@ impl MemcacheBinaryDecoder {
         }
 
         // println!("Header parsed: {:?} ", self.header);
-        self.header = binary::RequestHeader {
+        self.header = network::RequestHeader {
             magic: src.get_u8(),
             opcode: src.get_u8(),
             key_length: src.get_u16(),
@@ -139,17 +139,17 @@ impl MemcacheBinaryDecoder {
     }
 
     fn header_valid(&self) -> bool {
-        if self.header.magic != binary::Magic::Request as u8 {
+        if self.header.magic != network::Magic::Request as u8 {
             error!("Invalid header: magic != binary::Magic::Request");
             return false;
         }
 
-        if self.header.opcode >= binary::Command::OpCodeMax as u8 {
+        if self.header.opcode >= network::Command::OpCodeMax as u8 {
             error!("Invalid header: opcode >= OpCodeMax");
             return false;
         }
 
-        if self.header.data_type != binary::DataTypes::RawBytes as u8 {
+        if self.header.data_type != network::DataTypes::RawBytes as u8 {
             error!("Invalid header: data_type != binary::DataTypes::RawBytes");
             return false;
         }
@@ -178,55 +178,55 @@ impl MemcacheBinaryDecoder {
         }
 
         let result = match FromPrimitive::from_u8(self.header.opcode) {
-            Some(binary::Command::Get)
-            | Some(binary::Command::GetQuiet)
-            | Some(binary::Command::GetKeyQuiet)
-            | Some(binary::Command::GetKey) => self.parse_get_request(src),
+            Some(network::Command::Get)
+            | Some(network::Command::GetQuiet)
+            | Some(network::Command::GetKeyQuiet)
+            | Some(network::Command::GetKey) => self.parse_get_request(src),
 
-            Some(binary::Command::Append)
-            | Some(binary::Command::AppendQuiet)
-            | Some(binary::Command::Prepend)
-            | Some(binary::Command::PrependQuiet) => self.parse_append_prepend_request(src),
+            Some(network::Command::Append)
+            | Some(network::Command::AppendQuiet)
+            | Some(network::Command::Prepend)
+            | Some(network::Command::PrependQuiet) => self.parse_append_prepend_request(src),
 
-            Some(binary::Command::Set)
-            | Some(binary::Command::SetQuiet)
-            | Some(binary::Command::Add)
-            | Some(binary::Command::Replace)
-            | Some(binary::Command::AddQuiet)
-            | Some(binary::Command::ReplaceQuiet) => self.parse_set_request(src),
+            Some(network::Command::Set)
+            | Some(network::Command::SetQuiet)
+            | Some(network::Command::Add)
+            | Some(network::Command::Replace)
+            | Some(network::Command::AddQuiet)
+            | Some(network::Command::ReplaceQuiet) => self.parse_set_request(src),
 
-            Some(binary::Command::Delete) | Some(binary::Command::DeleteQuiet) => {
+            Some(network::Command::Delete) | Some(network::Command::DeleteQuiet) => {
                 self.parse_delete_request(src)
             }
 
-            Some(binary::Command::Increment)
-            | Some(binary::Command::Decrement)
-            | Some(binary::Command::IncrementQuiet)
-            | Some(binary::Command::DecrementQuiet) => self.parse_inc_dec_request(src),
+            Some(network::Command::Increment)
+            | Some(network::Command::Decrement)
+            | Some(network::Command::IncrementQuiet)
+            | Some(network::Command::DecrementQuiet) => self.parse_inc_dec_request(src),
 
-            Some(binary::Command::Noop)
-            | Some(binary::Command::Quit)
-            | Some(binary::Command::QuitQuiet)
-            | Some(binary::Command::Stat)
-            | Some(binary::Command::Version) => self.parse_header_only_request(src),
+            Some(network::Command::Noop)
+            | Some(network::Command::Quit)
+            | Some(network::Command::QuitQuiet)
+            | Some(network::Command::Stat)
+            | Some(network::Command::Version) => self.parse_header_only_request(src),
 
-            Some(binary::Command::Flush) | Some(binary::Command::FlushQuiet) => {
+            Some(network::Command::Flush) | Some(network::Command::FlushQuiet) => {
                 self.parse_flush_request(src)
             }
 
-            Some(binary::Command::Touch)
-            | Some(binary::Command::GetAndTouch)
-            | Some(binary::Command::GetAndTouchQuiet)
-            | Some(binary::Command::GetAndTouchKey)
-            | Some(binary::Command::GetAndTouchKeyQuiet)
-            | Some(binary::Command::SaslAuth)
-            | Some(binary::Command::SaslListMechs)
-            | Some(binary::Command::SaslStep) => {
+            Some(network::Command::Touch)
+            | Some(network::Command::GetAndTouch)
+            | Some(network::Command::GetAndTouchQuiet)
+            | Some(network::Command::GetAndTouchKey)
+            | Some(network::Command::GetAndTouchKeyQuiet)
+            | Some(network::Command::SaslAuth)
+            | Some(network::Command::SaslListMechs)
+            | Some(network::Command::SaslStep) => {
                 error!("Command not supported, opcode: {:?}", self.header.opcode);
                 Ok(None)
             }
 
-            Some(binary::Command::OpCodeMax) => {
+            Some(network::Command::OpCodeMax) => {
                 error!("Incorrect command opcode: {:?}", self.header.opcode);
                 Err(Error::new(ErrorKind::InvalidData, "Incorrect opcode"))
             }
@@ -253,24 +253,24 @@ impl MemcacheBinaryDecoder {
         let size = self.header.key_length as usize;
         let buf = src.split_to(size);
         let key = buf.freeze();
-        if self.header.opcode == binary::Command::Get as u8 {
-            Ok(Some(BinaryRequest::Get(binary::GetRequest {
+        if self.header.opcode == network::Command::Get as u8 {
+            Ok(Some(BinaryRequest::Get(network::GetRequest {
                 header: self.header,
                 key,
             })))
-        } else if self.header.opcode == binary::Command::GetQuiet as u8 {
-            Ok(Some(BinaryRequest::GetQuietly(binary::GetQuietRequest {
+        } else if self.header.opcode == network::Command::GetQuiet as u8 {
+            Ok(Some(BinaryRequest::GetQuietly(network::GetQuietRequest {
                 header: self.header,
                 key,
             })))
-        } else if self.header.opcode == binary::Command::GetKey as u8 {
-            Ok(Some(BinaryRequest::GetKey(binary::GetKeyRequest {
+        } else if self.header.opcode == network::Command::GetKey as u8 {
+            Ok(Some(BinaryRequest::GetKey(network::GetKeyRequest {
                 header: self.header,
                 key,
             })))
         } else {
             Ok(Some(BinaryRequest::GetKeyQuietly(
-                binary::GetKeyQuietRequest {
+                network::GetKeyQuietRequest {
                     header: self.header,
                     key,
                 },
@@ -286,13 +286,13 @@ impl MemcacheBinaryDecoder {
         let size = self.header.key_length as usize;
         let buf = src.split_to(size);
         let key = buf.freeze();
-        if self.header.opcode == binary::Command::Delete as u8 {
-            Ok(Some(BinaryRequest::Delete(binary::DeleteRequest {
+        if self.header.opcode == network::Command::Delete as u8 {
+            Ok(Some(BinaryRequest::Delete(network::DeleteRequest {
                 header: self.header,
                 key,
             })))
         } else {
-            Ok(Some(BinaryRequest::DeleteQuiet(binary::DeleteRequest {
+            Ok(Some(BinaryRequest::DeleteQuiet(network::DeleteRequest {
                 header: self.header,
                 key,
             })))
@@ -309,20 +309,20 @@ impl MemcacheBinaryDecoder {
                 "Incorrect header only request",
             ));
         }
-        if self.header.opcode == binary::Command::Noop as u8 {
-            Ok(Some(BinaryRequest::Noop(binary::NoopRequest {
+        if self.header.opcode == network::Command::Noop as u8 {
+            Ok(Some(BinaryRequest::Noop(network::NoopRequest {
                 header: self.header,
             })))
-        } else if self.header.opcode == binary::Command::Quit as u8 {
-            Ok(Some(BinaryRequest::Quit(binary::QuitRequest {
+        } else if self.header.opcode == network::Command::Quit as u8 {
+            Ok(Some(BinaryRequest::Quit(network::QuitRequest {
                 header: self.header,
             })))
-        } else if self.header.opcode == binary::Command::QuitQuiet as u8 {
-            Ok(Some(BinaryRequest::QuitQuietly(binary::QuitRequest {
+        } else if self.header.opcode == network::Command::QuitQuiet as u8 {
+            Ok(Some(BinaryRequest::QuitQuietly(network::QuitRequest {
                 header: self.header,
             })))
         } else {
-            Ok(Some(BinaryRequest::Version(binary::VersionRequest {
+            Ok(Some(BinaryRequest::Version(network::VersionRequest {
                 header: self.header,
             })))
         }
@@ -339,13 +339,13 @@ impl MemcacheBinaryDecoder {
         if self.header.extras_length == 4 {
             expiration = src.get_u32();
         }
-        if self.header.opcode == binary::Command::Flush as u8 {
-            Ok(Some(BinaryRequest::Flush(binary::FlushRequest {
+        if self.header.opcode == network::Command::Flush as u8 {
+            Ok(Some(BinaryRequest::Flush(network::FlushRequest {
                 header: self.header,
                 expiration,
             })))
         } else {
-            Ok(Some(BinaryRequest::FlushQuietly(binary::FlushRequest {
+            Ok(Some(BinaryRequest::FlushQuietly(network::FlushRequest {
                 header: self.header,
                 expiration,
             })))
@@ -363,17 +363,17 @@ impl MemcacheBinaryDecoder {
             ));
         }
         let value_len = self.get_value_len();
-        let append_request = binary::AppendRequest {
+        let append_request = network::AppendRequest {
             header: self.header,
             key: src.split_to(self.header.key_length as usize).freeze(),
             value: src.split_to(value_len).freeze(),
         };
 
-        if self.header.opcode == binary::Command::Append as u8 {
+        if self.header.opcode == network::Command::Append as u8 {
             Ok(Some(BinaryRequest::Append(append_request)))
-        } else if self.header.opcode == binary::Command::AppendQuiet as u8 {
+        } else if self.header.opcode == network::Command::AppendQuiet as u8 {
             Ok(Some(BinaryRequest::AppendQuietly(append_request)))
-        } else if self.header.opcode == binary::Command::Prepend as u8 {
+        } else if self.header.opcode == network::Command::Prepend as u8 {
             Ok(Some(BinaryRequest::Prepend(append_request)))
         } else {
             Ok(Some(BinaryRequest::PrependQuietly(append_request)))
@@ -409,7 +409,7 @@ impl MemcacheBinaryDecoder {
             ));
         }
 
-        let request = binary::IncrementRequest {
+        let request = network::IncrementRequest {
             header: self.header,
             delta: src.get_u64(),
             initial: src.get_u64(),
@@ -417,11 +417,11 @@ impl MemcacheBinaryDecoder {
             key: src.split_to(self.header.key_length as usize).freeze(),
         };
 
-        if self.header.opcode == binary::Command::Increment as u8 {
+        if self.header.opcode == network::Command::Increment as u8 {
             Ok(Some(BinaryRequest::Increment(request)))
-        } else if self.header.opcode == binary::Command::IncrementQuiet as u8 {
+        } else if self.header.opcode == network::Command::IncrementQuiet as u8 {
             Ok(Some(BinaryRequest::IncrementQuiet(request)))
-        } else if self.header.opcode == binary::Command::Decrement as u8 {
+        } else if self.header.opcode == network::Command::Decrement as u8 {
             Ok(Some(BinaryRequest::Decrement(request)))
         } else {
             Ok(Some(BinaryRequest::DecrementQuiet(request)))
@@ -432,7 +432,7 @@ impl MemcacheBinaryDecoder {
         &self,
         _src: &mut BytesMut,
     ) -> Result<Option<BinaryRequest>, io::Error> {
-        let set_request = binary::SetRequest {
+        let set_request = network::SetRequest {
             header: self.header,
             flags: 0,
             expiration: 0,
@@ -467,7 +467,7 @@ impl MemcacheBinaryDecoder {
             ));
         }
 
-        let set_request = binary::SetRequest {
+        let set_request = network::SetRequest {
             header: self.header,
             flags: src.get_u32(),
             expiration: src.get_u32(),
@@ -476,12 +476,12 @@ impl MemcacheBinaryDecoder {
         };
 
         match FromPrimitive::from_u8(self.header.opcode) {
-            Some(binary::Command::Set) => Ok(Some(BinaryRequest::Set(set_request))),
-            Some(binary::Command::SetQuiet) => Ok(Some(BinaryRequest::SetQuietly(set_request))),
-            Some(binary::Command::Add) => Ok(Some(BinaryRequest::Add(set_request))),
-            Some(binary::Command::AddQuiet) => Ok(Some(BinaryRequest::AddQuietly(set_request))),
-            Some(binary::Command::Replace) => Ok(Some(BinaryRequest::Replace(set_request))),
-            Some(binary::Command::ReplaceQuiet) => {
+            Some(network::Command::Set) => Ok(Some(BinaryRequest::Set(set_request))),
+            Some(network::Command::SetQuiet) => Ok(Some(BinaryRequest::SetQuietly(set_request))),
+            Some(network::Command::Add) => Ok(Some(BinaryRequest::Add(set_request))),
+            Some(network::Command::AddQuiet) => Ok(Some(BinaryRequest::AddQuietly(set_request))),
+            Some(network::Command::Replace) => Ok(Some(BinaryRequest::Replace(set_request))),
+            Some(network::Command::ReplaceQuiet) => {
                 Ok(Some(BinaryRequest::ReplaceQuietly(set_request)))
             }
             None => {
