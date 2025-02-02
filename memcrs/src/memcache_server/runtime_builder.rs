@@ -10,7 +10,7 @@ use std::sync::{
 };
 use tokio::runtime::Builder;
 
-use crate::memcache::cli::parser::MemcrsArgs;
+use crate::memcache::cli::parser::MemcrsdConfig;
 
 fn get_worker_thread_name() -> String {
     static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
@@ -41,7 +41,7 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
 }
 
 fn create_current_thread_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
@@ -89,7 +89,7 @@ fn create_current_thread_server(
 }
 
 fn create_threadpool_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
@@ -108,7 +108,7 @@ fn create_threadpool_server(
 }
 
 pub fn create_memcrs_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     system_timer: std::sync::Arc<server::timer::SystemTimer>,
 ) -> tokio::runtime::Runtime {
     let store_config =

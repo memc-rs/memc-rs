@@ -6,7 +6,7 @@ use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum RuntimeType {
-    /// work handled withing current thread runtime
+    /// every thread will create its own runtime which will handle work without thread switching
     CurrentThread,
     /// work stealing threadpool runtime
     MultiThread,
@@ -35,7 +35,7 @@ fn get_default_threads_number() -> usize {
 #[derive(Parser, Debug, Clone)]
 #[command(author, version, about, long_about = None)]
 /// memcached compatible server implementation in Rust
-pub struct MemcrsArgs {
+pub struct MemcrsdConfig {
     #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]
     /// TCP port to listen on
     pub port: u16,
@@ -57,7 +57,7 @@ pub struct MemcrsArgs {
     pub item_size_limit: u64,
 
     #[arg(short, long, value_name = "THREADS", default_value_t = get_default_threads_number())]
-    /// number of threads to use
+    /// number of threads to use (defualts to number of cores)
     pub threads: usize,
 
     #[arg(short, long, action = clap::ArgAction::Count, default_value_t = 1)]
@@ -122,15 +122,15 @@ fn parse_store_engine(s: &str) -> Result<StoreEngine, String> {
     }
 }
 
-impl MemcrsArgs {
-    fn from_args(args: Vec<String>) -> Result<MemcrsArgs, String> {
-        let memcrs_args = MemcrsArgs::parse_from(args.iter());
+impl MemcrsdConfig {
+    fn from_args(args: Vec<String>) -> Result<MemcrsdConfig, String> {
+        let memcrs_args = MemcrsdConfig::parse_from(args.iter());
         Ok(memcrs_args)
     }
 }
 
-pub fn parse(args: Vec<String>) -> Result<MemcrsArgs, String> {
-    MemcrsArgs::from_args(args)
+pub fn parse(args: Vec<String>) -> Result<MemcrsdConfig, String> {
+    MemcrsdConfig::from_args(args)
 }
 
 #[cfg(test)]
@@ -139,6 +139,6 @@ mod tests {
     use clap::CommandFactory;
     #[test]
     fn verify_cli() {
-        MemcrsArgs::command().debug_assert()
+        MemcrsdConfig::command().debug_assert()
     }
 }
