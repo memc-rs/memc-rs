@@ -1,7 +1,7 @@
 use crate::cache::error::CacheError;
 use crate::memcache::store;
 use crate::protocol::binary::encoder::storage_error_to_response;
-use crate::protocol::binary::{network, decoder, encoder};
+use crate::protocol::binary::{decoder, encoder, network};
 use crate::version::MEMCRS_VERSION;
 use bytes::Bytes;
 use std::sync::Arc;
@@ -340,8 +340,8 @@ impl BinaryHandler {
 
 #[cfg(any(test, feature = "criterion"))]
 pub mod mock {
-    use super::network;
     use super::decoder;
+    use super::network;
     use super::*;
     use crate::mock::mock_server::create_dash_map_storage;
     use crate::mock::mock_server::create_moka_storage;
@@ -454,9 +454,9 @@ pub mod mock {
 }
 #[cfg(test)]
 mod tests {
-    use super::network;
     use super::decoder;
     use super::mock::*;
+    use super::network;
     use super::*;
     use crate::cache::error;
     use crate::mock::value::from_string;

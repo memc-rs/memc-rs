@@ -69,6 +69,11 @@ pub struct ResponseMessage {
 }
 
 pub struct MemcacheBinaryEncoder {}
+impl Default for MemcacheBinaryEncoder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl MemcacheBinaryEncoder {
     const RESPONSE_HEADER_LEN: usize = 24;
