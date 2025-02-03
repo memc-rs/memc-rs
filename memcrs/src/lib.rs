@@ -10,5 +10,5 @@ pub mod protocol;
 pub mod server;
 pub mod version;
 
-#[cfg(any(test, feature = "criterion"))]
+#[cfg(any(test, not(doctest), feature = "criterion"))]
 pub mod mock;
