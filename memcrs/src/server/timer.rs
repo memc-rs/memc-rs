@@ -30,7 +30,7 @@ impl SystemTimer {
         loop {
             interval.tick().await;
             self.add_second();
-            debug!("Server tick: {}", self.timestamp());
+            trace!("Server tick: {}", self.timestamp());
         }
     }
 }

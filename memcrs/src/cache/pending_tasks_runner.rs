@@ -29,7 +29,7 @@ impl PendingTasksRunner {
             if duration.as_millis() > (PendingTasksRunner::INTERVAL_IN_MILIS * 2) as u128 {
                 warn!("Server pending tasts finished in: {:?}", duration);
             } else {
-                debug!("Server pending tasts finished in: {:?}", duration);
+                trace!("Server pending tasts finished in: {:?}", duration);
             }
         }
     }
