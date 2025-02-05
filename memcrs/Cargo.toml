@@ -12,8 +12,8 @@ path = "src/lib.rs"
 
 [dependencies]
 byte-unit = "5.1.6"
-bytes = "1.9.0"
-clap = { version = "4.5.27", features = ["derive", "cargo"] }
+bytes = "1.10.0"
+clap = { version = "4.5.28", features = ["derive", "cargo"] }
 core_affinity = "0.8.1"
 dashmap = "6.1.0"
 futures = "0.3.31"
@@ -23,7 +23,6 @@ socket2 = { version = "0.5.8", features = ["all"] }
 num_cpus = "1.16.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-quick_cache = "0.6.9"
 moka = { version = "0.12.10", features = ["sync"] }
 rand = { version = "0.9.0", features = ["small_rng"] }
 serde = "1.0.217"
