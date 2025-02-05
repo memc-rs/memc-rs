@@ -38,3 +38,46 @@ pub fn create_random_value(capacity: usize) -> Bytes {
     }
     value.freeze()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_create_random_value() {
+        let size = 10;
+        let value = create_random_value(size);
+        assert_eq!(value.len(), size);
+        for &byte in value.iter() {
+            assert!(byte >= b'a' && byte <= b'z', "Byte out of range: {}", byte);
+        }
+    }
+
+    #[test]
+    fn test_generate_random_with_size() {
+        let capacity = 5;
+        let key_size = 8;
+        let value_size = 12;
+        let result = generate_random_with_size(capacity, key_size, value_size);
+
+        assert_eq!(result.len(), capacity);
+        for kv in result {
+            assert_eq!(kv.key.len(), key_size);
+            assert_eq!(kv.value.len(), value_size);
+        }
+    }
+
+    #[test]
+    fn test_generate_random_with_max_size() {
+        let capacity = 5;
+        let max_key_size = 15;
+        let max_value_size = 20;
+        let result = generate_random_with_max_size(capacity, max_key_size, max_value_size);
+
+        assert_eq!(result.len(), capacity);
+        for kv in result {
+            assert!(kv.key.len() >= 5 && kv.key.len() <= max_key_size);
+            assert!(kv.value.len() >= 5 && kv.value.len() <= max_value_size);
+        }
+    }
+}

@@ -148,3 +148,70 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// will be scheudled periodicall
     fn run_pending_tasks(&self);
 }
+
+mod tests {
+
+    use super::*;
+    use bytes::Bytes;
+
+    #[test]
+    fn test_cache_metadata_new() {
+        let meta = CacheMetaData::new(42, 1, 3600);
+        assert_eq!(meta.cas, 42);
+        assert_eq!(meta.flags, 1);
+        assert_eq!(meta.time_to_live, 3600);
+        assert_eq!(meta.timestamp, 0);
+    }
+
+    #[test]
+    fn test_cache_metadata_get_expiration() {
+        let meta = CacheMetaData::new(100, 2, 7200);
+        assert_eq!(meta.get_expiration(), 7200);
+    }
+
+    #[test]
+    fn test_cache_metadata_len() {
+        let meta = CacheMetaData::new(0, 0, 0);
+        assert_eq!(meta.len(), std::mem::size_of::<CacheMetaData>());
+    }
+
+    #[test]
+    fn test_cache_metadata_is_empty() {
+        let meta = CacheMetaData::new(0, 0, 0);
+        assert!(!meta.is_empty());
+    }
+
+    #[test]
+    fn test_record_new() {
+        let value = Bytes::from("test_value");
+        let record = Record::new(value.clone(), 10, 3, 600);
+        assert_eq!(record.value, value);
+        assert_eq!(record.header.cas, 10);
+        assert_eq!(record.header.flags, 3);
+        assert_eq!(record.header.time_to_live, 600);
+    }
+
+    #[test]
+    fn test_record_len() {
+        let value = Bytes::from("1234");
+        let record = Record::new(value.clone(), 1, 0, 300);
+        assert_eq!(record.len(), std::mem::size_of::<CacheMetaData>() + value.len());
+    }
+
+    #[test]
+    fn test_record_is_empty() {
+        let value = Bytes::from("test");
+        let record = Record::new(value, 1, 0, 300);
+        assert!(!record.is_empty());
+    }
+
+    #[test]
+    fn test_record_equality() {
+        let value1 = Bytes::from("value");
+        let value2 = Bytes::from("value");
+        let record1 = Record::new(value1.clone(), 1, 0, 300);
+        let record2 = Record::new(value2.clone(), 2, 1, 600);
+        assert_eq!(record1, record2);
+    }
+
+}

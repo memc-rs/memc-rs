@@ -120,11 +120,11 @@ pub fn create_memcrs_server(
         config.memory_limit,
         config.eviction_policy,
     );
-    let memcache_store =
+    let store =
         memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
 
     match config.runtime_type {
-        RuntimeType::CurrentThread => create_current_thread_server(config, memcache_store),
-        RuntimeType::MultiThread => create_threadpool_server(config, memcache_store),
+        RuntimeType::CurrentThread => create_current_thread_server(config, store),
+        RuntimeType::MultiThread => create_threadpool_server(config, store),
     }
 }
