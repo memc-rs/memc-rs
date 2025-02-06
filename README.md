@@ -112,6 +112,9 @@ memcrsd project is tested using different types of tests:
 
 ### Unit testing
 
+```sh
+cargo test --lib -- --nocapture
+```
 
 ### Fuzzy testing
 
@@ -151,6 +154,10 @@ The plan in the future is to have coverage ~90%.
 ### Integration testing
 
 For end-to-end integration testing we are using most popular Rust client library memcache[https://crates.io/crates/memcache]. See tests directory for further details.
+
+```sh
+cargo test --test '*' -- --nocapture
+```
 
 ## Measuring performance
 
