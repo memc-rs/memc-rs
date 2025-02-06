@@ -2,9 +2,8 @@
 use bytes::Bytes;
 use criterion::{criterion_group, criterion_main, Criterion};
 use criterion::{BenchmarkId, Throughput};
+use memcrs::mock::handler::{create_dash_map_handler, create_get_request_by_key, create_moka_handler, create_set_request};
 use memcrs::mock::key_value::{generate_random_with_max_size, KeyValue};
-use memcrs::memcache_server::handler::mock::{create_dash_map_handler, create_set_request};
-use memcrs::memcache_server::handler::mock::{create_get_request_by_key, create_moka_handler};
 use memcrs::memcache_server::handler::BinaryHandler;
 use memcrs::protocol::binary::encoder;
 
