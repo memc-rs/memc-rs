@@ -70,15 +70,15 @@ mod tests {
     async fn test_run_increments_time() {
         let timer = Arc::new(SystemTimer::new());
         let timer_clone = Arc::clone(&timer);
-        
+
         let handle = tokio::spawn(async move {
             tokio::time::sleep(Duration::from_secs(2)).await; // Let it run for 2 ticks
         });
-        
+
         tokio::spawn(async move {
             timer_clone.run().await;
         });
-        
+
         handle.await.unwrap();
         assert!(timer.timestamp() >= 2);
     }

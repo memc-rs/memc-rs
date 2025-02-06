@@ -344,8 +344,8 @@ mod tests {
     use super::network;
     use super::*;
     use crate::cache::error;
-    use crate::mock::value::from_string;
     use crate::mock::handler::*;
+    use crate::mock::value::from_string;
     use test_case::test_case;
 
     use bytes::Bytes;

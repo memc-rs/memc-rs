@@ -195,7 +195,10 @@ mod tests {
     fn test_record_len() {
         let value = Bytes::from("1234");
         let record = Record::new(value.clone(), 1, 0, 300);
-        assert_eq!(record.len(), std::mem::size_of::<CacheMetaData>() + value.len());
+        assert_eq!(
+            record.len(),
+            std::mem::size_of::<CacheMetaData>() + value.len()
+        );
     }
 
     #[test]
@@ -213,5 +216,4 @@ mod tests {
         let record2 = Record::new(value2.clone(), 2, 1, 600);
         assert_eq!(record1, record2);
     }
-
 }

@@ -1,4 +1,4 @@
-use bytes::{Bytes, BytesMut, BufMut};
+use bytes::{BufMut, Bytes, BytesMut};
 use rand::Rng;
 
 pub struct KeyValue {
@@ -6,7 +6,11 @@ pub struct KeyValue {
     pub value: Bytes,
 }
 
-pub fn generate_random_with_max_size(capacity: usize, max_key_size: usize, max_value_size: usize) -> Vec<KeyValue> {
+pub fn generate_random_with_max_size(
+    capacity: usize,
+    max_key_size: usize,
+    max_value_size: usize,
+) -> Vec<KeyValue> {
     let mut values: Vec<KeyValue> = Vec::with_capacity(capacity);
     let mut rng = rand::rng();
     for _idx in 0..capacity {
@@ -19,7 +23,11 @@ pub fn generate_random_with_max_size(capacity: usize, max_key_size: usize, max_v
     values
 }
 
-pub fn generate_random_with_size(capacity: usize, key_size: usize, value_size: usize) -> Vec<KeyValue> {
+pub fn generate_random_with_size(
+    capacity: usize,
+    key_size: usize,
+    value_size: usize,
+) -> Vec<KeyValue> {
     let mut values: Vec<KeyValue> = Vec::with_capacity(capacity);
     for _idx in 0..capacity {
         let key = create_random_value(key_size);
@@ -42,7 +50,7 @@ pub fn create_random_value(capacity: usize) -> Bytes {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_create_random_value() {
         let size = 10;

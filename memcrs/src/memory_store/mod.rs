@@ -23,18 +23,18 @@ impl StoreEngine {
 #[cfg(test)]
 mod tests {
     use super::StoreEngine;
-    
+
     #[test]
     fn test_as_str() {
         assert_eq!(StoreEngine::DashMap.as_str(), "DashMap backend");
         assert_eq!(StoreEngine::Moka.as_str(), "Moka backend");
     }
-    
+
     #[test]
     fn test_enum_ordering() {
         assert!(StoreEngine::DashMap < StoreEngine::Moka);
     }
-    
+
     #[test]
     fn test_enum_equality() {
         assert_eq!(StoreEngine::DashMap, StoreEngine::DashMap);

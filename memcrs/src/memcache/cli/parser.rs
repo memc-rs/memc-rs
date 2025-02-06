@@ -150,19 +150,25 @@ mod tests {
 
     #[test]
     fn test_runtime_type_as_str() {
-        assert_eq!(RuntimeType::CurrentThread.as_str(), "Work handled withing current thread runtime");
-        assert_eq!(RuntimeType::MultiThread.as_str(), "Work stealing threadpool runtime");
+        assert_eq!(
+            RuntimeType::CurrentThread.as_str(),
+            "Work handled withing current thread runtime"
+        );
+        assert_eq!(
+            RuntimeType::MultiThread.as_str(),
+            "Work stealing threadpool runtime"
+        );
     }
 
     #[test]
     fn test_runtime_type_value_enum() {
         let current = RuntimeType::from_str("current-thread", true).unwrap();
         let multi = RuntimeType::from_str("multi-thread", true).unwrap();
-        
+
         assert_eq!(current, RuntimeType::CurrentThread);
         assert_eq!(multi, RuntimeType::MultiThread);
     }
-    
+
     #[test]
     fn test_default_config() {
         // Test if the default values are parsed correctly
