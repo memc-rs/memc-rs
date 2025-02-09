@@ -72,13 +72,6 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
-/// Read only view over a store
-pub trait CacheReadOnlyView<'a> {
-    fn len(&self) -> usize;
-    fn is_empty(&self) -> bool;
-    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
-}
-
 // Not a part of Store public API
 pub mod impl_details {
     use super::*;
@@ -132,12 +125,6 @@ pub trait Cache: impl_details::CacheImplDetails {
 
     /// Number of key value pairs stored in store
     fn len(&self) -> usize;
-
-    // Is cache empty?
-    fn is_empty(&self) -> bool;
-
-    /// Returns a read-only view over a store
-    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView>;
 
     /// Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;

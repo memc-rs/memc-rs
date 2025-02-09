@@ -1,12 +1,10 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, CacheReadOnlyView, KeyType, Record, SetStatus,
+    impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
-
 use moka::ops::compute::Op;
 use moka::sync::Cache as MokaCache;
-use std::iter;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -16,23 +14,6 @@ pub struct MokaMemoryStore {
     memory: MokaStorage,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
-}
-
-pub struct MokaStorageReadOnlyView {}
-
-impl<'a> CacheReadOnlyView<'a> for MokaStorageReadOnlyView {
-    fn len(&self) -> usize {
-        0
-    }
-
-    fn is_empty(&self) -> bool {
-        true
-    }
-
-    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a> {
-        let empty = iter::empty::<&KeyType>();
-        Box::new(empty)
-    }
 }
 
 impl MokaMemoryStore {
@@ -141,17 +122,8 @@ impl Cache for MokaMemoryStore {
         }
     }
 
-    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
-        // FIXME!!!
-        Box::new(MokaStorageReadOnlyView {})
-    }
-
     fn len(&self) -> usize {
         self.memory.entry_count() as usize
-    }
-
-    fn is_empty(&self) -> bool {
-        self.memory.entry_count() == 0
     }
 
     fn run_pending_tasks(&self) {

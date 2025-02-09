@@ -1,10 +1,10 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, CacheReadOnlyView, KeyType, Record, SetStatus,
+    impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 
-use dashmap::{DashMap, ReadOnlyView};
+use dashmap::{DashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -13,23 +13,6 @@ pub struct DashMapMemoryStore {
     memory: Storage,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
-}
-
-type StorageReadOnlyView = ReadOnlyView<KeyType, Record>;
-
-impl<'a> CacheReadOnlyView<'a> for StorageReadOnlyView {
-    fn len(&self) -> usize {
-        StorageReadOnlyView::len(self)
-    }
-
-    fn is_empty(&self) -> bool {
-        StorageReadOnlyView::is_empty(self)
-    }
-
-    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a> {
-        let keys = self.keys();
-        Box::new(keys)
-    }
 }
 
 impl DashMapMemoryStore {
@@ -141,17 +124,8 @@ impl Cache for DashMapMemoryStore {
         }
     }
 
-    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
-        let storage_clone = self.memory.clone();
-        Box::new(storage_clone.into_read_only())
-    }
-
     fn len(&self) -> usize {
         self.memory.len()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.memory.is_empty()
     }
 
     fn run_pending_tasks(&self) {}
