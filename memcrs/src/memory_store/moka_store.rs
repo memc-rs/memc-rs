@@ -64,7 +64,7 @@ impl impl_details::CacheImplDetails for MokaMemoryStore {
             return false;
         }
 
-        if record.header.timestamp + (record.header.time_to_live as u64) > current_time {
+        if record.header.time_to_live > current_time {
             return false;
         }
         match self.remove(key) {
@@ -97,7 +97,10 @@ impl Cache for MokaMemoryStore {
             } else {
                 record.header.cas += 1;
             }
-            record.header.timestamp = self.timer.timestamp();
+            let timestamp = self.timer.timestamp();
+            if record.header.time_to_live > 0 {
+                record.header.time_to_live += timestamp;
+            }
             let cas = record.header.cas;
             result = Ok(SetStatus { cas });
             Op::Put(record)

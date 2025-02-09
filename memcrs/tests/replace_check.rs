@@ -20,7 +20,7 @@ fn replace_check() {
     assert_eq!(value.unwrap(), "bar");
 
     // replace original value
-    client.replace("foo", "foobar",0).unwrap();
+    client.replace("foo", "foobar", 0).unwrap();
 
     let value: Option<String> = client.get("foo").unwrap();
     assert_eq!(value.unwrap(), "foobar");
@@ -29,15 +29,14 @@ fn replace_check() {
     match result {
         Ok(_res) => {
             unreachable!();
-        },
-        Err(err) => match err { 
+        }
+        Err(err) => match err {
             memcache::MemcacheError::CommandError(cmd) => {
                 assert_eq!(cmd, memcache::CommandError::KeyNotFound);
-            },
+            }
             _ => {
                 unreachable!();
             }
-        }
+        },
     }
-
 }

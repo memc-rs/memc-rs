@@ -7,14 +7,40 @@ use crate::protocol::binary::encoder;
 use crate::protocol::binary::network;
 
 use bytes::Bytes;
+use std::sync::Arc;
+
+use super::mock_server::MockSystemTimer;
 const OPAQUE_VALUE: u32 = 0xABAD_CAFE;
 
-pub fn create_dash_map_handler() -> BinaryHandler {
-    BinaryHandler::new(create_dash_map_storage())
+pub struct BinaryHandlerWithTimer {
+    pub handler: BinaryHandler,
+    pub timer: Arc<MockSystemTimer>,
 }
 
-pub fn create_moka_handler() -> BinaryHandler {
-    BinaryHandler::new(create_moka_storage())
+impl BinaryHandlerWithTimer {
+    pub fn new(handler: BinaryHandler, timer: Arc<MockSystemTimer>) -> BinaryHandlerWithTimer {
+        BinaryHandlerWithTimer { handler, timer }
+    }
+
+    pub fn handle_request(&self, req: decoder::BinaryRequest) -> Option<encoder::BinaryResponse> {
+        self.handler.handle_request(req)
+    }
+}
+
+pub fn create_dash_map_handler() -> BinaryHandlerWithTimer {
+    let store_with_timer = create_dash_map_storage();
+    BinaryHandlerWithTimer::new(
+        BinaryHandler::new(store_with_timer.memc_store),
+        store_with_timer.timer,
+    )
+}
+
+pub fn create_moka_handler() -> BinaryHandlerWithTimer {
+    let store_with_timer = create_moka_storage();
+    BinaryHandlerWithTimer::new(
+        BinaryHandler::new(store_with_timer.memc_store),
+        store_with_timer.timer,
+    )
 }
 
 pub fn create_get_request(header: network::RequestHeader, key: Bytes) -> BinaryRequest {
@@ -38,7 +64,7 @@ pub fn create_header(opcode: network::Command, key: &[u8]) -> network::RequestHe
     }
 }
 
-pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Option<Bytes> {
+pub fn get_value(handler: &BinaryHandlerWithTimer, key: Bytes) -> Option<Bytes> {
     let header = create_header(network::Command::Get, &key);
     let request = decoder::BinaryRequest::Get(network::GetRequest { header, key });
 
@@ -49,7 +75,7 @@ pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Option<Bytes> {
                 assert_ne!(response.header.cas, 0);
                 return Some(response.value);
             } else {
-                return None
+                return None;
             }
         }
         None => return None,
@@ -76,21 +102,29 @@ pub fn create_get_request_by_key(key: &Bytes) -> BinaryRequest {
     })
 }
 
-pub fn insert_value(handler: &BinaryHandler, key: Bytes, value: Bytes) {
+pub fn insert_value(handler: &BinaryHandlerWithTimer, key: Bytes, value: Bytes) {
+    insert_value_with_expire(handler, key, value, 0)
+}
+
+pub fn insert_value_with_expire(
+    handler: &BinaryHandlerWithTimer,
+    key: Bytes,
+    value: Bytes,
+    expiration: u32,
+) {
     let header = create_header(network::Command::Set, &key);
     const FLAGS: u32 = 0xDEAD_BEEF;
     let request = decoder::BinaryRequest::SetQuietly(network::SetRequest {
         header,
         key,
         flags: FLAGS,
-        expiration: 0,
+        expiration: expiration,
         value: value.clone(),
     });
 
     let result = handler.handle_request(request);
     assert!(result.is_none());
 }
-
 #[allow(clippy::too_many_arguments)]
 pub fn check_header(
     response: &network::ResponseHeader,

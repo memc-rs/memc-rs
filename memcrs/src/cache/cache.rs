@@ -10,7 +10,6 @@ pub type ValueType = Bytes;
 /// Meta data stored with cache value
 #[derive(Clone, Debug)]
 pub struct CacheMetaData {
-    pub(crate) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
     pub(crate) time_to_live: u32,
@@ -19,7 +18,6 @@ pub struct CacheMetaData {
 impl CacheMetaData {
     pub fn new(cas: u64, flags: u32, time_to_live: u32) -> CacheMetaData {
         CacheMetaData {
-            timestamp: 0,
             cas,
             flags,
             time_to_live,
@@ -160,7 +158,6 @@ mod tests {
         assert_eq!(meta.cas, 42);
         assert_eq!(meta.flags, 1);
         assert_eq!(meta.time_to_live, 3600);
-        assert_eq!(meta.timestamp, 0);
     }
 
     #[test]

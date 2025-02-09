@@ -1,8 +1,7 @@
 procspawn::enable_test_support!();
-use std::time::Instant;
 use memcrs::mock::key_value::generate_random_with_max_size;
+use std::time::Instant;
 mod common;
-
 
 #[test]
 fn insert_10k_values() {

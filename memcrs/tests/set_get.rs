@@ -18,4 +18,3 @@ fn set_get_check() {
     assert_eq!(value, Some(String::from("bar")));
     assert_eq!(value.unwrap(), "bar");
 }
-

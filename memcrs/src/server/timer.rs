@@ -4,7 +4,7 @@ use std::time::Duration;
 use tokio::time::{interval_at, Instant};
 
 pub trait Timer {
-    fn timestamp(&self) -> u64;
+    fn timestamp(&self) -> u32;
 }
 
 pub trait SetableTimer {
@@ -36,8 +36,8 @@ impl SystemTimer {
 }
 
 impl Timer for SystemTimer {
-    fn timestamp(&self) -> u64 {
-        self.seconds.load(Ordering::Acquire)
+    fn timestamp(&self) -> u32 {
+        self.seconds.load(Ordering::Acquire) as u32
     }
 }
 
@@ -85,11 +85,11 @@ mod tests {
 
     #[derive(Default)]
     struct MockTimer {
-        time: Mutex<u64>,
+        time: Mutex<u32>,
     }
 
     impl Timer for MockTimer {
-        fn timestamp(&self) -> u64 {
+        fn timestamp(&self) -> u32 {
             *self.time.blocking_lock()
         }
     }

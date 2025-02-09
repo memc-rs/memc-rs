@@ -4,6 +4,7 @@ use criterion::{BenchmarkId, Throughput};
 use memcrs::memcache_server::handler::BinaryHandler;
 use memcrs::mock::handler::{
     create_dash_map_handler, create_get_request_by_key, create_moka_handler, create_set_request,
+    BinaryHandlerWithTimer,
 };
 use memcrs::mock::key_value::{generate_random_with_max_size, KeyValue};
 use memcrs::protocol::binary::encoder;
@@ -12,7 +13,7 @@ fn generate_random_key_values(capacity: usize) -> Vec<KeyValue> {
     generate_random_with_max_size(capacity, 200, 1024)
 }
 
-fn test_get(handler: &BinaryHandler, key: &Bytes) {
+fn test_get(handler: &BinaryHandlerWithTimer, key: &Bytes) {
     let request = create_get_request_by_key(key);
     let result = handler.handle_request(request);
     match result {
@@ -29,7 +30,7 @@ fn test_get(handler: &BinaryHandler, key: &Bytes) {
     }
 }
 
-fn test_set(handler: &BinaryHandler, key: Bytes, value: Bytes) {
+fn test_set(handler: &BinaryHandlerWithTimer, key: Bytes, value: Bytes) {
     let request = create_set_request(key, value);
     let result = handler.handle_request(request);
     match result {
@@ -48,8 +49,8 @@ fn test_set(handler: &BinaryHandler, key: Bytes, value: Bytes) {
 
 fn criterion_simple_random_get(c: &mut Criterion) {
     static KB: usize = 1024;
-    let dash_map_handler: BinaryHandler = create_dash_map_handler();
-    let moka_handler: BinaryHandler = create_moka_handler();
+    let dash_map_handler: BinaryHandlerWithTimer = create_dash_map_handler();
+    let moka_handler: BinaryHandlerWithTimer = create_moka_handler();
 
     let mut group = c.benchmark_group("criterion_simple_random_get");
     for size in [KB, 2 * KB, 4 * KB].iter() {
@@ -104,8 +105,8 @@ fn criterion_simple_random_get(c: &mut Criterion) {
 
 fn criterion_simple_random_set(c: &mut Criterion) {
     static KB: usize = 1024;
-    let dash_map_handler: BinaryHandler = create_dash_map_handler();
-    let moka_handler: BinaryHandler = create_moka_handler();
+    let dash_map_handler: BinaryHandlerWithTimer = create_dash_map_handler();
+    let moka_handler: BinaryHandlerWithTimer = create_moka_handler();
 
     let mut group = c.benchmark_group("criterion_simple_random_set");
     for size in [KB, 2 * KB, 4 * KB].iter() {

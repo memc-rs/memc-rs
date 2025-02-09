@@ -44,6 +44,15 @@ impl DashMapMemoryStore {
     fn get_cas_id(&self) -> u64 {
         self.cas_id.fetch_add(1, Ordering::Release)
     }
+
+    fn set_cas_ttl(&self, mut record: Record, cas: u64) -> Record {
+        record.header.cas = cas;
+        let timestamp = self.timer.timestamp();
+        if record.header.time_to_live != 0 {
+            record.header.time_to_live += timestamp;
+        }
+        record
+    }
 }
 
 impl impl_details::CacheImplDetails for DashMapMemoryStore {
@@ -61,7 +70,7 @@ impl impl_details::CacheImplDetails for DashMapMemoryStore {
             return false;
         }
 
-        if record.header.timestamp + (record.header.time_to_live as u64) > current_time {
+        if record.header.time_to_live > current_time {
             return false;
         }
         match self.remove(key) {
@@ -85,25 +94,22 @@ impl Cache for DashMapMemoryStore {
                     if key_value.header.cas != record.header.cas {
                         Err(CacheError::KeyExists)
                     } else {
-                        record.header.cas += 1;
-                        record.header.timestamp = self.timer.timestamp();
-                        let cas = record.header.cas;
+                        let cas = record.header.cas + 1;
+                        record = self.set_cas_ttl(record, cas);
                         *key_value = record;
                         Ok(SetStatus { cas })
                     }
                 }
                 None => {
-                    record.header.cas += 1;
-                    record.header.timestamp = self.timer.timestamp();
-                    let cas = record.header.cas;
+                    let cas = record.header.cas + 1;
+                    record = self.set_cas_ttl(record, cas);
                     self.memory.insert(key, record);
                     Ok(SetStatus { cas })
                 }
             }
         } else {
             let cas = self.get_cas_id();
-            record.header.cas = cas;
-            record.header.timestamp = self.timer.timestamp();
+            record = self.set_cas_ttl(record, cas);
             self.memory.insert(key, record);
             Ok(SetStatus { cas })
         }

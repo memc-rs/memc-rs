@@ -171,7 +171,12 @@ impl BinaryHandler {
         append_prepend_req: network::AppendRequest,
         response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
-        let record = store::Record::new(append_prepend_req.value, append_prepend_req.header.cas, 0, 0);
+        let record = store::Record::new(
+            append_prepend_req.value,
+            append_prepend_req.header.cas,
+            0,
+            0,
+        );
         let is_append = self.is_append(append_prepend_req.header.opcode);
         let result = if is_append {
             self.storage.append(append_prepend_req.key, record)
@@ -185,7 +190,7 @@ impl BinaryHandler {
                 if is_append {
                     return encoder::BinaryResponse::Append(network::AppendResponse {
                         header: *response_header,
-                    })
+                    });
                 }
                 encoder::BinaryResponse::Prepend(network::PrependResponse {
                     header: *response_header,
