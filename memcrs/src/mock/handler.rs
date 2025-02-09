@@ -38,7 +38,7 @@ pub fn create_header(opcode: network::Command, key: &[u8]) -> network::RequestHe
     }
 }
 
-pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
+pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Option<Bytes> {
     let header = create_header(network::Command::Get, &key);
     let request = decoder::BinaryRequest::Get(network::GetRequest { header, key });
 
@@ -47,12 +47,12 @@ pub fn get_value(handler: &BinaryHandler, key: Bytes) -> Bytes {
         Some(resp) => {
             if let encoder::BinaryResponse::Get(response) = resp {
                 assert_ne!(response.header.cas, 0);
-                return response.value;
+                return Some(response.value);
             } else {
-                unreachable!();
+                return None
             }
         }
-        None => unreachable!(),
+        None => return None,
     }
 }
 
