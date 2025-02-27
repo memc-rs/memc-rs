@@ -134,6 +134,7 @@ pub trait Cache: impl_details::CacheImplDetails {
     fn run_pending_tasks(&self);
 }
 
+#[cfg(test)]
 mod tests {
 
     use super::*;

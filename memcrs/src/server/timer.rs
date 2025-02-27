@@ -46,9 +46,10 @@ impl SetableTimer for SystemTimer {
         self.seconds.fetch_add(1, Ordering::Release);
     }
 }
+
+#[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use tokio::sync::Mutex;
 
     #[tokio::test]
