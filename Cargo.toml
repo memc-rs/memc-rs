@@ -2,8 +2,8 @@
 resolver = "2"
 
 members = [
-    "memcrs"
-    #"memclt"
+    "memcrs",
+    "memclt"
 ]
 
 [profile.release]
