@@ -4,7 +4,7 @@ procspawn::enable_test_support!();
 mod common;
 
 #[test]
-fn replace_check() {
+fn add_check() {
     let params_builder: common::MemcrsdServerParamsBuilder =
         common::MemcrsdServerParamsBuilder::new();
     let server_handle = common::spawn_server(params_builder);

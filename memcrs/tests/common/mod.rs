@@ -6,6 +6,7 @@ use memcrs::{
 use procspawn::SpawnError;
 use rand::Rng;
 use std::sync::Mutex;
+use nix::{errno::Errno, sys::signal::{ kill, SIGINT}, unistd::Pid};
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
@@ -20,8 +21,20 @@ impl MemcrsdTestServer {
         }
     }
 
-    fn kill(&mut self) -> Result<(), SpawnError> {
-        self.process_handle.kill()
+    fn kill(&mut self) -> Result<(), Errno> {
+        let pid = self.process_handle.pid();
+        match pid {
+            Some(raw_pid) => {
+                let process_pid = Pid::from_raw(raw_pid as i32);
+                kill(process_pid, SIGINT)
+            },
+            None => {
+                self.process_handle.kill();
+                Ok(())
+            }
+        }
+        
+        //
     }
 
     pub fn get_connection_string(&self) -> String {

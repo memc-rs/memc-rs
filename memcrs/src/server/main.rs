@@ -29,8 +29,6 @@ fn get_log_level(verbose: u8) -> tracing::Level {
 pub fn run(args: Vec<String>) {
     LogTracer::init().expect("Cannot initialize logger");
 
-    println!("{:?}", args);
-
     let cli_config = match memcache::cli::parser::parse(args) {
         Ok(config) => config,
         Err(err) => {

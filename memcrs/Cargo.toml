@@ -39,6 +39,7 @@ jemallocator = { version = "0.5.4", optional = true }
 
 [dev-dependencies]
 memcache = "0.18.0"
+nix = { version = "0.29.0", features = ["signal"] }
 test-case = "3.3.1"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 procspawn = { version = "1.0.1", features = ["test-support"] }
