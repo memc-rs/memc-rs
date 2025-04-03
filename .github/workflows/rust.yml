@@ -78,7 +78,8 @@ jobs:
           if [[ $OS =~ ^ubuntu.*$ ]]; then
             sudo apt update
             sudo apt-get install -qq crossbuild-essential-arm64 crossbuild-essential-armhf
-            sudo apt install make
+            sudo apt-get install make
+            sudo apt-get install musl-tools
           fi
 
           # some additional configuration for cross-compilation on linux
