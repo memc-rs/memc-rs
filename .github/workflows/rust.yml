@@ -101,18 +101,18 @@ jobs:
         run: rustup target add $TARGET
       - name: Run build
         run: cargo build --release --verbose --target $TARGET
-      - name: Start Rust server (x86_64 only)
-        if: contains(matrix.TARGET, 'x86_64')
+      - name: Start Rust server (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
         run: |
           ./target/$TARGET/release/$NAME &
           echo $! > server.pid
           sleep 5
-      - name: Run Docker client (x86_64 only)
-        if: contains(matrix.TARGET, 'x86_64')
+      - name: Run Docker memcapable client (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
         run: |
           docker run --rm --network host memcrs/memcached-awesome:latest
-      - name: Stop Rust server (x86_64 only)
-        if: contains(matrix.TARGET, 'x86_64')
+      - name: Stop Rust server (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
         run: |
           kill $(cat server.pid)
       - name: List target

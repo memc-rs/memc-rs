@@ -159,6 +159,12 @@ For end-to-end integration testing we are using most popular Rust client library
 cargo test --test '*' -- --nocapture
 ```
 
+To run regression tests with a precompiled memcapable binary(on x86-64 architecture) from [https://github.com/awesomized/libmemcached](libmemcached-awesome), you can use the following Docker command:
+
+```sh
+docker run --rm --network host memcrs/memcached-awesome:latest
+```
+
 ## Measuring performance
 
 Measuring performance can be tricky, thats why to measure performance memcrsd
