@@ -3,16 +3,19 @@ use std::env;
 extern crate clap;
 mod params_parser;
 
+
 fn main() {
     memcapability::run(env::args().collect())
 }
 
-
 mod memcapability {
     use log::info;
-    use std::process;
+    use std::{io::Write, process};
     use env_logger::Builder;
+    use crate::params_parser::MemcacheClientConfig;
+
     use super::params_parser;
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
     fn get_log_level(verbose: u8) -> log::LevelFilter {
         // Vary the output based on how many times the user used the "verbose" flag
@@ -26,6 +29,21 @@ mod memcapability {
         }
     }
 
+    pub fn init_logger(cli_config: &MemcacheClientConfig) {
+        let mut builder = Builder::new();
+        builder.filter_level(get_log_level(cli_config.verbose));
+        builder.format_module_path(false);
+        builder.format_file(false);
+        builder.format_source_path(false);
+        builder.format_target(false);
+
+        builder.format(|buf, record| {
+            let style = buf.default_level_style(record.level());
+            writeln!(buf, "[{}] {style}{:<5}{style:#}: {}", buf.timestamp(), record.level(), record.args())
+        });
+        builder.init();
+    }
+
     pub fn run(args: Vec<String>) {
 
         let cli_config = match params_parser::parse(args) {
@@ -35,9 +53,8 @@ mod memcapability {
                 process::exit(1);
             }
         };
-        let mut builder = Builder::new();
-        builder.filter_level(get_log_level(cli_config.verbose));
-        builder.init();
+        
+        init_logger(&cli_config);
 
         info!("Server address: {}", cli_config.server_address.to_string());
         info!("Server port: {}", cli_config.port);
