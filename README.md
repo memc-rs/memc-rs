@@ -5,7 +5,7 @@ memcrsd is a key value store implementation in Rust. It is compatible with binar
 ## Supported features and compatibility
 
 To check compatibility with memcached server implementation memcrsd project
-is using [memcapable](http://docs.libmemcached.org/bin/memcapable.html) tool from [libmemcached library](https://libmemcached.org/libMemcached.html)
+is using [memcapable](https://awesomized.github.io/libmemcached/bin/memcapable.html) tool from [libmemcached-awesome library](https://github.com/awesomized/libmemcached)
 
 Here is a capability status for memcrsd:
 
