@@ -101,6 +101,20 @@ jobs:
         run: rustup target add $TARGET
       - name: Run build
         run: cargo build --release --verbose --target $TARGET
+      - name: Start Rust server (x86_64 only)
+        if: contains(matrix.TARGET, 'x86_64')
+        run: |
+          ./target/$TARGET/release/$NAME &
+          echo $! > server.pid
+          sleep 5
+      - name: Run Docker client (x86_64 only)
+        if: contains(matrix.TARGET, 'x86_64')
+        run: |
+          docker run --rm --network host memcrs/memcached-awesome:latest
+      - name: Stop Rust server (x86_64 only)
+        if: contains(matrix.TARGET, 'x86_64')
+        run: |
+          kill $(cat server.pid)
       - name: List target
         run: find ./target
       - name: Compress
