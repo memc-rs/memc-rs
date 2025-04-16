@@ -2,12 +2,18 @@
 resolver = "2"
 
 members = [
-    "memcrs"
-    #"memclt"
+    "memcrs",
+    "memclt"
 ]
 
 [profile.release]
 opt-level = 3
-debug = false
+debug = "line-tables-only"
+rpath = false
 lto = true
-panic = 'unwind'
+debug-assertions = false
+codegen-units = 1
+
+[profile.dev]
+debug = true
+opt-level = 0

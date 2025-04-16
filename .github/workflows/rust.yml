@@ -26,7 +26,9 @@ jobs:
       - name: List
         run: find ./
       - name: Run tests
-        run: cargo test --verbose
+        run:  |
+          export RUST_BACKTRACE=full
+          cargo test --verbose
 
   build:
     strategy:
@@ -76,6 +78,8 @@ jobs:
           if [[ $OS =~ ^ubuntu.*$ ]]; then
             sudo apt update
             sudo apt-get install -qq crossbuild-essential-arm64 crossbuild-essential-armhf
+            sudo apt-get install make
+            sudo apt-get install musl-tools
           fi
 
           # some additional configuration for cross-compilation on linux
@@ -97,6 +101,20 @@ jobs:
         run: rustup target add $TARGET
       - name: Run build
         run: cargo build --release --verbose --target $TARGET
+      - name: Start Rust server (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
+        run: |
+          ./target/$TARGET/release/$NAME &
+          echo $! > server.pid
+          sleep 5
+      - name: Run Docker memcapable client (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
+        run: |
+          docker run --rm --network host memcrs/memcached-awesome:latest
+      - name: Stop Rust server (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
+        run: |
+          kill $(cat server.pid)
       - name: List target
         run: find ./target
       - name: Compress
@@ -116,9 +134,9 @@ jobs:
           mv ./target/$TARGET/release/$EXEC ./$EXEC
           tar -czf ./artifacts/$NAME-$TARGET-$TAG.tar.gz $EXEC
       - name: Archive artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: result
+          name: binaries-${{matrix.TARGET}}
           path: |
             ./artifacts
 

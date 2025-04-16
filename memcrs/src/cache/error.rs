@@ -37,3 +37,45 @@ impl CacheError {
 }
 
 pub type Result<T> = std::result::Result<T, CacheError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cache_error_to_static_string() {
+        assert_eq!(CacheError::NotFound.to_static_string(), "Not found");
+        assert_eq!(CacheError::KeyExists.to_static_string(), "Key exists");
+        assert_eq!(
+            CacheError::ValueTooLarge.to_static_string(),
+            "Value too big"
+        );
+        assert_eq!(
+            CacheError::InvalidArguments.to_static_string(),
+            "Invalid arguments"
+        );
+        assert_eq!(
+            CacheError::ItemNotStored.to_static_string(),
+            "Item not stored"
+        );
+        assert_eq!(
+            CacheError::ArithOnNonNumeric.to_static_string(),
+            "Incr/Decr on non numeric value"
+        );
+        assert_eq!(
+            CacheError::UnkownCommand.to_static_string(),
+            "Invalid command"
+        );
+        assert_eq!(CacheError::OutOfMemory.to_static_string(), "Out of memory");
+        assert_eq!(CacheError::NotSupported.to_static_string(), "Not supported");
+        assert_eq!(
+            CacheError::InternalError.to_static_string(),
+            "Internal error"
+        );
+        assert_eq!(CacheError::Busy.to_static_string(), "Busy");
+        assert_eq!(
+            CacheError::TemporaryFailure.to_static_string(),
+            "Temporary failure"
+        );
+    }
+}

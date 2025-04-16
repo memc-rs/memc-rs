@@ -1,6 +1,5 @@
-use crate::protocol::binary_codec::{
-    BinaryRequest, BinaryResponse, MemcacheBinaryCodec, ResponseMessage,
-};
+use crate::protocol::binary::decoder::{BinaryRequest, MemcacheBinaryDecoder};
+use crate::protocol::binary::encoder::{BinaryResponse, MemcacheBinaryEncoder, ResponseMessage};
 use bytes::BytesMut;
 use std::cmp;
 use std::io;
@@ -11,7 +10,8 @@ use tokio_util::codec::Decoder;
 
 pub struct MemcacheBinaryConnection {
     stream: TcpStream,
-    codec: MemcacheBinaryCodec,
+    decoder: MemcacheBinaryDecoder,
+    encoder: MemcacheBinaryEncoder,
     buffer: BytesMut,
 }
 
@@ -19,8 +19,9 @@ impl MemcacheBinaryConnection {
     pub fn new(socket: TcpStream, item_size_limit: u32) -> Self {
         MemcacheBinaryConnection {
             stream: socket,
-            codec: MemcacheBinaryCodec::new(item_size_limit),
-            buffer: BytesMut::with_capacity(4096),
+            decoder: MemcacheBinaryDecoder::new(item_size_limit),
+            encoder: MemcacheBinaryEncoder::new(),
+            buffer: BytesMut::with_capacity(item_size_limit as usize),
         }
     }
 
@@ -29,7 +30,7 @@ impl MemcacheBinaryConnection {
         loop {
             // Attempt to parse a frame from the buffered data. If enough data
             // has been buffered, the frame is returned.
-            if let Some(frame) = self.codec.decode(&mut self.buffer)? {
+            if let Some(frame) = self.decoder.decode(&mut self.buffer)? {
                 match frame {
                     BinaryRequest::ItemTooLarge(request) => {
                         debug!(
@@ -127,7 +128,7 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn write(&mut self, msg: &BinaryResponse) -> io::Result<()> {
-        let message = self.codec.encode_message(msg);
+        let message = self.encoder.encode_message(msg);
         self.write_data_to_stream(message).await?;
         Ok(())
     }

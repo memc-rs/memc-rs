@@ -5,12 +5,12 @@ memcrsd is a key value store implementation in Rust. It is compatible with binar
 ## Supported features and compatibility
 
 To check compatibility with memcached server implementation memcrsd project
-is using [memcapable](http://docs.libmemcached.org/bin/memcapable.html) tool from [libmemcached library](https://libmemcached.org/libMemcached.html)
+is using [memcapable](https://awesomized.github.io/libmemcached/bin/memcapable.html) tool from [libmemcached-awesome library](https://github.com/awesomized/libmemcached)
 
 Here is a capability status for memcrsd:
 
 ```sh
-./memcapable -h 127.0.0.1  -b -p 11211                 
+docker run --rm --network host memcrs/memcached-awesome:latest
 Hostname was provided.127.0.0.1
 binary noop                             [pass]
 binary quit                             [pass]
@@ -74,7 +74,6 @@ docker build -m 4096m .
 
 ### Publishing docker image
 
-
 ```sh
 git checkout memcrsd-0.0.1b
 docker pull rust
@@ -111,6 +110,12 @@ memcrsd project is tested using different types of tests:
 * fuzzy testing,
 * end-2-end tests
 
+### Unit testing
+
+```sh
+cargo test --lib -- --nocapture
+```
+
 ### Fuzzy testing
 
 At the moment decoding network packets is fuzzy tested.
@@ -135,21 +140,30 @@ To generate test coverage there is a convenient shell script that compiles and e
 ```sh
 cd memcrs
 ./coverage.sh
-firefox ../target/debug/coverage/index.html
+firefox ./target/llvm-cov/html/index.html
 ```
 
-To be able to produce coverage reports `grcov` tool needs to be installed:
+Coverage reporting is generated using cargo llvm-cov tool. Alternatively one can execute it from shell:
 
 ```sh
-cargo install grcov
+cargo llvm-cov test --lib && cargo llvm-cov report --html
 ```
 
 The plan in the future is to have coverage ~90%.
 
 ### Integration testing
 
-For end-to-end integration testing at the moment memcrsd project is using memcapable tool from libmemcache 
-library. In the future memclt binary will be used to perform end-to-end tests.
+For end-to-end integration testing we are using most popular Rust client library memcache[https://crates.io/crates/memcache]. See tests directory for further details.
+
+```sh
+cargo test --test '*' -- --nocapture
+```
+
+To run regression tests with a precompiled memcapable binary(on x86-64 architecture) from [https://github.com/awesomized/libmemcached](libmemcached-awesome), you can use the following Docker command:
+
+```sh
+docker run --rm --network host memcrs/memcached-awesome:latest
+```
 
 ## Measuring performance
 

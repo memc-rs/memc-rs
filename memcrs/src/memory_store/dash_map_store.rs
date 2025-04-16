@@ -1,41 +1,23 @@
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, CachePredicate, CacheReadOnlyView, KeyType, Record,
-    RemoveIfResult, SetStatus,
+    impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
-use dashmap::mapref::multiple::RefMulti;
-use dashmap::{DashMap, ReadOnlyView};
+
+use dashmap::{DashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 type Storage = DashMap<KeyType, Record>;
-pub struct MemoryStore {
+pub struct DashMapMemoryStore {
     memory: Storage,
     timer: Arc<dyn timer::Timer + Send + Sync>,
     cas_id: AtomicU64,
 }
 
-type StorageReadOnlyView = ReadOnlyView<KeyType, Record>;
-
-impl<'a> CacheReadOnlyView<'a> for StorageReadOnlyView {
-    fn len(&self) -> usize {
-        StorageReadOnlyView::len(self)
-    }
-
-    fn is_empty(&self) -> bool {
-        StorageReadOnlyView::is_empty(self)
-    }
-
-    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a> {
-        let keys = self.keys();
-        Box::new(keys)
-    }
-}
-
-impl MemoryStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> MemoryStore {
-        MemoryStore {
+impl DashMapMemoryStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> DashMapMemoryStore {
+        DashMapMemoryStore {
             memory: DashMap::new(),
             timer,
             cas_id: AtomicU64::new(1),
@@ -45,9 +27,18 @@ impl MemoryStore {
     fn get_cas_id(&self) -> u64 {
         self.cas_id.fetch_add(1, Ordering::Release)
     }
+
+    fn set_cas_ttl(&self, mut record: Record, cas: u64) -> Record {
+        record.header.cas = cas;
+        let timestamp = self.timer.timestamp();
+        if record.header.time_to_live != 0 {
+            record.header.time_to_live += timestamp;
+        }
+        record
+    }
 }
 
-impl impl_details::CacheImplDetails for MemoryStore {
+impl impl_details::CacheImplDetails for DashMapMemoryStore {
     fn get_by_key(&self, key: &KeyType) -> Result<Record> {
         match self.memory.get(key) {
             Some(record) => Ok(record.clone()),
@@ -62,7 +53,7 @@ impl impl_details::CacheImplDetails for MemoryStore {
             return false;
         }
 
-        if record.header.timestamp + (record.header.time_to_live as u64) > current_time {
+        if record.header.time_to_live > current_time {
             return false;
         }
         match self.remove(key) {
@@ -72,7 +63,7 @@ impl impl_details::CacheImplDetails for MemoryStore {
     }
 }
 
-impl Cache for MemoryStore {
+impl Cache for DashMapMemoryStore {
     // Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
         self.memory.remove(key)
@@ -86,25 +77,22 @@ impl Cache for MemoryStore {
                     if key_value.header.cas != record.header.cas {
                         Err(CacheError::KeyExists)
                     } else {
-                        record.header.cas += 1;
-                        record.header.timestamp = self.timer.timestamp();
-                        let cas = record.header.cas;
+                        let cas = record.header.cas + 1;
+                        record = self.set_cas_ttl(record, cas);
                         *key_value = record;
                         Ok(SetStatus { cas })
                     }
                 }
                 None => {
-                    record.header.cas += 1;
-                    record.header.timestamp = self.timer.timestamp();
-                    let cas = record.header.cas;
+                    let cas = record.header.cas + 1;
+                    record = self.set_cas_ttl(record, cas);
                     self.memory.insert(key, record);
                     Ok(SetStatus { cas })
                 }
             }
         } else {
             let cas = self.get_cas_id();
-            record.header.cas = cas;
-            record.header.timestamp = self.timer.timestamp();
+            record = self.set_cas_ttl(record, cas);
             self.memory.insert(key, record);
             Ok(SetStatus { cas })
         }
@@ -136,29 +124,9 @@ impl Cache for MemoryStore {
         }
     }
 
-    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView> {
-        let storage_clone = self.memory.clone();
-        Box::new(storage_clone.into_read_only())
-    }
-
-    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult {
-        let items: Vec<KeyType> = self
-            .memory
-            .iter()
-            .filter(|record: &RefMulti<KeyType, Record>| f(record.key(), record.value()))
-            .map(|record: RefMulti<KeyType, Record>| record.key().clone())
-            .collect();
-
-        let result: Vec<Option<(KeyType, Record)>> =
-            items.iter().map(|key: &KeyType| self.remove(key)).collect();
-        result
-    }
-
     fn len(&self) -> usize {
         self.memory.len()
     }
 
-    fn is_empty(&self) -> bool {
-        self.memory.is_empty()
-    }
+    fn run_pending_tasks(&self) {}
 }

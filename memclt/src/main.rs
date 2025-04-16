@@ -1,60 +1,68 @@
-use memcache::MemcacheError;
-use std::collections::HashMap;
-use std::str;
+
+use std::env;
+extern crate clap;
+mod params_parser;
+
 
 fn main() {
-    let client = memcache::Client::connect(
-        "memcache://127.0.0.1:11211?timeout=120&tcp_nodelay=true&protocol=binary",
-    )
-    .unwrap();
-    client.set("foo", "test", 600).unwrap();
+    memcapability::run(env::args().collect())
+}
 
-    let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
+mod memcapability {
+    use log::info;
+    use std::{io::Write, process};
+    use env_logger::Builder;
+    use crate::params_parser::MemcacheClientConfig;
 
-    let (key, val, cas) = result.get("foo").unwrap();
+    use super::params_parser;
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream, WriteColor};
 
-    println!(
-        "Foo: {:?} {} {}",
-        str::from_utf8(key).unwrap(),
-        val,
-        cas.unwrap()
-    );
-
-    client.append("foo", "bas").unwrap();
-
-    client.prepend("foo", "bis").unwrap();
-
-    let result: HashMap<String, (Vec<u8>, u32, Option<u64>)> = client.gets(&["foo"]).unwrap();
-    let (key, val, cas) = result.get("foo").unwrap();
-
-    println!(
-        "Foo: {:?} {} {}",
-        str::from_utf8(key).unwrap(),
-        val,
-        cas.unwrap()
-    );
-    client.replace("foo", "3000", 80).unwrap();
-
-    client.increment("foo", 100).unwrap();
-
-    client.decrement("foo", 50).unwrap();
-
-    let result: Result<Option<String>, MemcacheError> = client.get("foo");
-    match result {
-        Ok(val) => match val {
-            Some(value) => println!("Server returned: {}", value),
-            None => println!("Server none"),
-        },
-        Err(err) => {
-            println!("Error returned: {:?}", err);
+    fn get_log_level(verbose: u8) -> log::LevelFilter {
+        // Vary the output based on how many times the user used the "verbose" flag
+        // // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
+        match verbose {
+            0 => log::LevelFilter::Error,
+            1 => log::LevelFilter::Warn,
+            2 => log::LevelFilter::Info,
+            3 => log::LevelFilter::Debug,
+            _ => log::LevelFilter::Trace,
         }
     }
 
-    client.delete("foo").unwrap();
+    pub fn init_logger(cli_config: &MemcacheClientConfig) {
+        let mut builder = Builder::new();
+        builder.filter_level(get_log_level(cli_config.verbose));
+        builder.format_module_path(false);
+        builder.format_file(false);
+        builder.format_source_path(false);
+        builder.format_target(false);
 
-    client.flush_with_delay(100).unwrap();
+        builder.format(|buf, record| {
+            let style = buf.default_level_style(record.level());
+            writeln!(buf, "[{}] {style}{:<5}{style:#}: {}", buf.timestamp(), record.level(), record.args())
+        });
+        builder.init();
+    }
 
-    client.flush().unwrap();
-    let version = client.version().unwrap();
-    println!("Version: {:?}", version);
+    pub fn run(args: Vec<String>) {
+
+        let cli_config = match params_parser::parse(args) {
+            Ok(config) => config,
+            Err(err) => {
+                eprint!("{}", err);
+                process::exit(1);
+            }
+        };
+        
+        init_logger(&cli_config);
+
+        info!("Server address: {}", cli_config.server_address.to_string());
+        info!("Server port: {}", cli_config.port);
+        info!(
+            "Max item size: {}",
+            byte_unit::Byte::from_u64(cli_config.item_size)
+                .get_appropriate_unit(byte_unit::UnitType::Decimal)
+                .to_string()
+        );
+    }
 }

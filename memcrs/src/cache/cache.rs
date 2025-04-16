@@ -10,7 +10,6 @@ pub type ValueType = Bytes;
 /// Meta data stored with cache value
 #[derive(Clone, Debug)]
 pub struct CacheMetaData {
-    pub(crate) timestamp: u64,
     pub(crate) cas: u64,
     pub(crate) flags: u32,
     pub(crate) time_to_live: u32,
@@ -19,7 +18,6 @@ pub struct CacheMetaData {
 impl CacheMetaData {
     pub fn new(cas: u64, flags: u32, time_to_live: u32) -> CacheMetaData {
         CacheMetaData {
-            timestamp: 0,
             cas,
             flags,
             time_to_live,
@@ -74,13 +72,6 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
-/// Read only view over a store
-pub trait CacheReadOnlyView<'a> {
-    fn len(&self) -> usize;
-    fn is_empty(&self) -> bool;
-    fn keys(&'a self) -> Box<dyn Iterator<Item = &'a KeyType> + 'a>;
-}
-
 // Not a part of Store public API
 pub mod impl_details {
     use super::*;
@@ -92,9 +83,6 @@ pub mod impl_details {
         fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
     }
 }
-
-pub type RemoveIfResult = Vec<Option<(KeyType, Record)>>;
-pub type CachePredicate = dyn FnMut(&KeyType, &Record) -> bool;
 
 // An abstraction over a generic store key <=> value store
 pub trait Cache: impl_details::CacheImplDetails {
@@ -138,15 +126,79 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// Number of key value pairs stored in store
     fn len(&self) -> usize;
 
-    fn is_empty(&self) -> bool;
-
-    /// Returns a read-only view over a stroe
-    fn as_read_only(&self) -> Box<dyn CacheReadOnlyView>;
-
-    /// Removes key-value pairs from a store for which
-    /// f predicate returns true
-    fn remove_if(&self, f: &mut CachePredicate) -> RemoveIfResult;
-
     /// Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
+
+    /// runs pending tasks (if any)
+    /// will be scheudled periodicall
+    fn run_pending_tasks(&self);
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use bytes::Bytes;
+
+    #[test]
+    fn test_cache_metadata_new() {
+        let meta = CacheMetaData::new(42, 1, 3600);
+        assert_eq!(meta.cas, 42);
+        assert_eq!(meta.flags, 1);
+        assert_eq!(meta.time_to_live, 3600);
+    }
+
+    #[test]
+    fn test_cache_metadata_get_expiration() {
+        let meta = CacheMetaData::new(100, 2, 7200);
+        assert_eq!(meta.get_expiration(), 7200);
+    }
+
+    #[test]
+    fn test_cache_metadata_len() {
+        let meta = CacheMetaData::new(0, 0, 0);
+        assert_eq!(meta.len(), std::mem::size_of::<CacheMetaData>());
+    }
+
+    #[test]
+    fn test_cache_metadata_is_empty() {
+        let meta = CacheMetaData::new(0, 0, 0);
+        assert!(!meta.is_empty());
+    }
+
+    #[test]
+    fn test_record_new() {
+        let value = Bytes::from("test_value");
+        let record = Record::new(value.clone(), 10, 3, 600);
+        assert_eq!(record.value, value);
+        assert_eq!(record.header.cas, 10);
+        assert_eq!(record.header.flags, 3);
+        assert_eq!(record.header.time_to_live, 600);
+    }
+
+    #[test]
+    fn test_record_len() {
+        let value = Bytes::from("1234");
+        let record = Record::new(value.clone(), 1, 0, 300);
+        assert_eq!(
+            record.len(),
+            std::mem::size_of::<CacheMetaData>() + value.len()
+        );
+    }
+
+    #[test]
+    fn test_record_is_empty() {
+        let value = Bytes::from("test");
+        let record = Record::new(value, 1, 0, 300);
+        assert!(!record.is_empty());
+    }
+
+    #[test]
+    fn test_record_equality() {
+        let value1 = Bytes::from("value");
+        let value2 = Bytes::from("value");
+        let record1 = Record::new(value1.clone(), 1, 0, 300);
+        let record2 = Record::new(value2.clone(), 2, 1, 600);
+        assert_eq!(record1, record2);
+    }
 }

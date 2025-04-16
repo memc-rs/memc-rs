@@ -75,7 +75,7 @@ pub enum Command {
     OpCodeMax = 0x25,
 }
 
-#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Copy, Clone, Default, PartialEq)]
 pub struct RequestHeader {
     pub(crate) magic: u8,
     pub(crate) opcode: u8,

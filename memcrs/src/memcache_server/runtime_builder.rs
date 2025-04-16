@@ -2,7 +2,10 @@ extern crate core_affinity;
 use crate::memcache;
 use crate::memcache_server;
 use crate::server;
-use crate::{cache::cache::Cache, memcache::cli::parser::RuntimeType};
+use crate::{
+    cache::cache::Cache, cache::pending_tasks_runner::PendingTasksRunner,
+    memcache::cli::parser::RuntimeType,
+};
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -10,7 +13,7 @@ use std::sync::{
 };
 use tokio::runtime::Builder;
 
-use crate::memcache::cli::parser::MemcrsArgs;
+use crate::memcache::cli::parser::MemcrsdConfig;
 
 fn get_worker_thread_name() -> String {
     static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
@@ -41,18 +44,23 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
 }
 
 fn create_current_thread_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
-        config.item_size_limit.as_u64() as u32,
+        config.item_size_limit as u32,
         config.backlog_limit,
     );
 
     let core_ids = core_affinity::get_core_ids().unwrap();
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    std::thread::spawn(move || {
+        let child_runtime = create_current_thread_runtime();
+        child_runtime.block_on(task_runner.run())
+    });
 
     for i in 0..config.threads {
         let store_rc = Arc::clone(&store);
@@ -84,33 +92,38 @@ fn create_current_thread_server(
 }
 
 fn create_threadpool_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     store: Arc<dyn Cache + Send + Sync>,
 ) -> tokio::runtime::Runtime {
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
-        config.item_size_limit.as_u64() as u32,
+        config.item_size_limit as u32,
         config.backlog_limit,
     );
     let runtime = create_multi_thread_runtime(config.threads);
-    let store_rc = Arc::clone(&store);
-    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+    let mut tcp_server =
+        memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, Arc::clone(&store));
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    runtime.spawn(async move { task_runner.run().await });
     runtime.spawn(async move { tcp_server.run(addr).await });
     runtime
 }
 
 pub fn create_memcrs_server(
-    config: MemcrsArgs,
+    config: MemcrsdConfig,
     system_timer: std::sync::Arc<server::timer::SystemTimer>,
 ) -> tokio::runtime::Runtime {
-    let store_config = memcache::builder::MemcacheStoreConfig::new(config.memory_limit, config.eviction_policy);
-    let memcache_store =
-        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
+    let store_config = memcache::builder::MemcacheStoreConfig::new(
+        config.store_engine,
+        config.memory_limit,
+        config.eviction_policy,
+    );
+    let store = memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
 
     match config.runtime_type {
-        RuntimeType::CurrentThread => create_current_thread_server(config, memcache_store),
-        RuntimeType::MultiThread => create_threadpool_server(config, memcache_store),
+        RuntimeType::CurrentThread => create_current_thread_server(config, store),
+        RuntimeType::MultiThread => create_threadpool_server(config, store),
     }
 }
