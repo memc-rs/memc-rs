@@ -10,7 +10,7 @@ is using [memcapable](https://awesomized.github.io/libmemcached/bin/memcapable.h
 Here is a capability status for memcrsd:
 
 ```sh
-./memcapable -h 127.0.0.1  -b -p 11211
+docker run --rm --network host memcrs/memcached-awesome:latest
 Hostname was provided.127.0.0.1
 binary noop                             [pass]
 binary quit                             [pass]
