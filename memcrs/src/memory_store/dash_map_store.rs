@@ -1,10 +1,8 @@
-use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus,
-};
+use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus};
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 
-use dashmap::{DashMap};
+use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
@@ -17,8 +15,15 @@ pub struct DashMapMemoryStore {
 
 impl DashMapMemoryStore {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> DashMapMemoryStore {
+        // cores²/2
+        let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
+        let shards = parallelism.pow(2) / 4;
+
+        info!("Avialable parallelism: {}", parallelism);
+        info!("Number of shards: {}", shards);
+
         DashMapMemoryStore {
-            memory: DashMap::new(),
+            memory: DashMap::with_shard_amount(shards),
             timer,
             cas_id: AtomicU64::new(1),
         }
