@@ -31,7 +31,7 @@ tracing = "0.1.41"
 tracing-attributes = "0.1.28"
 tracing-log = "0.2.0"
 tracing-subscriber = { version = "0.3.19", default-features = false, features = ["std", "fmt"] }
-tokio = { version = "1.45.0", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 tokio-util = { version = "0.7.15", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
