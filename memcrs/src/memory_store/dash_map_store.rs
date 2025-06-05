@@ -17,9 +17,14 @@ impl DashMapMemoryStore {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> DashMapMemoryStore {
         // cores²/2
         let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
-        let shards = parallelism.pow(2) / 4;
+        let optimal_number_shards = parallelism.pow(2) / 4;
+        let closest_power_of_2 = optimal_number_shards.ilog2();
+        let shards_power_of_2 = 2usize.pow(closest_power_of_2);
+        let shards = if shards_power_of_2 > 1 {shards_power_of_2 } else { 2};
 
         info!("Avialable parallelism: {}", parallelism);
+        info!("Optimal number of shards: {}", optimal_number_shards);
+        info!("Closest power of 2: {}", closest_power_of_2);
         info!("Number of shards: {}", shards);
 
         DashMapMemoryStore {
