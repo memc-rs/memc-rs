@@ -16,7 +16,7 @@ pub struct DashMapMemoryStore {
 impl DashMapMemoryStore {
     pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> DashMapMemoryStore {
         let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
-        let shards = Self::get_parallelism(parallelism);
+        let shards = Self::get_number_of_shards(parallelism);
         info!("Number of shards: {}", shards);
         DashMapMemoryStore {
             memory: DashMap::with_shard_amount(shards),
@@ -28,7 +28,7 @@ impl DashMapMemoryStore {
     // This function is used to get the number of shards based on the available parallelism.
     // It calculates the optimal number of shards based on the square of the parallelism divided by 4.
     // It then finds the closest power of 2 to that number and returns it.
-    fn get_parallelism(parallelism: usize) -> usize {
+    fn get_number_of_shards(parallelism: usize) -> usize {
         let parallelism = parallelism.max(2);
         let parallelism = parallelism.min(192);
 
@@ -182,7 +182,7 @@ mod tests {
             usize::MAX / 2,
             usize::MAX,
         ] {
-            let shards = DashMapMemoryStore::get_parallelism(parallelism);
+            let shards = DashMapMemoryStore::get_number_of_shards(parallelism);
             assert!(
                 is_power_of_two(shards),
                 "Returned value {} is not a power of 2 for parallelism {}",
@@ -195,8 +195,8 @@ mod tests {
     #[test]
     fn test_get_parallelism_minimum_value() {
         // Should never return less than 2
-        assert_eq!(DashMapMemoryStore::get_parallelism(0), 2);
-        assert_eq!(DashMapMemoryStore::get_parallelism(1), 2);
-        assert_eq!(DashMapMemoryStore::get_parallelism(2), 2);
+        assert_eq!(DashMapMemoryStore::get_number_of_shards(0), 2);
+        assert_eq!(DashMapMemoryStore::get_number_of_shards(1), 2);
+        assert_eq!(DashMapMemoryStore::get_number_of_shards(2), 2);
     }
 }
