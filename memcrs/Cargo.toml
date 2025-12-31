@@ -11,7 +11,7 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byte-unit = "5.1.6"
+byte-unit = "5.2.0"
 bytes = "1.10.0"
 clap = { version = "4.5.50", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
