@@ -2,6 +2,7 @@ use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, S
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 
+use bytes::BytesMut;
 use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -152,6 +153,70 @@ impl Cache for DashMapMemoryStore {
 
     fn len(&self) -> usize {
         self.memory.len()
+    }
+
+    fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        use dashmap::mapref::entry::Entry;
+        match self.memory.entry(key) {
+            Entry::Occupied(_) => Err(CacheError::KeyExists),
+            Entry::Vacant(entry) => {
+                let cas = self.get_cas_id();
+                record = self.set_cas_ttl(record, cas);
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+        }
+    }
+
+    fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        use dashmap::mapref::entry::Entry;
+        match self.memory.entry(key) {
+            Entry::Occupied(mut entry) => {
+                let cas = self.get_cas_id();
+                record = self.set_cas_ttl(record, cas);
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+            Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
+    }
+
+    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        use dashmap::mapref::entry::Entry;
+        match self.memory.entry(key) {
+            Entry::Occupied(mut entry) => {
+                let mut record = entry.get().clone();
+                let mut value = BytesMut::with_capacity(record.value.len() + new_record.value.len());
+                value.extend_from_slice(&record.value);
+                value.extend_from_slice(&new_record.value);
+                record.value = value.freeze();
+                
+                let cas = self.get_cas_id();
+                record = self.set_cas_ttl(record, cas);
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+            Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
+    }
+
+    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        use dashmap::mapref::entry::Entry;
+        match self.memory.entry(key) {
+            Entry::Occupied(mut entry) => {
+                let mut record = entry.get().clone();
+                let mut value = BytesMut::with_capacity(record.value.len() + new_record.value.len());
+                value.extend_from_slice(&new_record.value);
+                value.extend_from_slice(&record.value);
+                record.value = value.freeze();
+                
+                let cas = self.get_cas_id();
+                record = self.set_cas_ttl(record, cas);
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+            Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
     }
 
     fn run_pending_tasks(&self) {}

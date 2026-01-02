@@ -54,47 +54,19 @@ impl MemcStore {
     // }
 
     pub fn add(&self, key: KeyType, record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(_record) => Err(CacheError::KeyExists),
-            Err(_err) => self.set(key, record),
-        }
+        self.store.add(key, record)
     }
 
     pub fn replace(&self, key: KeyType, record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(_record) => self.set(key, record),
-            Err(_err) => Err(CacheError::NotFound),
-        }
+        self.store.replace(key, record)
     }
 
     pub fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(mut record) => {
-                record.header.cas = new_record.header.cas;
-                let mut value =
-                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&record.value);
-                value.extend_from_slice(&new_record.value);
-                record.value = value.freeze();
-                self.set(key, record)
-            }
-            Err(_err) => Err(CacheError::NotFound),
-        }
+        self.store.append(key, new_record)
     }
 
     pub fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(mut record) => {
-                let mut value =
-                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&new_record.value);
-                value.extend_from_slice(&record.value);
-                record.value = value.freeze();
-                record.header.cas = new_record.header.cas;
-                self.set(key, record)
-            }
-            Err(_err) => Err(CacheError::NotFound),
-        }
+        self.store.prepend(key, new_record)
     }
 
     pub fn increment(

@@ -1,5 +1,5 @@
 use super::error::{CacheError, Result};
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 
 /// Cache key type
 pub type KeyType = Bytes;
@@ -132,6 +132,18 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// runs pending tasks (if any)
     /// will be scheudled periodicall
     fn run_pending_tasks(&self);
+
+    /// Stores data only if the key does not already exist in the cache.
+    fn add(&self, key: KeyType, record: Record) -> Result<SetStatus>;
+
+    /// Stores data only if the key already exists in the cache.
+    fn replace(&self, key: KeyType, record: Record) -> Result<SetStatus>;
+
+    /// Appends the new data to the existing data for the key.
+    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus>;
+
+    /// Prepends the new data to the existing data for the key.
+    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus>;
 }
 
 #[cfg(test)]
