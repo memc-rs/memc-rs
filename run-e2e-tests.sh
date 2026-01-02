@@ -23,6 +23,7 @@ if ! docker build -m 4096m . -t memcrs/memc-rs:dev; then
     exit 1
 fi
 
+rm name.txt
 echo "Starting Docker container..."
 if ! docker run -d --cidfile name.txt -p 127.0.0.1:11211:11211/tcp memcrs/memc-rs:dev; then
     echo "Docker run failed!"
@@ -34,6 +35,7 @@ docker run --rm --network host memcrs/memcached-awesome:latest
 
 echo "Stopping Docker container..."
 docker stop `cat name.txt`
+docker rm `cat name.txt`
 rm name.txt
 
 echo "E2E tests completed successfully!"
