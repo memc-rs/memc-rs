@@ -25,7 +25,7 @@ impl MockSystemTimer {
 
 impl timer::Timer for MockSystemTimer {
     fn timestamp(&self) -> u32 {
-        self.current_time.load(Ordering::Relaxed) as u32
+        self.current_time.load(Ordering::Relaxed)
     }
 }
 
@@ -47,7 +47,7 @@ pub struct MockServer {
 impl MockServer {
     pub fn new(store: Arc<dyn Cache + Send + Sync>, timer: Arc<MockSystemTimer>) -> Self {
         MockServer {
-            timer: timer,
+            timer,
             storage: MemcStore::new(store),
         }
     }

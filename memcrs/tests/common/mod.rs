@@ -3,10 +3,14 @@ use memcrs::{
     cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType,
     memory_store::StoreEngine, server,
 };
+use nix::{
+    errno::Errno,
+    sys::signal::{kill, SIGINT},
+    unistd::Pid,
+};
 use procspawn::SpawnError;
 use rand::Rng;
 use std::sync::Mutex;
-use nix::{errno::Errno, sys::signal::{ kill, SIGINT}, unistd::Pid};
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
@@ -27,13 +31,13 @@ impl MemcrsdTestServer {
             Some(raw_pid) => {
                 let process_pid = Pid::from_raw(raw_pid as i32);
                 kill(process_pid, SIGINT)
-            },
+            }
             None => {
                 self.process_handle.kill();
                 Ok(())
             }
         }
-        
+
         //
     }
 

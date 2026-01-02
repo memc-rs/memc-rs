@@ -159,7 +159,9 @@ impl MemcacheBinaryDecoder {
     fn parse_request(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state != RequestParserState::HeaderParsed {
             error!("Incorrect parser state ({:?})", self.state);
-            return Err(Error::new(ErrorKind::Other, "Header is not parsed"));
+            return Err(std::io::Error::other(
+                "Incorrect parser state, header not parsed".to_string(),
+            ));
         }
 
         if self.header.body_length > self.item_size_limit {
@@ -174,7 +176,9 @@ impl MemcacheBinaryDecoder {
                 self.header.body_length,
                 src.len()
             );
-            return Err(Error::new(ErrorKind::Other, "Header body length too large"));
+            return Err(std::io::Error::other(
+                "Header body length too large".to_string(),
+            ));
         }
 
         let result = match FromPrimitive::from_u8(self.header.opcode) {

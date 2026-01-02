@@ -1,4 +1,4 @@
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 
 use crate::cache::cache::{
     Cache, CacheMetaData as CacheMeta, KeyType as CacheKeyType, Record as CacheRecord,
