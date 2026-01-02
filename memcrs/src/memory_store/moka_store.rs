@@ -3,7 +3,6 @@ use crate::cache::cache::{
 };
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
-use bytes::BytesMut;
 use moka::ops::compute::Op;
 use moka::sync::Cache as MokaCache;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -125,84 +124,6 @@ impl Cache for MokaMemoryStore {
 
     fn len(&self) -> usize {
         self.memory.entry_count() as usize
-    }
-
-    fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        let mut result: Result<SetStatus> = Err(CacheError::KeyExists);
-        let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
-            if maybe_entry.is_some() {
-                return Op::Nop;
-            }
-            let cas = self.get_cas_id();
-            record.header.cas = cas;
-            let timestamp = self.timer.timestamp();
-            if record.header.time_to_live > 0 {
-                record.header.time_to_live += timestamp;
-            }
-            result = Ok(SetStatus { cas });
-            Op::Put(record)
-        });
-        result
-    }
-
-    fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
-        let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
-            if maybe_entry.is_none() {
-                return Op::Nop;
-            }
-            let cas = self.get_cas_id();
-            record.header.cas = cas;
-            let timestamp = self.timer.timestamp();
-            if record.header.time_to_live > 0 {
-                record.header.time_to_live += timestamp;
-            }
-            result = Ok(SetStatus { cas });
-            Op::Put(record)
-        });
-        result
-    }
-
-    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
-        let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
-            if let Some(entry) = maybe_entry {
-                let mut record = entry.into_value();
-                let mut value = BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&record.value);
-                value.extend_from_slice(&new_record.value);
-                record.value = value.freeze();
-                
-                let cas = self.get_cas_id();
-                record.header.cas = cas;
-                
-                result = Ok(SetStatus { cas });
-                return Op::Put(record);
-            }
-            Op::Nop
-        });
-        result
-    }
-
-    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
-        let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
-            if let Some(entry) = maybe_entry {
-                let mut record = entry.into_value();
-                let mut value = BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&new_record.value);
-                value.extend_from_slice(&record.value);
-                record.value = value.freeze();
-                
-                let cas = self.get_cas_id();
-                record.header.cas = cas;
-                
-                result = Ok(SetStatus { cas });
-                return Op::Put(record);
-            }
-            Op::Nop
-        });
-        result
     }
 
     fn run_pending_tasks(&self) {
