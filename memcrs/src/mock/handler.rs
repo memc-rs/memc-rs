@@ -74,10 +74,11 @@ pub fn get_value(handler: &BinaryHandlerWithTimer, key: Bytes) -> Option<Bytes> 
             if let encoder::BinaryResponse::Get(response) = resp {
                 assert_ne!(response.header.cas, 0);
                 return Some(response.value);
+            } else {
+                return None;
             }
-            None
         }
-        None => None,
+        None => return None,
     }
 }
 
@@ -94,7 +95,7 @@ pub fn create_set_request(key: Bytes, value: Bytes) -> decoder::BinaryRequest {
 }
 
 pub fn create_get_request_by_key(key: &Bytes) -> BinaryRequest {
-    let header = create_header(network::Command::Get, key);
+    let header = create_header(network::Command::Get, &key);
     decoder::BinaryRequest::Get(network::GetRequest {
         header,
         key: key.clone(),
@@ -117,7 +118,7 @@ pub fn insert_value_with_expire(
         header,
         key,
         flags: FLAGS,
-        expiration,
+        expiration: expiration,
         value: value.clone(),
     });
 

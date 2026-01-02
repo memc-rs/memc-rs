@@ -1,5 +1,5 @@
 use super::error::{CacheError, Result};
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 
 /// Cache key type
 pub type KeyType = Bytes;
@@ -130,7 +130,7 @@ pub trait Cache: impl_details::CacheImplDetails {
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
 
     /// runs pending tasks (if any)
-    /// will be scheudled periodically
+    /// will be scheudled periodicall
     fn run_pending_tasks(&self);
 
     /// Stores data only if the key does not already exist in the cache.

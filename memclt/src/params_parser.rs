@@ -1,5 +1,5 @@
 use byte_unit::Byte;
-use clap::Parser;
+use clap::{command, Parser};
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 const DEFAULT_PORT: u16 = 11211;
@@ -50,6 +50,7 @@ fn parse_memory_mb(s: &str) -> Result<u64, String> {
         Err(byte_error) => Err(format!("{}", byte_error)),
     }
 }
+
 
 impl MemcacheClientConfig {
     fn from_args(args: Vec<String>) -> Result<MemcacheClientConfig, String> {

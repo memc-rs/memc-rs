@@ -1,7 +1,7 @@
 use crate::cache::eviction_policy::EvictionPolicy;
 use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
-use clap::{Parser, ValueEnum};
+use clap::{command, Parser, ValueEnum};
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
