@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 echo "Running e2e tests..."
 
 if [ "$1" = "clean" ]; then
