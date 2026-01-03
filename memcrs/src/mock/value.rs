@@ -3,7 +3,7 @@ use bytes::{BufMut, BytesMut};
 use std::str;
 
 pub fn from_string(val: &str) -> ValueType {
-    let mut value = BytesMut::with_capacity(val.as_bytes().len());
+    let mut value = BytesMut::with_capacity(val.len());
     value.put_slice(val.as_bytes());
     value.freeze()
 }

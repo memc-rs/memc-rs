@@ -3,10 +3,13 @@ use memcrs::{
     cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType,
     memory_store::StoreEngine, server,
 };
-use procspawn::SpawnError;
+use nix::{
+    errno::Errno,
+    sys::signal::{kill, SIGINT},
+    unistd::Pid,
+};
 use rand::Rng;
 use std::sync::Mutex;
-use nix::{errno::Errno, sys::signal::{ kill, SIGINT}, unistd::Pid};
 
 pub struct MemcrsdTestServer {
     process_handle: procspawn::JoinHandle<()>,
@@ -27,13 +30,13 @@ impl MemcrsdTestServer {
             Some(raw_pid) => {
                 let process_pid = Pid::from_raw(raw_pid as i32);
                 kill(process_pid, SIGINT)
-            },
+            }
             None => {
-                self.process_handle.kill();
+                let _ = self.process_handle.kill();
                 Ok(())
             }
         }
-        
+
         //
     }
 
@@ -164,6 +167,7 @@ pub fn spawn_server(mut params: MemcrsdServerParamsBuilder) -> MemcrsdTestServer
     MemcrsdTestServer::new(handle, port)
 }
 
+#[allow(dead_code)]
 pub fn create_value_with_size(size: usize) -> String {
     let mut rng = rand::rng();
     let mut value = String::with_capacity(size);

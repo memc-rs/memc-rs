@@ -42,7 +42,7 @@ pub fn run(args: Vec<String>) {
         .with_max_level(get_log_level(cli_config.verbose))
         .init();
 
-    info!("Listen address: {}", cli_config.listen_address.to_string());
+    info!("Listen address: {}", cli_config.listen_address);
     info!("Listen port: {}", cli_config.port);
     info!("Connection limit: {}", cli_config.connection_limit);
     info!("Number of threads: {}", cli_config.threads);
@@ -53,13 +53,11 @@ pub fn run(args: Vec<String>) {
         "Max item size: {}",
         byte_unit::Byte::from_u64(cli_config.item_size_limit)
             .get_appropriate_unit(byte_unit::UnitType::Decimal)
-            .to_string()
     );
     info!(
         "Memory limit: {}",
         byte_unit::Byte::from_u64(cli_config.memory_limit)
             .get_appropriate_unit(byte_unit::UnitType::Decimal)
-            .to_string()
     );
 
     let system_timer: Arc<timer::SystemTimer> = Arc::new(timer::SystemTimer::new());
