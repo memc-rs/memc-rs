@@ -23,6 +23,12 @@ impl MockSystemTimer {
     }
 }
 
+impl Default for MockSystemTimer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl timer::Timer for MockSystemTimer {
     fn timestamp(&self) -> u32 {
         self.current_time.load(Ordering::Relaxed)
