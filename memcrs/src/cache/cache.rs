@@ -126,12 +126,33 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// Number of key value pairs stored in store
     fn len(&self) -> usize;
 
+    /// Checks if store is empty
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
     /// Removes key value and returns as an option
     fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
 
     /// runs pending tasks (if any)
     /// will be scheudled periodicall
     fn run_pending_tasks(&self);
+
+    /// Adds a new key-value pair to the cache, but only if the key does not already exist.
+    /// If the key exists, the operation fails with KeyExists error.
+    fn add(&self, key: KeyType, record: Record) -> Result<SetStatus>;
+
+    /// Replaces the value of an existing key in the cache, but only if the key already exists.
+    /// If the key does not exist, the operation fails with NotFound error.
+    fn replace(&self, key: KeyType, record: Record) -> Result<SetStatus>;
+
+    /// Appends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
+    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus>;
+
+    /// Prepends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
+    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus>;
 }
 
 #[cfg(test)]

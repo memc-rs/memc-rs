@@ -155,6 +155,22 @@ impl Cache for DashMapMemoryStore {
     }
 
     fn run_pending_tasks(&self) {}
+
+    fn add(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
+        todo!()
+    }
 }
 
 #[cfg(test)]

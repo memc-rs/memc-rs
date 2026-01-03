@@ -1,6 +1,4 @@
-use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus,
-};
+use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus};
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 use moka::ops::compute::Op;
@@ -128,5 +126,21 @@ impl Cache for MokaMemoryStore {
 
     fn run_pending_tasks(&self) {
         self.memory.run_pending_tasks()
+    }
+
+    fn add(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
+        todo!()
+    }
+
+    fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
+        todo!()
     }
 }
