@@ -62,6 +62,17 @@ impl DashMapMemoryStore {
         }
         record
     }
+
+    fn insert(
+        &self,
+        key: bytes::Bytes,
+        mut record: Record,
+        cas: u64,
+    ) -> std::result::Result<SetStatus, CacheError> {
+        record = self.set_cas_ttl(record, cas);
+        self.memory.insert(key, record);
+        Ok(SetStatus { cas })
+    }
 }
 
 impl impl_details::CacheImplDetails for DashMapMemoryStore {
@@ -101,27 +112,22 @@ impl Cache for DashMapMemoryStore {
             match self.memory.get_mut(&key) {
                 Some(mut key_value) => {
                     if key_value.header.cas != record.header.cas {
-                        Err(CacheError::KeyExists)
+                        return Err(CacheError::KeyExists);
                     } else {
                         let cas = record.header.cas + 1;
                         record = self.set_cas_ttl(record, cas);
                         *key_value = record;
-                        Ok(SetStatus { cas })
+                        return Ok(SetStatus { cas });
                     }
                 }
                 None => {
                     let cas = record.header.cas + 1;
-                    record = self.set_cas_ttl(record, cas);
-                    self.memory.insert(key, record);
-                    Ok(SetStatus { cas })
+                    return self.insert(key, record, cas);
                 }
             }
-        } else {
-            let cas = self.get_cas_id();
-            record = self.set_cas_ttl(record, cas);
-            self.memory.insert(key, record);
-            Ok(SetStatus { cas })
         }
+        let cas = self.get_cas_id();
+        self.insert(key, record, cas)
     }
 
     fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record> {
@@ -156,8 +162,21 @@ impl Cache for DashMapMemoryStore {
 
     fn run_pending_tasks(&self) {}
 
-    fn add(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
-        todo!()
+    /// Adds a new key-value pair to the cache, but only if the key does not already exist.
+    /// If the key exists, the operation fails with KeyExists error.
+    fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        let cas = match record.header.cas {
+            0 => self.get_cas_id(),
+            _ => record.header.cas + 1,
+        };
+        record = self.set_cas_ttl(record, cas);
+        match self.memory.entry(key) {
+            dashmap::mapref::entry::Entry::Occupied(_) => Err(CacheError::KeyExists),
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+        }
     }
 
     fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {

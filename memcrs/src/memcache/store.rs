@@ -54,10 +54,7 @@ impl MemcStore {
     // }
 
     pub fn add(&self, key: KeyType, record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(_record) => Err(CacheError::KeyExists),
-            Err(_err) => self.set(key, record),
-        }
+        self.store.add(key, record)
     }
 
     pub fn replace(&self, key: KeyType, record: Record) -> Result<SetStatus> {

@@ -26,6 +26,18 @@ impl MokaMemoryStore {
     fn get_cas_id(&self) -> u64 {
         self.cas_id.fetch_add(1, Ordering::Release)
     }
+
+    fn set_cas_ttl(&self, record: &mut Record) -> u64 {
+        record.header.cas = match record.header.cas {
+            0 => self.get_cas_id(),
+            _ => record.header.cas + 1,
+        };
+        let timestamp = self.timer.timestamp();
+        if record.header.time_to_live > 0 {
+            record.header.time_to_live += timestamp;
+        }
+        record.header.cas
+    }
 }
 
 impl impl_details::CacheImplDetails for MokaMemoryStore {
@@ -70,17 +82,7 @@ impl Cache for MokaMemoryStore {
                     return Op::Nop;
                 }
             }
-            if record.header.cas == 0 {
-                let cas = self.get_cas_id();
-                record.header.cas = cas;
-            } else {
-                record.header.cas += 1;
-            }
-            let timestamp = self.timer.timestamp();
-            if record.header.time_to_live > 0 {
-                record.header.time_to_live += timestamp;
-            }
-            let cas = record.header.cas;
+            let cas = self.set_cas_ttl(&mut record);
             result = Ok(SetStatus { cas });
             Op::Put(record)
         });
@@ -128,8 +130,15 @@ impl Cache for MokaMemoryStore {
         self.memory.run_pending_tasks()
     }
 
-    fn add(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
-        todo!()
+    /// Adds a new key-value pair to the cache, but only if the key does not already exist.
+    /// If the key exists, the operation fails with KeyExists error.
+    fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        let cas = self.set_cas_ttl(&mut record);
+        let entry = self.memory.entry(key).or_insert(record);
+        match entry.is_fresh() {
+            true => Ok(SetStatus { cas }),
+            false => Err(CacheError::KeyExists),
+        }
     }
 
     fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
