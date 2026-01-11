@@ -30,7 +30,7 @@ impl MokaMemoryStore {
     fn set_cas_ttl(&self, record: &mut Record) -> u64 {
         record.header.cas = match record.header.cas {
             0 => self.get_cas_id(),
-            _ => record.header.cas + 1,
+            _ => record.header.cas.wrapping_add(1),
         };
         let timestamp = self.timer.timestamp();
         if record.header.time_to_live > 0 {
@@ -141,14 +141,42 @@ impl Cache for MokaMemoryStore {
         }
     }
 
-    fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
-        todo!()
+    /// Replaces the value of an existing key in the cache, but only if the key already exists.
+    /// If the key does not exist, the operation fails with NotFound error.
+    fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        let cas = record.header.cas;
+        self.set_cas_ttl(&mut record);
+
+        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
+        let _entry = self
+            .memory
+            .entry(key)
+            .and_compute_with(|maybe_entry| match maybe_entry {
+                Some(entry) => {
+                    let key_value = entry.into_value();
+                    if cas != 0 && key_value.header.cas != cas {
+                        result = Err(CacheError::KeyExists);
+                        Op::Nop
+                    } else {
+                        result = Ok(SetStatus {
+                            cas: record.header.cas,
+                        });
+                        Op::Put(record)
+                    }
+                }
+                None => Op::Nop,
+            });
+        result
     }
 
+    /// Appends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
         todo!()
     }
 
+    /// Prepends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
         todo!()
     }

@@ -114,14 +114,14 @@ impl Cache for DashMapMemoryStore {
                     if key_value.header.cas != record.header.cas {
                         return Err(CacheError::KeyExists);
                     } else {
-                        let cas = record.header.cas + 1;
+                        let cas = record.header.cas.wrapping_add(1);
                         record = self.set_cas_ttl(record, cas);
                         *key_value = record;
                         return Ok(SetStatus { cas });
                     }
                 }
                 None => {
-                    let cas = record.header.cas + 1;
+                    let cas = record.header.cas.wrapping_add(1);
                     return self.insert(key, record, cas);
                 }
             }
@@ -167,7 +167,7 @@ impl Cache for DashMapMemoryStore {
     fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
         let cas = match record.header.cas {
             0 => self.get_cas_id(),
-            _ => record.header.cas + 1,
+            _ => record.header.cas.wrapping_add(1),
         };
         record = self.set_cas_ttl(record, cas);
         match self.memory.entry(key) {
@@ -179,14 +179,36 @@ impl Cache for DashMapMemoryStore {
         }
     }
 
-    fn replace(&self, _key: KeyType, _record: Record) -> Result<SetStatus> {
-        todo!()
+    /// Replaces the value of an existing key in the cache, but only if the key already exists.
+    /// If the key does not exist, the operation fails with NotFound error.
+    fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
+        let cas = record.header.cas;
+        let new_cas = match cas {
+            0 => self.get_cas_id(),
+            _ => record.header.cas.wrapping_add(1),
+        };
+        record = self.set_cas_ttl(record, new_cas);
+        match self.memory.entry(key) {
+            dashmap::mapref::entry::Entry::Occupied(mut entry) => {
+                let value = entry.get();
+                if cas != 0 && value.header.cas != cas {
+                    return Err(CacheError::KeyExists);
+                }
+                entry.insert(record);
+                Ok(SetStatus { cas: new_cas })
+            }
+            dashmap::mapref::entry::Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
     }
 
+    /// Appends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
         todo!()
     }
 
+    /// Prepends the new value to the existing value for the given key.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
         todo!()
     }
