@@ -87,6 +87,24 @@ fn insert_should_fail_on_cas_mismatch(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn insert_should_not_fail_on_cas_max(server: MockServer) {
+    let storage = server.storage;
+    let cas: u64 = u64::MAX;
+    let key = Bytes::from("key");
+    let record = Record::new(from_string("test data"), cas, 0, 0);
+    let result = storage.set(key.clone(), record.clone());
+    assert!(result.is_ok());
+
+    match result {
+        Ok(set_status) => {
+            assert!(set_status.cas != cas);
+        }
+        Err(_err) => unreachable!(),
+    }
+}
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn record_should_expire_in_given_time(server: MockServer) {
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
