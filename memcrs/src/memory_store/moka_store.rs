@@ -1,6 +1,7 @@
 use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus};
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
+use bytes::BytesMut;
 use moka::ops::compute::Op;
 use moka::sync::Cache as MokaCache;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -37,6 +38,47 @@ impl MokaMemoryStore {
             record.header.time_to_live += timestamp;
         }
         record.header.cas
+    }
+
+    fn append_prepend_common(
+        &self,
+        key: KeyType,
+        mut new_record: Record,
+        is_append: bool,
+    ) -> Result<SetStatus> {
+        let cas = new_record.header.cas;
+        self.set_cas_ttl(&mut new_record);
+        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
+        let _entry = self
+            .memory
+            .entry(key)
+            .and_compute_with(|maybe_entry| match maybe_entry {
+                Some(entry) => {
+                    let prev_record = entry.into_value();
+                    if cas != 0 && prev_record.header.cas != cas {
+                        result = Err(CacheError::KeyExists);
+                        Op::Nop
+                    } else {
+                        let mut new_value = BytesMut::with_capacity(
+                            prev_record.value.len() + new_record.value.len(),
+                        );
+                        if is_append {
+                            new_value.extend_from_slice(&prev_record.value);
+                            new_value.extend_from_slice(&new_record.value);
+                        } else {
+                            new_value.extend_from_slice(&new_record.value);
+                            new_value.extend_from_slice(&prev_record.value);
+                        }
+                        new_record.value = new_value.freeze();
+                        result = Ok(SetStatus {
+                            cas: new_record.header.cas,
+                        });
+                        Op::Put(new_record)
+                    }
+                }
+                None => Op::Nop,
+            });
+        result
     }
 }
 
@@ -153,8 +195,8 @@ impl Cache for MokaMemoryStore {
             .entry(key)
             .and_compute_with(|maybe_entry| match maybe_entry {
                 Some(entry) => {
-                    let key_value = entry.into_value();
-                    if cas != 0 && key_value.header.cas != cas {
+                    let prev_record = entry.into_value();
+                    if cas != 0 && prev_record.header.cas != cas {
                         result = Err(CacheError::KeyExists);
                         Op::Nop
                     } else {
@@ -171,13 +213,13 @@ impl Cache for MokaMemoryStore {
 
     /// Appends the new value to the existing value for the given key.
     /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
-    fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
-        todo!()
+    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        self.append_prepend_common(key, new_record, true)
     }
 
     /// Prepends the new value to the existing value for the given key.
-    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
-    fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
-        todo!()
+/// The key must already exist in the cache, otherwise the operation fails with NotFound error.
+    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        self.append_prepend_common(key, new_record, false)
     }
 }

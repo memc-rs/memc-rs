@@ -74,6 +74,8 @@ pub struct SetStatus {
 
 // Not a part of Store public API
 pub mod impl_details {
+    use crate::memcache::store::DeltaParam;
+
     use super::*;
     pub trait CacheImplDetails {
         //
@@ -81,6 +83,31 @@ pub mod impl_details {
 
         //
         fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
+
+        //
+        fn add_delta(&self, record: &Record, delta: DeltaParam, increment: bool) -> Result<Bytes> {
+            str::from_utf8(&record.value)
+                .map(|value: &str| {
+                    value
+                        .parse::<u64>()
+                        .map_err(|_err| CacheError::ArithOnNonNumeric)
+                })
+                .map_err(|_err| CacheError::ArithOnNonNumeric)
+                .and_then(|value: std::result::Result<u64, CacheError>| {
+                    //flatten result
+                    value
+                })
+                .map(|mut value: u64| {
+                    if increment {
+                        value += delta.delta;
+                    } else if delta.delta > value {
+                        value = 0;
+                    } else {
+                        value -= delta.delta;
+                    }
+                    Bytes::from(value.to_string())
+                })
+        }
     }
 }
 

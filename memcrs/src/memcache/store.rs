@@ -1,4 +1,4 @@
-use bytes::{Bytes, BytesMut};
+use bytes::Bytes;
 
 use crate::cache::cache::{
     Cache, CacheMetaData as CacheMeta, KeyType as CacheKeyType, Record as CacheRecord,
@@ -62,33 +62,11 @@ impl MemcStore {
     }
 
     pub fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(mut record) => {
-                record.header.cas = new_record.header.cas;
-                let mut value =
-                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&record.value);
-                value.extend_from_slice(&new_record.value);
-                record.value = value.freeze();
-                self.set(key, record)
-            }
-            Err(_err) => Err(CacheError::NotFound),
-        }
+        self.store.append(key, new_record)
     }
 
     pub fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
-        match self.get(&key) {
-            Ok(mut record) => {
-                let mut value =
-                    BytesMut::with_capacity(record.value.len() + new_record.value.len());
-                value.extend_from_slice(&new_record.value);
-                value.extend_from_slice(&record.value);
-                record.value = value.freeze();
-                record.header.cas = new_record.header.cas;
-                self.set(key, record)
-            }
-            Err(_err) => Err(CacheError::NotFound),
-        }
+        self.store.prepend(key, new_record)
     }
 
     pub fn increment(

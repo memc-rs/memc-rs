@@ -2,6 +2,7 @@ use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, S
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 
+use bytes::BytesMut;
 use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -72,6 +73,45 @@ impl DashMapMemoryStore {
         record = self.set_cas_ttl(record, cas);
         self.memory.insert(key, record);
         Ok(SetStatus { cas })
+    }
+
+    fn get_cas(&self, record: &Record) -> u64 {
+        match record.header.cas {
+            0 => return self.get_cas_id(),
+            _ => return record.header.cas.wrapping_add(1),
+        };
+    }
+
+    fn append_prepend_common(
+        &self,
+        key: KeyType,
+        new_record: Record,
+        is_append: bool,
+    ) -> Result<SetStatus> {
+        let cas = new_record.header.cas;
+        let new_cas = self.get_cas(&new_record);
+        let mut new_record = self.set_cas_ttl(new_record, new_cas);
+        match self.memory.entry(key) {
+            dashmap::mapref::entry::Entry::Occupied(mut entry) => {
+                let prev_record = entry.get();
+                if cas != 0 && prev_record.header.cas != cas {
+                    return Err(CacheError::KeyExists);
+                }
+                let mut new_value =
+                    BytesMut::with_capacity(prev_record.value.len() + new_record.value.len());
+                if is_append {
+                    new_value.extend_from_slice(&prev_record.value);
+                    new_value.extend_from_slice(&new_record.value);
+                } else {
+                    new_value.extend_from_slice(&new_record.value);
+                    new_value.extend_from_slice(&prev_record.value);
+                }
+                new_record.value = new_value.freeze();
+                entry.insert(new_record);
+                Ok(SetStatus { cas: new_cas })
+            }
+            dashmap::mapref::entry::Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
     }
 }
 
@@ -165,10 +205,7 @@ impl Cache for DashMapMemoryStore {
     /// Adds a new key-value pair to the cache, but only if the key does not already exist.
     /// If the key exists, the operation fails with KeyExists error.
     fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        let cas = match record.header.cas {
-            0 => self.get_cas_id(),
-            _ => record.header.cas.wrapping_add(1),
-        };
+        let cas = self.get_cas(&record);
         record = self.set_cas_ttl(record, cas);
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(_) => Err(CacheError::KeyExists),
@@ -183,10 +220,7 @@ impl Cache for DashMapMemoryStore {
     /// If the key does not exist, the operation fails with NotFound error.
     fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
         let cas = record.header.cas;
-        let new_cas = match cas {
-            0 => self.get_cas_id(),
-            _ => record.header.cas.wrapping_add(1),
-        };
+        let new_cas = self.get_cas(&record);
         record = self.set_cas_ttl(record, new_cas);
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(mut entry) => {
@@ -203,14 +237,14 @@ impl Cache for DashMapMemoryStore {
 
     /// Appends the new value to the existing value for the given key.
     /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
-    fn append(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
-        todo!()
+    fn append(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        self.append_prepend_common(key, new_record, true)
     }
 
     /// Prepends the new value to the existing value for the given key.
     /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
-    fn prepend(&self, _key: KeyType, _new_record: Record) -> Result<SetStatus> {
-        todo!()
+    fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
+        self.append_prepend_common(key, new_record, false)
     }
 }
 
