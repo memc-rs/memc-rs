@@ -77,9 +77,9 @@ impl DashMapMemoryStore {
 
     fn get_cas(&self, record: &Record) -> u64 {
         match record.header.cas {
-            0 => return self.get_cas_id(),
-            _ => return record.header.cas.wrapping_add(1),
-        };
+            0 => self.get_cas_id(),
+            _ => record.header.cas.wrapping_add(1),
+        }
     }
 
     fn append_prepend_common(
