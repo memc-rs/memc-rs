@@ -1,7 +1,10 @@
-use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus};
+use crate::cache::cache::impl_details::CacheImplDetails;
+use crate::cache::cache::{
+    impl_details, Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
+};
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use moka::ops::compute::Op;
 use moka::sync::Cache as MokaCache;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -218,8 +221,75 @@ impl Cache for MokaMemoryStore {
     }
 
     /// Prepends the new value to the existing value for the given key.
-/// The key must already exist in the cache, otherwise the operation fails with NotFound error.
+    /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
         self.append_prepend_common(key, new_record, false)
+    }
+
+    /// Performs an arithmetic operation (increment or decrement) on a numeric value stored in the cache.
+    /// If `increment` is true, adds `delta` to the value; otherwise, subtracts `delta`.
+    /// The value must be a valid unsigned 64-bit integer.
+    /// Returns the new value after the operation.
+    fn incr_decr(
+        &self,
+        header: CacheMetaData,
+        key: KeyType,
+        delta: DeltaParam,
+        increment: bool,
+    ) -> Result<DeltaResult> {
+        let cas = header.cas;
+        let mut result: Result<DeltaResult> = Err(CacheError::NotFound);
+        let _entry = self
+            .memory
+            .entry(key)
+            .and_compute_with(|maybe_entry| match maybe_entry {
+                Some(entry) => {
+                    let mut record = entry.into_value();
+                    if cas != 0 && record.header.cas != cas {
+                        result = Err(CacheError::KeyExists);
+                        Op::Nop
+                    } else {
+                        match self.incr_decr_common(&record, delta, increment) {
+                            Ok(new_value) => {
+                                if cas != 0 && record.header.cas != cas {
+                                    result = Err(CacheError::KeyExists);
+                                    return Op::Nop;
+                                }
+                                let new_cas = self.get_cas_id();
+                                record.value = Bytes::from(new_value.to_string());
+                                record.header.cas = new_cas;
+                                result = Ok(DeltaResult {
+                                    value: new_value,
+                                    cas: new_cas,
+                                });
+                                Op::Put(record)
+                            }
+                            Err(e) => {
+                                result = Err(e);
+                                Op::Nop
+                            }
+                        }
+                    }
+                }
+                None => {
+                    if header.get_expiration() != 0xffffffff {
+                        let cas = self.get_cas_id();
+                        let record = Record::new(
+                            Bytes::from(delta.value.to_string()),
+                            cas,
+                            0,
+                            header.get_expiration(),
+                        );
+
+                        result = Ok(DeltaResult {
+                            cas,
+                            value: delta.value,
+                        });
+                        return Op::Put(record);
+                    }
+                    Op::Nop
+                }
+            });
+        result
     }
 }

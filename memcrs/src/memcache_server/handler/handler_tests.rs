@@ -4,6 +4,7 @@ use super::*;
 mod tests {
     use super::decoder;
     use super::network;
+    use crate::cache::cache;
     use crate::cache::error;
     use crate::memcache::store;
     use crate::memcache_server::handler::EXTRAS_LENGTH;
@@ -418,7 +419,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<cache::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -458,7 +459,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<cache::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -521,7 +522,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<cache::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);
@@ -561,7 +562,7 @@ mod tests {
                         0,
                         0,
                         0,
-                        std::mem::size_of::<store::DeltaResultValueType>() as u32,
+                        std::mem::size_of::<cache::DeltaResultValueType>() as u32,
                     );
                     assert_eq!(response.value, EXPECTED_VALUE);
                     assert_ne!(response.header.cas, 0);

@@ -1,8 +1,11 @@
-use crate::cache::cache::{impl_details, Cache, CacheMetaData, KeyType, Record, SetStatus};
+use crate::cache::cache::impl_details::CacheImplDetails;
+use crate::cache::cache::{
+    impl_details, Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
+};
 use crate::cache::error::{CacheError, Result};
 use crate::server::timer;
 
-use bytes::BytesMut;
+use bytes::{Bytes, BytesMut};
 use dashmap::DashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -245,6 +248,58 @@ impl Cache for DashMapMemoryStore {
     /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus> {
         self.append_prepend_common(key, new_record, false)
+    }
+
+    /// Performs an arithmetic operation (increment or decrement) on a numeric value stored in the cache.
+    /// If `increment` is true, adds `delta` to the value; otherwise, subtracts `delta`.
+    /// The value must be a valid unsigned 64-bit integer.
+    /// Returns the new value after the operation.
+    fn incr_decr(
+        &self,
+        header: CacheMetaData,
+        key: KeyType,
+        delta: DeltaParam,
+        increment: bool,
+    ) -> Result<DeltaResult> {
+        let cas = header.cas;
+
+        match self.memory.entry(key) {
+            dashmap::mapref::entry::Entry::Occupied(mut entry) => {
+                let record = entry.get_mut();
+                match self.incr_decr_common(record, delta, increment) {
+                    Ok(new_value) => {
+                        let new_cas = self.get_cas(record);
+                        if cas != 0 && record.header.cas != cas {
+                            return Err(CacheError::KeyExists);
+                        }
+                        record.value = Bytes::from(new_value.to_string());
+                        record.header.cas = new_cas;
+                        Ok(DeltaResult {
+                            value: new_value,
+                            cas: new_cas,
+                        })
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                if header.get_expiration() != 0xffffffff {
+                    let cas = self.get_cas_id();
+                    let record = Record::new(
+                        Bytes::from(delta.value.to_string()),
+                        cas,
+                        0,
+                        header.get_expiration(),
+                    );
+                    entry.insert(record);
+                    return Ok(DeltaResult {
+                        cas,
+                        value: delta.value,
+                    });
+                }
+                Err(CacheError::NotFound)
+            }
+        }
     }
 }
 

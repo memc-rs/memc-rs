@@ -1,9 +1,10 @@
 use super::*;
+use crate::cache::error::CacheError;
 use crate::mock::mock_server::{
     create_dash_map_server, create_moka_server, MockServer, SetableTimer,
 };
 use crate::mock::value::{from_slice, from_string};
-use bytes::{BufMut, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut};
 use test_case::test_case;
 
 #[test_case(create_moka_server() ; "moka_backend")]

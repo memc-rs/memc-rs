@@ -1,12 +1,8 @@
-use bytes::Bytes;
-
 use crate::cache::cache::{
-    Cache, CacheMetaData as CacheMeta, KeyType as CacheKeyType, Record as CacheRecord,
-    SetStatus as CacheSetStatus,
+    Cache, CacheMetaData as CacheMeta, DecrementParam, DeltaParam, DeltaResult, IncrementParam,
+    KeyType as CacheKeyType, Record as CacheRecord, SetStatus as CacheSetStatus,
 };
-use crate::cache::error::{CacheError, Result};
-
-use std::str;
+use crate::cache::error::Result;
 use std::sync::Arc;
 
 pub type Record = CacheRecord;
@@ -14,20 +10,6 @@ pub type Meta = CacheMeta;
 pub type SetStatus = CacheSetStatus;
 pub type KeyType = CacheKeyType;
 
-#[derive(Clone)]
-pub struct DeltaParam {
-    pub(crate) delta: u64,
-    pub(crate) value: u64,
-}
-pub type IncrementParam = DeltaParam;
-pub type DecrementParam = IncrementParam;
-
-pub type DeltaResultValueType = u64;
-#[derive(Debug)]
-pub struct DeltaResult {
-    pub cas: u64,
-    pub value: DeltaResultValueType,
-}
 /**
  * Implements Memcache commands based
  * on Key Value Store
@@ -94,55 +76,7 @@ impl MemcStore {
         delta: DeltaParam,
         increment: bool,
     ) -> Result<DeltaResult> {
-        match self.get(&key) {
-            Ok(mut record) => {
-                str::from_utf8(&record.value)
-                    .map(|value: &str| {
-                        value
-                            .parse::<u64>()
-                            .map_err(|_err| CacheError::ArithOnNonNumeric)
-                    })
-                    .map_err(|_err| CacheError::ArithOnNonNumeric)
-                    .and_then(|value: std::result::Result<u64, CacheError>| {
-                        //flatten result
-                        value
-                    })
-                    .map(|mut value: u64| {
-                        if increment {
-                            value += delta.delta;
-                        } else if delta.delta > value {
-                            value = 0;
-                        } else {
-                            value -= delta.delta;
-                        }
-                        record.value = Bytes::from(value.to_string());
-                        record.header = header;
-                        self.set(key, record).map(|result| DeltaResult {
-                            cas: result.cas,
-                            value,
-                        })
-                    })
-                    .and_then(|result: std::result::Result<DeltaResult, CacheError>| {
-                        //flatten result
-                        result
-                    })
-            }
-            Err(_err) => {
-                if header.get_expiration() != 0xffffffff {
-                    let record = Record::new(
-                        Bytes::from(delta.value.to_string()),
-                        0,
-                        0,
-                        header.get_expiration(),
-                    );
-                    return self.set(key, record).map(|result| DeltaResult {
-                        cas: result.cas,
-                        value: delta.value,
-                    });
-                }
-                Err(CacheError::NotFound)
-            }
-        }
+        self.store.incr_decr(header, key, delta, increment)
     }
 
     pub fn delete(&self, key: KeyType, header: Meta) -> Result<Record> {

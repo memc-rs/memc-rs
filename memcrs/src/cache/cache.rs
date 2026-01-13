@@ -7,6 +7,22 @@ pub type KeyType = Bytes;
 /// Cache value associated with a key
 pub type ValueType = Bytes;
 
+#[derive(Clone)]
+pub struct DeltaParam {
+    pub(crate) delta: u64,
+    pub(crate) value: u64,
+}
+
+pub type IncrementParam = DeltaParam;
+pub type DecrementParam = IncrementParam;
+
+pub type DeltaResultValueType = u64;
+#[derive(Debug)]
+pub struct DeltaResult {
+    pub cas: u64,
+    pub value: DeltaResultValueType,
+}
+
 /// Meta data stored with cache value
 #[derive(Clone, Debug)]
 pub struct CacheMetaData {
@@ -74,7 +90,6 @@ pub struct SetStatus {
 
 // Not a part of Store public API
 pub mod impl_details {
-    use crate::memcache::store::DeltaParam;
 
     use super::*;
     pub trait CacheImplDetails {
@@ -84,8 +99,15 @@ pub mod impl_details {
         //
         fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
 
-        //
-        fn add_delta(&self, record: &Record, delta: DeltaParam, increment: bool) -> Result<Bytes> {
+        /// Default implementation for performing arithmetic operations on a numeric value.
+        /// Parses the record's value as a u64, adds or subtracts the delta based on `increment`,
+        /// and returns the new value as Bytes. Fails if the value is not a valid u64.
+        fn incr_decr_common(
+            &self,
+            record: &Record,
+            delta: DeltaParam,
+            increment: bool,
+        ) -> Result<u64> {
             str::from_utf8(&record.value)
                 .map(|value: &str| {
                     value
@@ -105,7 +127,7 @@ pub mod impl_details {
                     } else {
                         value -= delta.delta;
                     }
-                    Bytes::from(value.to_string())
+                    value
                 })
         }
     }
@@ -180,6 +202,18 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// Prepends the new value to the existing value for the given key.
     /// The key must already exist in the cache, otherwise the operation fails with NotFound error.
     fn prepend(&self, key: KeyType, new_record: Record) -> Result<SetStatus>;
+
+    /// Performs an arithmetic operation (increment or decrement) on a numeric value stored in the cache.
+    /// If `increment` is true, adds `delta` to the value; otherwise, subtracts `delta`.
+    /// The value must be a valid unsigned 64-bit integer.
+    /// Returns the new value after the operation.
+    fn incr_decr(
+        &self,
+        header: CacheMetaData,
+        key: KeyType,
+        delta: DeltaParam,
+        increment: bool,
+    ) -> Result<DeltaResult>;
 }
 
 #[cfg(test)]

@@ -1,3 +1,4 @@
+use crate::cache::cache;
 use crate::cache::error::CacheError;
 use crate::memcache::store;
 use crate::protocol::binary::encoder::storage_error_to_response;
@@ -295,7 +296,7 @@ impl BinaryHandler {
         inc_request: network::IncrementRequest,
         response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
-        let delta = store::IncrementParam {
+        let delta = cache::IncrementParam {
             delta: inc_request.delta,
             value: inc_request.initial,
         };
@@ -308,7 +309,7 @@ impl BinaryHandler {
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
-                    std::mem::size_of::<store::DeltaResultValueType>() as u32;
+                    std::mem::size_of::<cache::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 encoder::BinaryResponse::Increment(network::IncrementResponse {
                     header: *response_header,
@@ -324,7 +325,7 @@ impl BinaryHandler {
         dec_request: network::IncrementRequest,
         response_header: &mut network::ResponseHeader,
     ) -> encoder::BinaryResponse {
-        let delta = store::IncrementParam {
+        let delta = cache::IncrementParam {
             delta: dec_request.delta,
             value: dec_request.initial,
         };
@@ -337,7 +338,7 @@ impl BinaryHandler {
         match result {
             Ok(delta_result) => {
                 response_header.body_length =
-                    std::mem::size_of::<store::DeltaResultValueType>() as u32;
+                    std::mem::size_of::<cache::DeltaResultValueType>() as u32;
                 response_header.cas = delta_result.cas;
                 encoder::BinaryResponse::Decrement(network::DecrementResponse {
                     header: *response_header,
