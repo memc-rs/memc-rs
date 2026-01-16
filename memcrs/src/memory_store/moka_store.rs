@@ -3,6 +3,7 @@ use crate::cache::cache::{
     impl_details, Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
+use crate::protocol::binary::network::DELTA_NO_INITIAL_VALUE;
 use crate::server::timer;
 use bytes::{Bytes, BytesMut};
 use moka::ops::compute::Op;
@@ -272,7 +273,7 @@ impl Cache for MokaMemoryStore {
                     }
                 }
                 None => {
-                    if header.get_expiration() != 0xffffffff {
+                    if header.get_expiration() != DELTA_NO_INITIAL_VALUE {
                         let cas = self.get_cas_id();
                         let record = Record::new(
                             Bytes::from(delta.value.to_string()),

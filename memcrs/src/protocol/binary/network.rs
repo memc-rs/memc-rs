@@ -230,6 +230,7 @@ pub struct StatsResponse {
     pub(crate) header: ResponseHeader,
 }
 
+pub const DELTA_NO_INITIAL_VALUE: u32 = 0xffffffff;
 // pub struct StatsResponseRecord {
 //     pub(crate) header: ResponseHeader,
 //     pub(crate) key: Vec<u8>,

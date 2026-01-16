@@ -3,6 +3,7 @@ use crate::cache::cache::{
     impl_details, Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
+use crate::protocol::binary::network::DELTA_NO_INITIAL_VALUE;
 use crate::server::timer;
 
 use bytes::{Bytes, BytesMut};
@@ -43,7 +44,7 @@ impl DashMapMemoryStore {
 
         let closest_power_of_2 = optimal_number_shards.ilog2();
         let shards_power_of_2 = 2usize.pow(closest_power_of_2);
-        info!("Avialable parallelism: {}", parallelism);
+        info!("Available parallelism: {}", parallelism);
         info!("Optimal number of shards: {}", optimal_number_shards);
         info!("Closest power of 2: {}", closest_power_of_2);
 
@@ -283,7 +284,7 @@ impl Cache for DashMapMemoryStore {
                 }
             }
             dashmap::mapref::entry::Entry::Vacant(entry) => {
-                if header.get_expiration() != 0xffffffff {
+                if header.get_expiration() != DELTA_NO_INITIAL_VALUE {
                     let cas = self.get_cas_id();
                     let record = Record::new(
                         Bytes::from(delta.value.to_string()),
