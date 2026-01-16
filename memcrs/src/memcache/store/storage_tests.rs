@@ -326,6 +326,31 @@ fn append_should_add_at_the_end(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn append_should_fail_on_cas_mismatch(server: MockServer) {
+    let key = Bytes::from("key");
+    let record = Record::new(from_string("Foo"), 0, 0, 0);
+    let result = server.storage.set(key.clone(), record);
+
+    match result {
+        Ok(status) => {
+            let append_data = Record::new(from_string("bar"), status.cas + 1, 0, 0);
+            let append_result = server.storage.append(key.clone(), append_data);
+            assert!(append_result.is_err());
+            match append_result {
+                Ok(_) => {
+                    unreachable!();
+                }
+                Err(err) => {
+                    assert_eq!(err, CacheError::KeyExists);
+                }
+            }
+        }
+        Err(_) => unreachable!(),
+    }
+}
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn prepend_should_add_at_the_begining(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Foo"), 0, 0, 0);
@@ -351,6 +376,31 @@ fn prepend_should_add_at_the_begining(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn prepend_should_fail_on_cas_mismatch(server: MockServer) {
+    let key = Bytes::from("key");
+    let record = Record::new(from_string("Foo"), 0, 0, 0);
+    let result = server.storage.set(key.clone(), record);
+
+    match result {
+        Ok(status) => {
+            let prepend_data = Record::new(from_string("bar"), status.cas + 1, 0, 0);
+            let prepend_result = server.storage.prepend(key.clone(), prepend_data);
+            assert!(prepend_result.is_err());
+            match prepend_result {
+                Ok(_) => {
+                    unreachable!();
+                }
+                Err(err) => {
+                    assert_eq!(err, CacheError::KeyExists);
+                }
+            }
+        }
+        Err(_) => unreachable!(),
+    }
+}
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
 fn increment_if_counter_doesnt_exists_it_should_created(server: MockServer) {
     const COUNTER_INITIAL_VALUE: u64 = 5;
     let key = Bytes::from("counter1");
@@ -366,6 +416,58 @@ fn increment_if_counter_doesnt_exists_it_should_created(server: MockServer) {
         }
         Err(_) => {
             unreachable!();
+        }
+    }
+}
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn increment_should_fail_on_cas_mismatch(server: MockServer) {
+    const COUNTER_INITIAL_VALUE: u64 = 5;
+    let key = Bytes::from("counter1");
+    let counter = IncrementParam {
+        delta: 0,
+        value: COUNTER_INITIAL_VALUE,
+    };
+    let header = Meta::new(0, 0, 0);
+    let result = server
+        .storage
+        .increment(header, key.clone(), counter.clone());
+    assert!(result.is_ok());
+    let header = Meta::new(result.unwrap().cas + 1, 0, 0);
+    let result = server.storage.increment(header, key, counter);
+    match result {
+        Ok(_) => {
+            unreachable!();
+        }
+        Err(err) => {
+            assert_eq!(err, CacheError::KeyExists);
+        }
+    }
+}
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn decrement_should_fail_on_cas_mismatch(server: MockServer) {
+    const COUNTER_INITIAL_VALUE: u64 = 5;
+    let key = Bytes::from("counter1");
+    let counter = DecrementParam {
+        delta: 0,
+        value: COUNTER_INITIAL_VALUE,
+    };
+    let header = Meta::new(0, 0, 0);
+    let result = server
+        .storage
+        .decrement(header, key.clone(), counter.clone());
+    assert!(result.is_ok());
+    let header = Meta::new(result.unwrap().cas + 1, 0, 0);
+    let result = server.storage.decrement(header, key, counter);
+    match result {
+        Ok(_) => {
+            unreachable!();
+        }
+        Err(err) => {
+            assert_eq!(err, CacheError::KeyExists);
         }
     }
 }
