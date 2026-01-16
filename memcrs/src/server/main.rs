@@ -60,6 +60,15 @@ pub fn run(args: Vec<String>) {
             .get_appropriate_unit(byte_unit::UnitType::Decimal)
     );
 
+    match cli_config.store_engine {
+        crate::memory_store::StoreEngine::DashMap => {
+            warn!(
+                "{} memory store does not yet support eviction of items.",
+                cli_config.store_engine.as_str()
+            );
+        }
+        _ => {}
+    }
     let system_timer: Arc<timer::SystemTimer> = Arc::new(timer::SystemTimer::new());
     let parent_runtime =
         memcache_server::runtime_builder::create_memcrs_server(cli_config, system_timer.clone());
