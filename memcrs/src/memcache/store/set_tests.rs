@@ -118,3 +118,26 @@ fn record_should_expire_in_given_time(server: MockServer) {
         Err(err) => assert_eq!(err, CacheError::NotFound),
     }
 }
+
+#[test_case(create_moka_server() ; "moka_backend")]
+#[test_case(create_dash_map_server() ; "dash_map_backend")]
+fn set_should_not_fail_on_cas_mismatch(server: MockServer) {
+    let cas: u64 = 0xDEAD_BEEF;
+    let key = Bytes::from("key");
+    let record = Record::new(from_string("test data"), cas, 0, 0);
+    let result = server.storage.set(key.clone(), record);
+    assert!(result.is_ok());
+
+    let found = server.storage.get(&key);
+    assert!(found.is_ok());
+    let cas = found.unwrap().header.cas;
+    let record = Record::new(from_string("test data 1 "), cas, 0, 0);
+    let result = server.storage.set(key.clone(), record);
+    assert!(result.is_ok());
+    match result {
+        Ok(set_status) => {
+            assert!(set_status.cas != cas);
+        }
+        Err(_err) => unreachable!(),
+    }
+}

@@ -1,21 +1,19 @@
-use crate::cache::cache::impl_details::CacheImplDetails;
 use crate::cache::cache::{
-    impl_details, Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
+    Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
+use crate::memory_store::shared_store_state::SharedStoreState;
 use crate::protocol::binary::network::DELTA_NO_INITIAL_VALUE;
 use crate::server::timer;
 
 use bytes::{Bytes, BytesMut};
 use dashmap::DashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 type Storage = DashMap<KeyType, Record>;
 pub struct DashMapMemoryStore {
     memory: Storage,
-    timer: Arc<dyn timer::Timer + Send + Sync>,
-    cas_id: AtomicU64,
+    store_state: SharedStoreState,
 }
 
 impl DashMapMemoryStore {
@@ -23,24 +21,11 @@ impl DashMapMemoryStore {
         let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
         let shards = Self::get_number_of_shards(parallelism);
         info!("Number of shards: {}", shards);
+        let store_state = SharedStoreState::new(timer.clone());
         DashMapMemoryStore {
             memory: DashMap::with_shard_amount(shards),
-            timer,
-            cas_id: AtomicU64::new(1),
+            store_state,
         }
-    }
-
-    fn check_if_expired(&self, _key: &KeyType, record: &Record) -> bool {
-        let current_time = self.timer.timestamp();
-
-        if record.header.time_to_live == 0 {
-            return false;
-        }
-
-        if record.header.time_to_live > current_time {
-            return false;
-        }
-        true
     }
 
     // This function is used to get the number of shards based on the available parallelism.
@@ -68,46 +53,14 @@ impl DashMapMemoryStore {
         }
     }
 
-    fn get_cas_id(&self) -> u64 {
-        self.cas_id.fetch_add(1, Ordering::Release)
-    }
-
-    fn set_cas_ttl(&self, mut record: Record, cas: u64) -> Record {
-        record.header.cas = cas;
-        let timestamp = self.timer.timestamp();
-        if record.header.time_to_live != 0 {
-            record.header.time_to_live += timestamp;
-        }
-        record
-    }
-
-    fn insert(
-        &self,
-        key: bytes::Bytes,
-        mut record: Record,
-        cas: u64,
-    ) -> std::result::Result<SetStatus, CacheError> {
-        record = self.set_cas_ttl(record, cas);
-        self.memory.insert(key, record);
-        Ok(SetStatus { cas })
-    }
-
-    fn get_cas(&self, record: &Record) -> u64 {
-        match record.header.cas {
-            0 => self.get_cas_id(),
-            _ => record.header.cas.wrapping_add(1),
-        }
-    }
-
     fn append_prepend_common(
         &self,
         key: KeyType,
-        new_record: Record,
+        mut new_record: Record,
         is_append: bool,
     ) -> Result<SetStatus> {
         let cas = new_record.header.cas;
-        let new_cas = self.get_cas(&new_record);
-        let mut new_record = self.set_cas_ttl(new_record, new_cas);
+        let new_cas = self.store_state.set_cas_ttl(&mut new_record);
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(mut entry) => {
                 let prev_record = entry.get();
@@ -132,15 +85,13 @@ impl DashMapMemoryStore {
     }
 }
 
-impl impl_details::CacheImplDetails for DashMapMemoryStore {}
-
 impl Cache for DashMapMemoryStore {
     /// Returns a value associated with a key
     fn get(&self, key: &KeyType) -> Result<Record> {
         match self.memory.entry(key.clone()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
                 let value = entry.get();
-                if self.check_if_expired(key, &value) {
+                if self.store_state.check_if_expired(key, value) {
                     entry.remove();
                     return Err(CacheError::NotFound);
                 }
@@ -151,27 +102,22 @@ impl Cache for DashMapMemoryStore {
     }
 
     fn set(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        //trace!("Set: {:?}", &record.header);
-        if record.header.cas > 0 {
-            match self.memory.get_mut(&key) {
-                Some(mut key_value) => {
-                    if key_value.header.cas != record.header.cas {
-                        return Err(CacheError::KeyExists);
-                    } else {
-                        let cas = record.header.cas.wrapping_add(1);
-                        record = self.set_cas_ttl(record, cas);
-                        *key_value = record;
-                        return Ok(SetStatus { cas });
-                    }
+        match self.memory.entry(key) {
+            dashmap::mapref::entry::Entry::Occupied(mut entry) => {
+                let cas = entry.get().header.cas;
+                if SharedStoreState::cas_mismatch(&record, cas) {
+                    return Err(CacheError::KeyExists);
                 }
-                None => {
-                    let cas = record.header.cas.wrapping_add(1);
-                    return self.insert(key, record, cas);
-                }
+                let cas = self.store_state.set_cas_ttl(&mut record);
+                entry.insert(record);
+                Ok(SetStatus { cas })
+            }
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                let cas = self.store_state.set_cas_ttl(&mut record);
+                entry.insert(record);
+                Ok(SetStatus { cas })
             }
         }
-        let cas = self.get_cas_id();
-        self.insert(key, record, cas)
     }
 
     fn delete(&self, key: KeyType, header: CacheMetaData) -> Result<Record> {
@@ -205,8 +151,7 @@ impl Cache for DashMapMemoryStore {
     /// Adds a new key-value pair to the cache, but only if the key does not already exist.
     /// If the key exists, the operation fails with KeyExists error.
     fn add(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        let cas = self.get_cas(&record);
-        record = self.set_cas_ttl(record, cas);
+        let cas = self.store_state.set_cas_ttl(&mut record);
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(_) => Err(CacheError::KeyExists),
             dashmap::mapref::entry::Entry::Vacant(entry) => {
@@ -219,15 +164,13 @@ impl Cache for DashMapMemoryStore {
     /// Replaces the value of an existing key in the cache, but only if the key already exists.
     /// If the key does not exist, the operation fails with NotFound error.
     fn replace(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
-        let cas = record.header.cas;
-        let new_cas = self.get_cas(&record);
-        record = self.set_cas_ttl(record, new_cas);
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(mut entry) => {
-                let value = entry.get();
-                if cas != 0 && value.header.cas != cas {
+                let cas = entry.get().header.cas;
+                if SharedStoreState::cas_mismatch(&record, cas) {
                     return Err(CacheError::KeyExists);
                 }
+                let new_cas = self.store_state.set_cas_ttl(&mut record);
                 entry.insert(record);
                 Ok(SetStatus { cas: new_cas })
             }
@@ -263,12 +206,13 @@ impl Cache for DashMapMemoryStore {
         match self.memory.entry(key) {
             dashmap::mapref::entry::Entry::Occupied(mut entry) => {
                 let record = entry.get_mut();
-                match self.incr_decr_common(record, delta, increment) {
+                match self.store_state.incr_decr_common(record, delta, increment) {
                     Ok(new_value) => {
-                        let new_cas = self.get_cas(record);
-                        if cas != 0 && record.header.cas != cas {
+                        let tmp_record = Record::new(Bytes::new(), cas, 0, 0);
+                        if SharedStoreState::cas_mismatch(&tmp_record, record.header.cas) {
                             return Err(CacheError::KeyExists);
                         }
+                        let new_cas = self.store_state.set_cas_ttl(record);
                         record.value = Bytes::from(new_value.to_string());
                         record.header.cas = new_cas;
                         Ok(DeltaResult {
@@ -281,7 +225,7 @@ impl Cache for DashMapMemoryStore {
             }
             dashmap::mapref::entry::Entry::Vacant(entry) => {
                 if header.get_expiration() != DELTA_NO_INITIAL_VALUE {
-                    let cas = self.get_cas_id();
+                    let cas = self.store_state.get_cas_id();
                     let record = Record::new(
                         Bytes::from(delta.value.to_string()),
                         cas,

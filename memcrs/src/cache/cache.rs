@@ -1,4 +1,4 @@
-use super::error::{CacheError, Result};
+use super::error::Result;
 use bytes::Bytes;
 
 /// Cache key type
@@ -88,59 +88,10 @@ pub struct SetStatus {
     pub cas: u64,
 }
 
-// Not a part of Store public API
-pub mod impl_details {
-
-    use super::*;
-    pub trait CacheImplDetails {
-        /// Default implementation for performing arithmetic operations on a numeric value.
-        /// Parses the record's value as a u64, adds or subtracts the delta based on `increment`,
-        /// and returns the new value as Bytes. Fails if the value is not a valid u64.
-        fn incr_decr_common(
-            &self,
-            record: &Record,
-            delta: DeltaParam,
-            increment: bool,
-        ) -> Result<u64> {
-            str::from_utf8(&record.value)
-                .map(|value: &str| {
-                    value
-                        .parse::<u64>()
-                        .map_err(|_err| CacheError::ArithOnNonNumeric)
-                })
-                .map_err(|_err| CacheError::ArithOnNonNumeric)
-                .and_then(|value: std::result::Result<u64, CacheError>| {
-                    //flatten result
-                    value
-                })
-                .map(|mut value: u64| {
-                    if increment {
-                        value += delta.delta;
-                    } else if delta.delta > value {
-                        value = 0;
-                    } else {
-                        value -= delta.delta;
-                    }
-                    value
-                })
-        }
-    }
-}
-
 // An abstraction over a generic store key <=> value store
-pub trait Cache: impl_details::CacheImplDetails {
+pub trait Cache {
     /// Returns a value associated with a key
     fn get(&self, key: &KeyType) -> Result<Record>;
-    // let result = self.get_by_key(key);
-    // match result {
-    //     Ok(record) => {
-    //         if self.check_if_expired(key, &record) {
-    //             return Err(CacheError::NotFound);
-    //         }
-    //         Ok(record)
-    //     }
-    //     Err(err) => Err(err),
-    // }
 
     /// Sets value that will be associated with a store.
     /// If value already exists in a store CAS field is compared

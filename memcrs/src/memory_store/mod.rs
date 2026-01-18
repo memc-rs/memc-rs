@@ -2,6 +2,7 @@ use clap::ValueEnum;
 
 pub mod dash_map_store;
 pub mod moka_store;
+pub mod shared_store_state;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
 pub enum StoreEngine {
