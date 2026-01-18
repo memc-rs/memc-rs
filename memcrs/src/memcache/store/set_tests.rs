@@ -3,7 +3,7 @@ use test_case::test_case;
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn if_not_defined_cas_should_be_1(server: MockServer) {
+fn set_if_not_defined_cas_should_be_1(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result: std::result::Result<CacheSetStatus, CacheError> =
@@ -22,7 +22,7 @@ fn if_not_defined_cas_should_be_1(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn should_override_value_if_cas_is_0(server: MockServer) {
+fn set_should_override_value_if_cas_is_0(server: MockServer) {
     let key = Bytes::from("key");
     let record = Record::new(from_string("Test data"), 0, 0, 0);
     let result = server.storage.set(key.clone(), record.clone());
@@ -44,7 +44,7 @@ fn should_override_value_if_cas_is_0(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn if_cas_defined_it_should_be_returned(server: MockServer) {
+fn set_if_cas_defined_it_should_be_returned(server: MockServer) {
     let storage = server.storage;
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
@@ -65,7 +65,7 @@ fn if_cas_defined_it_should_be_returned(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn insert_should_fail_on_cas_mismatch(server: MockServer) {
+fn set_insert_should_fail_on_cas_mismatch(server: MockServer) {
     let storage = server.storage;
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
@@ -82,7 +82,7 @@ fn insert_should_fail_on_cas_mismatch(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn insert_should_not_fail_on_cas_max(server: MockServer) {
+fn set_insert_should_not_fail_on_cas_max(server: MockServer) {
     let storage = server.storage;
     let cas: u64 = u64::MAX;
     let key = Bytes::from("key");
@@ -100,7 +100,7 @@ fn insert_should_not_fail_on_cas_max(server: MockServer) {
 
 #[test_case(create_moka_server() ; "moka_backend")]
 #[test_case(create_dash_map_server() ; "dash_map_backend")]
-fn record_should_expire_in_given_time(server: MockServer) {
+fn set_record_should_expire_in_given_time(server: MockServer) {
     let cas: u64 = 0xDEAD_BEEF;
     let key = Bytes::from("key");
     let record = Record::new(from_string("test data"), cas, 0, 123);
