@@ -89,4 +89,27 @@ impl MemcStore {
 }
 
 #[cfg(test)]
-mod storage_tests;
+mod add_tests;
+#[cfg(test)]
+mod append_prepend_tests;
+#[cfg(test)]
+mod delete_tests;
+#[cfg(test)]
+mod flush_tests;
+#[cfg(test)]
+mod increment_decrement_tests;
+#[cfg(test)]
+mod replace_tests;
+#[cfg(test)]
+mod set_tests;
+
+#[cfg(test)]
+mod test_utils {
+    pub use super::*;
+    pub use crate::cache::error::CacheError;
+    pub use crate::mock::mock_server::{
+        create_dash_map_server, create_moka_server, MockServer, SetableTimer,
+    };
+    pub use crate::mock::value::{from_slice, from_string};
+    pub use bytes::{BufMut, Bytes, BytesMut};
+}

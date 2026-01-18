@@ -30,6 +30,19 @@ impl DashMapMemoryStore {
         }
     }
 
+    fn check_if_expired(&self, _key: &KeyType, record: &Record) -> bool {
+        let current_time = self.timer.timestamp();
+
+        if record.header.time_to_live == 0 {
+            return false;
+        }
+
+        if record.header.time_to_live > current_time {
+            return false;
+        }
+        true
+    }
+
     // This function is used to get the number of shards based on the available parallelism.
     // It calculates the optimal number of shards based on the square of the parallelism divided by 4.
     // It then finds the closest power of 2 to that number and returns it.
@@ -119,35 +132,22 @@ impl DashMapMemoryStore {
     }
 }
 
-impl impl_details::CacheImplDetails for DashMapMemoryStore {
-    fn get_by_key(&self, key: &KeyType) -> Result<Record> {
-        match self.memory.get(key) {
-            Some(record) => Ok(record.clone()),
-            None => Err(CacheError::NotFound),
-        }
-    }
-
-    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
-        let current_time = self.timer.timestamp();
-
-        if record.header.time_to_live == 0 {
-            return false;
-        }
-
-        if record.header.time_to_live > current_time {
-            return false;
-        }
-        match self.remove(key) {
-            Some(_) => true,
-            None => true,
-        }
-    }
-}
+impl impl_details::CacheImplDetails for DashMapMemoryStore {}
 
 impl Cache for DashMapMemoryStore {
-    // Removes key value and returns as an option
-    fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
-        self.memory.remove(key)
+    /// Returns a value associated with a key
+    fn get(&self, key: &KeyType) -> Result<Record> {
+        match self.memory.entry(key.clone()) {
+            dashmap::mapref::entry::Entry::Occupied(entry) => {
+                let value = entry.get();
+                if self.check_if_expired(key, &value) {
+                    entry.remove();
+                    return Err(CacheError::NotFound);
+                }
+                Ok(value.clone())
+            }
+            dashmap::mapref::entry::Entry::Vacant(_) => Err(CacheError::NotFound),
+        }
     }
 
     fn set(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
@@ -198,10 +198,6 @@ impl Cache for DashMapMemoryStore {
         } else {
             self.memory.clear();
         }
-    }
-
-    fn len(&self) -> usize {
-        self.memory.len()
     }
 
     fn run_pending_tasks(&self) {}

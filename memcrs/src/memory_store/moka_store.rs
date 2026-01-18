@@ -28,6 +28,19 @@ impl MokaMemoryStore {
         }
     }
 
+    fn check_if_expired(&self, _key: &KeyType, record: &Record) -> bool {
+        let current_time = self.timer.timestamp();
+
+        if record.header.time_to_live == 0 {
+            return false;
+        }
+
+        if record.header.time_to_live > current_time {
+            return false;
+        }
+        true
+    }
+
     fn get_cas_id(&self) -> u64 {
         self.cas_id.fetch_add(1, Ordering::Release)
     }
@@ -86,40 +99,35 @@ impl MokaMemoryStore {
     }
 }
 
-impl impl_details::CacheImplDetails for MokaMemoryStore {
-    fn get_by_key(&self, key: &KeyType) -> Result<Record> {
-        match self.memory.get(key) {
-            Some(record) => Ok(record.clone()),
-            None => Err(CacheError::NotFound),
-        }
-    }
-
-    fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool {
-        let current_time = self.timer.timestamp();
-
-        if record.header.time_to_live == 0 {
-            return false;
-        }
-
-        if record.header.time_to_live > current_time {
-            return false;
-        }
-        match self.remove(key) {
-            Some(_) => true,
-            None => true,
-        }
-    }
-}
+impl impl_details::CacheImplDetails for MokaMemoryStore {}
 
 impl Cache for MokaMemoryStore {
-    // Removes key value and returns as an option
-    fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)> {
-        self.memory.remove(key).map(|record| (key.clone(), record))
+    /// Returns a value associated with a key
+    fn get(&self, key: &KeyType) -> Result<Record> {
+        let mut result = Err(CacheError::NotFound);
+
+        let _entry =
+            self.memory
+                .entry(key.clone())
+                .and_compute_with(|maybe_entry| match maybe_entry {
+                    Some(record) => {
+                        if self.check_if_expired(key, &record.value()) {
+                            result = Err(CacheError::NotFound);
+                            return Op::Remove;
+                        }
+                        result = Ok(record.value().clone());
+                        Op::Nop
+                    }
+                    None => {
+                        result = Err(CacheError::NotFound);
+                        Op::Nop
+                    }
+                });
+        result
     }
 
     fn set(&self, key: KeyType, mut record: Record) -> Result<SetStatus> {
         //trace!("Set: {:?}", &record.header);
-
         let mut result: Result<SetStatus> = Err(CacheError::KeyExists);
         let _entry = self.memory.entry(key).and_compute_with(|maybe_entry| {
             if let Some(entry) = maybe_entry {
@@ -166,10 +174,6 @@ impl Cache for MokaMemoryStore {
         } else {
             self.memory.invalidate_all();
         }
-    }
-
-    fn len(&self) -> usize {
-        self.memory.entry_count() as usize
     }
 
     fn run_pending_tasks(&self) {
@@ -252,10 +256,6 @@ impl Cache for MokaMemoryStore {
                     } else {
                         match self.incr_decr_common(&record, delta, increment) {
                             Ok(new_value) => {
-                                if cas != 0 && record.header.cas != cas {
-                                    result = Err(CacheError::KeyExists);
-                                    return Op::Nop;
-                                }
                                 let new_cas = self.get_cas_id();
                                 record.value = Bytes::from(new_value.to_string());
                                 record.header.cas = new_cas;

@@ -93,12 +93,6 @@ pub mod impl_details {
 
     use super::*;
     pub trait CacheImplDetails {
-        //
-        fn get_by_key(&self, key: &KeyType) -> Result<Record>;
-
-        //
-        fn check_if_expired(&self, key: &KeyType, record: &Record) -> bool;
-
         /// Default implementation for performing arithmetic operations on a numeric value.
         /// Parses the record's value as a u64, adds or subtracts the delta based on `increment`,
         /// and returns the new value as Bytes. Fails if the value is not a valid u64.
@@ -136,18 +130,17 @@ pub mod impl_details {
 // An abstraction over a generic store key <=> value store
 pub trait Cache: impl_details::CacheImplDetails {
     /// Returns a value associated with a key
-    fn get(&self, key: &KeyType) -> Result<Record> {
-        let result = self.get_by_key(key);
-        match result {
-            Ok(record) => {
-                if self.check_if_expired(key, &record) {
-                    return Err(CacheError::NotFound);
-                }
-                Ok(record)
-            }
-            Err(err) => Err(err),
-        }
-    }
+    fn get(&self, key: &KeyType) -> Result<Record>;
+    // let result = self.get_by_key(key);
+    // match result {
+    //     Ok(record) => {
+    //         if self.check_if_expired(key, &record) {
+    //             return Err(CacheError::NotFound);
+    //         }
+    //         Ok(record)
+    //     }
+    //     Err(err) => Err(err),
+    // }
 
     /// Sets value that will be associated with a store.
     /// If value already exists in a store CAS field is compared
@@ -171,17 +164,6 @@ pub trait Cache: impl_details::CacheImplDetails {
     /// - if header.ttl>0 values are removed from a store after
     ///   ttl expiration
     fn flush(&self, header: CacheMetaData);
-
-    /// Number of key value pairs stored in store
-    fn len(&self) -> usize;
-
-    /// Checks if store is empty
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Removes key value and returns as an option
-    fn remove(&self, key: &KeyType) -> Option<(KeyType, Record)>;
 
     /// runs pending tasks (if any)
     /// will be scheudled periodicall
