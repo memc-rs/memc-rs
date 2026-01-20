@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::io;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
 //use tracing_attributes::instrument;
@@ -41,17 +42,20 @@ pub struct MemcacheTcpServer {
     storage: Arc<storage::MemcStore>,
     limit_connections: Arc<Semaphore>,
     config: MemcacheServerConfig,
+    cancellation_token: CancellationToken,
 }
 
 impl MemcacheTcpServer {
     pub fn new(
         config: MemcacheServerConfig,
         store: Arc<dyn Cache + Send + Sync>,
+        cancellation_token: CancellationToken,
     ) -> MemcacheTcpServer {
         MemcacheTcpServer {
             storage: Arc::new(storage::MemcStore::new(store)),
             limit_connections: Arc::new(Semaphore::new(config.connection_limit as usize)),
             config,
+            cancellation_token,
         }
     }
 
@@ -70,7 +74,8 @@ impl MemcacheTcpServer {
                                 socket,
                                 peer_addr,
                                 self.get_client_config(),
-                                Arc::clone(&self.limit_connections)
+                                Arc::clone(&self.limit_connections),
+                                self.cancellation_token.clone()
                             );
 
                             self.limit_connections.acquire().await.unwrap().forget();
@@ -83,6 +88,10 @@ impl MemcacheTcpServer {
                             error!("Accept error: {}", err);
                         }
                     }
+                }
+                 _ = self.cancellation_token.cancelled() => {
+                        info!("Cancelling server loop...");
+                        break io::Result::Ok(());
                 }
             }
         }

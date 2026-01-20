@@ -2,6 +2,7 @@ use log::debug;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tokio::time::{interval_at, Instant};
+use tokio_util::sync::CancellationToken;
 
 pub trait Timer {
     fn timestamp(&self) -> u32;
@@ -14,13 +15,15 @@ pub trait SetableTimer {
 #[derive(Default)]
 pub struct SystemTimer {
     seconds: AtomicU64,
+    cancellation_token: CancellationToken,
 }
 
 impl SystemTimer {
-    pub fn new() -> Self {
+    pub fn new(cancellation_token: CancellationToken) -> Self {
         debug!("Creating system timer");
         SystemTimer {
             seconds: AtomicU64::new(0),
+            cancellation_token,
         }
     }
 
@@ -28,9 +31,16 @@ impl SystemTimer {
         let start = Instant::now();
         let mut interval = interval_at(start, Duration::from_secs(1));
         loop {
-            interval.tick().await;
-            self.add_second();
-            trace!("Server tick: {}", self.timestamp());
+            tokio::select! {
+                _ = self.cancellation_token.cancelled() => {
+                    info!("System timer received cancellation signal, stopping...");
+                    break;
+                },
+                _ = interval.tick() => {
+                    self.add_second();
+                    trace!("Server tick: {}", self.timestamp());
+                },
+            }
         }
     }
 }
@@ -55,13 +65,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_initial_timestamp() {
-        let timer = SystemTimer::new();
+        let cancellation_token = CancellationToken::new();
+        let timer = SystemTimer::new(cancellation_token.clone());
         assert_eq!(timer.timestamp(), 0);
     }
 
     #[tokio::test]
     async fn test_add_second() {
-        let timer = SystemTimer::new();
+        let cancellation_token = CancellationToken::new();
+        let timer = SystemTimer::new(cancellation_token.clone());
         timer.add_second();
         assert_eq!(timer.timestamp(), 1);
         timer.add_second();
@@ -70,7 +82,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_increments_time() {
-        let timer = Arc::new(SystemTimer::new());
+        let cancellation_token = CancellationToken::new();
+        let timer = Arc::new(SystemTimer::new(cancellation_token.clone()));
         let timer_clone = Arc::clone(&timer);
 
         let handle = tokio::spawn(async move {

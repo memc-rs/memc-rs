@@ -5,6 +5,7 @@ use tokio::io;
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
 use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
 use tracing::{debug, error};
 
 //use tracing_attributes::instrument;
@@ -31,6 +32,7 @@ pub struct Client {
     /// the listener is waiting for connections to close, it will be notified of
     /// the newly available permit and resume accepting connections.
     limit_connections: Arc<Semaphore>,
+    cancellation_token: CancellationToken,
 }
 
 impl Client {
@@ -40,6 +42,7 @@ impl Client {
         addr: SocketAddr,
         config: ClientConfig,
         limit_connections: Arc<Semaphore>,
+        cancellation_token: CancellationToken,
     ) -> Self {
         Client {
             stream: MemcacheBinaryConnection::new(socket, config.item_memory_limit),
@@ -47,6 +50,7 @@ impl Client {
             config,
             handler: handler::BinaryHandler::new(store),
             limit_connections,
+            cancellation_token,
         }
     }
 
@@ -57,24 +61,31 @@ impl Client {
         // we parse the request, and if it's valid we generate a response
         // based on the values in the storage.
         loop {
-            match timeout(
-                Duration::from_secs(self.config.rx_timeout_secs as u64),
-                self.stream.read_frame(),
-            )
-            .await
-            {
-                Ok(req_or_none) => {
-                    let client_close = self.handle_frame(req_or_none).await;
-                    if client_close {
+            tokio::select! {
+                    _ = self.cancellation_token.cancelled() => {
+                        info!("Cancelling client loop for {}", self.addr);
+                        if let Err(_e) = self.stream.shutdown().await.map_err(log_error) {}
                         return;
-                    }
                 }
-                Err(err) => {
-                    debug!(
-                        "Timeout {}s elapsed, disconecting client: {}, error: {}",
-                        self.config.rx_timeout_secs, self.addr, err
-                    );
-                    return;
+                req_or_none = timeout(
+                Duration::from_secs(self.config.rx_timeout_secs as u64),
+                self.stream.read_frame()) => {
+
+                    match req_or_none {
+                        Ok(req_or_none) => {
+                            let client_close = self.handle_frame(req_or_none).await;
+                            if client_close {
+                                return;
+                            }
+                        }
+                        Err(err) => {
+                            debug!(
+                                "Timeout {}s elapsed, disconecting client: {}, error: {}",
+                                self.config.rx_timeout_secs, self.addr, err
+                            );
+                            return;
+                        }
+                    }
                 }
             }
         }

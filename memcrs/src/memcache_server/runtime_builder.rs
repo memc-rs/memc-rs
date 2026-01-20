@@ -1,17 +1,15 @@
 extern crate core_affinity;
 use crate::memcache;
 use crate::memcache_server;
-use crate::server;
-use crate::{
-    cache::cache::Cache, cache::pending_tasks_runner::PendingTasksRunner,
-    memcache::cli::parser::RuntimeType,
-};
+use crate::server::timer;
+use crate::{cache::pending_tasks_runner::PendingTasksRunner, memcache::cli::parser::RuntimeType};
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Arc,
 };
 use tokio::runtime::Builder;
+use tokio_util::sync::CancellationToken;
 
 use crate::memcache::cli::parser::MemcrsdConfig;
 
@@ -43,10 +41,29 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
     runtime
 }
 
+fn register_ctrlc_handler(
+    runtime: &mut tokio::runtime::Runtime,
+    cancellation_token: CancellationToken,
+) {
+    let cancel_token = cancellation_token.clone();
+    runtime.handle().spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Failed to listen for ctrl-c signal");
+        info!("Ctrl-C received, shutting down...");
+        cancel_token.cancel();
+    });
+}
+
 fn create_current_thread_server(
     config: MemcrsdConfig,
-    store: Arc<dyn Cache + Send + Sync>,
-) -> tokio::runtime::Runtime {
+    store_config: memcache::builder::MemcacheStoreConfig,
+) -> () {
+    let cancellation_token = CancellationToken::new();
+    let system_timer: Arc<timer::SystemTimer> =
+        Arc::new(timer::SystemTimer::new(cancellation_token.clone()));
+    let store =
+        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -56,7 +73,7 @@ fn create_current_thread_server(
     );
 
     let core_ids = core_affinity::get_core_ids().unwrap();
-    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store), cancellation_token.clone());
     std::thread::spawn(move || {
         let child_runtime = create_current_thread_runtime();
         child_runtime.block_on(task_runner.run())
@@ -65,14 +82,18 @@ fn create_current_thread_server(
     for i in 0..config.threads {
         let store_rc = Arc::clone(&store);
         let core_ids_clone = core_ids.clone();
+        let cancellation_token = cancellation_token.clone();
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
             let core_id = core_ids_clone[i % core_ids_clone.len()];
             let res = core_affinity::set_for_current(core_id);
             let create_runtime = || {
                 let child_runtime = create_current_thread_runtime();
-                let mut tcp_server =
-                    memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, store_rc);
+                let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
+                    memc_config,
+                    store_rc,
+                    cancellation_token.clone(),
+                );
                 child_runtime.block_on(tcp_server.run(addr)).unwrap()
             };
             if res {
@@ -88,13 +109,20 @@ fn create_current_thread_server(
             }
         });
     }
-    create_current_thread_runtime()
+    let mut runtime = create_current_thread_runtime();
+    register_ctrlc_handler(&mut runtime, cancellation_token);
+    runtime.block_on(system_timer.run())
 }
 
 fn create_threadpool_server(
     config: MemcrsdConfig,
-    store: Arc<dyn Cache + Send + Sync>,
-) -> tokio::runtime::Runtime {
+    store_config: memcache::builder::MemcacheStoreConfig,
+) -> () {
+    let cancellation_token = CancellationToken::new();
+    let system_timer: Arc<timer::SystemTimer> =
+        Arc::new(timer::SystemTimer::new(cancellation_token.clone()));
+    let store =
+        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -102,28 +130,28 @@ fn create_threadpool_server(
         config.item_size_limit as u32,
         config.backlog_limit,
     );
-    let runtime = create_multi_thread_runtime(config.threads);
-    let mut tcp_server =
-        memcache_server::memc_tcp::MemcacheTcpServer::new(memc_config, Arc::clone(&store));
-    let task_runner = PendingTasksRunner::new(Arc::clone(&store));
+    let mut runtime = create_multi_thread_runtime(config.threads);
+    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
+        memc_config,
+        Arc::clone(&store),
+        cancellation_token.clone(),
+    );
+    let task_runner = PendingTasksRunner::new(Arc::clone(&store), cancellation_token.clone());
     runtime.spawn(async move { task_runner.run().await });
     runtime.spawn(async move { tcp_server.run(addr).await });
-    runtime
+    register_ctrlc_handler(&mut runtime, cancellation_token);
+    runtime.block_on(system_timer.run())
 }
 
-pub fn create_memcrs_server(
-    config: MemcrsdConfig,
-    system_timer: std::sync::Arc<server::timer::SystemTimer>,
-) -> tokio::runtime::Runtime {
+pub fn start_memcrs_server(config: MemcrsdConfig) -> () {
     let store_config = memcache::builder::MemcacheStoreConfig::new(
         config.store_engine,
         config.memory_limit,
         config.eviction_policy,
     );
-    let store = memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer);
 
     match config.runtime_type {
-        RuntimeType::CurrentThread => create_current_thread_server(config, store),
-        RuntimeType::MultiThread => create_threadpool_server(config, store),
+        RuntimeType::CurrentThread => create_current_thread_server(config, store_config),
+        RuntimeType::MultiThread => create_threadpool_server(config, store_config),
     }
 }
