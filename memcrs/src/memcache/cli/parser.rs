@@ -257,15 +257,25 @@ mod tests {
 
     #[test]
     fn test_eviction_policy() {
-        // Test if the eviction policy is parsed correctly
-        let args = vec![
-            "".to_string(),
-            "--eviction-policy".to_string(),
-            "lru".to_string(),
+        let policy = vec!["tiny_lfu", "lru", "none"];
+        let policies = vec![
+            EvictionPolicy::TinyLeastFrequentlyUsed,
+            EvictionPolicy::LeastRecentylUsed,
+            EvictionPolicy::None,
         ];
-        let config = MemcrsdConfig::try_parse_from(args).unwrap();
 
-        assert_eq!(config.eviction_policy, EvictionPolicy::LeastRecentylUsed);
+        let policy_iter = policy.iter().zip(policies.iter());
+        for (p, policy) in policy_iter {
+            // Test if the eviction policy is parsed correctly
+            let args = vec![
+                "".to_string(),
+                "--eviction-policy".to_string(),
+                p.to_string(),
+            ];
+            let config = MemcrsdConfig::try_parse_from(args).unwrap();
+
+            assert_eq!(config.eviction_policy, *policy);
+        }
     }
 
     #[test]
