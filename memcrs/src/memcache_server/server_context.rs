@@ -36,24 +36,6 @@ impl ServerContext {
         }
     }
 
-    pub fn new(
-        store_config: memcache::builder::MemcacheStoreConfig,
-        cancellation_token: CancellationToken,
-        system_timer: Arc<timer::SystemTimer>,
-        pending_tasks_runner: Arc<pending_tasks_runner::PendingTasksRunner>,
-    ) -> Self {
-        let store = memcache::builder::MemcacheStoreBuilder::from_config(
-            store_config,
-            system_timer.clone(),
-        );
-        Self {
-            cancellation_token,
-            system_timer,
-            store,
-            pending_tasks_runner,
-        }
-    }
-
     pub fn cancellation_token(&self) -> CancellationToken {
         self.cancellation_token.clone()
     }

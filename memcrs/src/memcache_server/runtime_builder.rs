@@ -55,7 +55,7 @@ fn register_ctrlc_handler(
     });
 }
 
-fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) -> () {
+fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
     let cancellation_token = ctxt.cancellation_token();
     let system_timer = ctxt.system_timer();
     let store = ctxt.store();
@@ -106,7 +106,7 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) -> (
     runtime.block_on(system_timer.run())
 }
 
-fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) -> () {
+fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
     let cancellation_token = ctxt.cancellation_token();
     let system_timer = ctxt.system_timer();
     let store = ctxt.store();
@@ -132,7 +132,7 @@ fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) -> () {
     runtime.block_on(system_timer.run())
 }
 
-pub fn start_memcrs_server(config: MemcrsdConfig) -> () {
+pub fn start_memcrs_server(config: MemcrsdConfig) {
     let store_config = memcache::builder::MemcacheStoreConfig::new(
         config.store_engine,
         config.memory_limit,
@@ -142,7 +142,7 @@ pub fn start_memcrs_server(config: MemcrsdConfig) -> () {
     start_memcrs_server_with_ctxt(config, ctxt)
 }
 
-pub fn start_memcrs_server_with_ctxt(config: MemcrsdConfig, ctxt: ServerContext) -> () {
+pub fn start_memcrs_server_with_ctxt(config: MemcrsdConfig, ctxt: ServerContext) {
     match config.runtime_type {
         RuntimeType::CurrentThread => create_current_thread_server(config, ctxt),
         RuntimeType::MultiThread => create_threadpool_server(config, ctxt),
