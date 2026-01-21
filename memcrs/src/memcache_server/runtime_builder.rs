@@ -1,8 +1,8 @@
 extern crate core_affinity;
 use crate::memcache;
+use crate::memcache::cli::parser::RuntimeType;
 use crate::memcache_server;
-use crate::server::timer;
-use crate::{cache::pending_tasks_runner::PendingTasksRunner, memcache::cli::parser::RuntimeType};
+use crate::memcache_server::server_context::ServerContext;
 use std::net::SocketAddr;
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -55,15 +55,12 @@ fn register_ctrlc_handler(
     });
 }
 
-fn create_current_thread_server(
-    config: MemcrsdConfig,
-    store_config: memcache::builder::MemcacheStoreConfig,
-) -> () {
-    let cancellation_token = CancellationToken::new();
-    let system_timer: Arc<timer::SystemTimer> =
-        Arc::new(timer::SystemTimer::new(cancellation_token.clone()));
-    let store =
-        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
+fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) -> () {
+    let cancellation_token = ctxt.cancellation_token();
+    let system_timer = ctxt.system_timer();
+    let store = ctxt.store();
+    let task_runner = ctxt.pending_tasks_runner();
+
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -71,13 +68,7 @@ fn create_current_thread_server(
         config.item_size_limit as u32,
         config.backlog_limit,
     );
-
     let core_ids = core_affinity::get_core_ids().unwrap();
-    let task_runner = PendingTasksRunner::new(Arc::clone(&store), cancellation_token.clone());
-    std::thread::spawn(move || {
-        let child_runtime = create_current_thread_runtime();
-        child_runtime.block_on(task_runner.run())
-    });
 
     for i in 0..config.threads {
         let store_rc = Arc::clone(&store);
@@ -111,18 +102,16 @@ fn create_current_thread_server(
     }
     let mut runtime = create_current_thread_runtime();
     register_ctrlc_handler(&mut runtime, cancellation_token);
+    runtime.spawn(async move { task_runner.run().await });
     runtime.block_on(system_timer.run())
 }
 
-fn create_threadpool_server(
-    config: MemcrsdConfig,
-    store_config: memcache::builder::MemcacheStoreConfig,
-) -> () {
-    let cancellation_token = CancellationToken::new();
-    let system_timer: Arc<timer::SystemTimer> =
-        Arc::new(timer::SystemTimer::new(cancellation_token.clone()));
-    let store =
-        memcache::builder::MemcacheStoreBuilder::from_config(store_config, system_timer.clone());
+fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) -> () {
+    let cancellation_token = ctxt.cancellation_token();
+    let system_timer = ctxt.system_timer();
+    let store = ctxt.store();
+    let task_runner = ctxt.pending_tasks_runner();
+
     let addr = SocketAddr::new(config.listen_address, config.port);
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
@@ -136,7 +125,7 @@ fn create_threadpool_server(
         Arc::clone(&store),
         cancellation_token.clone(),
     );
-    let task_runner = PendingTasksRunner::new(Arc::clone(&store), cancellation_token.clone());
+
     runtime.spawn(async move { task_runner.run().await });
     runtime.spawn(async move { tcp_server.run(addr).await });
     register_ctrlc_handler(&mut runtime, cancellation_token);
@@ -149,9 +138,13 @@ pub fn start_memcrs_server(config: MemcrsdConfig) -> () {
         config.memory_limit,
         config.eviction_policy,
     );
+    let ctxt = ServerContext::get_default_server_context(store_config);
+    start_memcrs_server_with_ctxt(config, ctxt)
+}
 
+pub fn start_memcrs_server_with_ctxt(config: MemcrsdConfig, ctxt: ServerContext) -> () {
     match config.runtime_type {
-        RuntimeType::CurrentThread => create_current_thread_server(config, store_config),
-        RuntimeType::MultiThread => create_threadpool_server(config, store_config),
+        RuntimeType::CurrentThread => create_current_thread_server(config, ctxt),
+        RuntimeType::MultiThread => create_threadpool_server(config, ctxt),
     }
 }
