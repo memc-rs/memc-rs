@@ -119,7 +119,7 @@ unit tests.
 
 #### Integration tests
 
-Integration tests go to the memclt crate.
+Integration tests go to the tests directory.
 
 The best strategy for writing a new integration test is to look at existing
 integration tests in the crate and follow the style.
