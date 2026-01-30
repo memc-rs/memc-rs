@@ -13,17 +13,17 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "5.2.0"
 bytes = "1.11.0"
-clap = { version = "4.5.53", features = ["derive", "cargo"] }
+clap = { version = "4.5.56", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
 dashmap = "6.1.0"
 futures = "0.3.31"
 futures-util = "0.3.31"
 log = "0.4.29"
-socket2 = { version = "0.6.1", features = ["all"] }
+socket2 = { version = "0.6.2", features = ["all"] }
 num_cpus = "1.17.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-moka = { version = "0.12.12", features = ["sync"] }
+moka = { version = "0.12.13", features = ["sync"] }
 rand = { version = "0.9.2", features = ["small_rng"] }
 serde = "1.0.228"
 serde_derive = "1.0.228"
