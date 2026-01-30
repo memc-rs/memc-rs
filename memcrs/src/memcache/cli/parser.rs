@@ -2,6 +2,7 @@ use crate::cache::eviction_policy::EvictionPolicy;
 use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
 use clap::{Parser, ValueEnum};
+use git_version::git_version;
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -21,6 +22,7 @@ impl RuntimeType {
     }
 }
 
+const GIT_VERSION: &str = git_version!();
 const DEFAULT_PORT: u16 = 11211;
 const DEFAULT_ADDRESS: &str = "127.0.0.1";
 const CONNECTION_LIMIT: u32 = 1024;
@@ -33,7 +35,7 @@ fn get_default_threads_number() -> usize {
 }
 
 #[derive(Parser, Debug, Clone)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, after_help = format!("Git version: {GIT_VERSION}"))]
 /// memcached compatible server implementation in Rust
 pub struct MemcrsdConfig {
     #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]

@@ -18,6 +18,7 @@ core_affinity = "0.8.3"
 dashmap = "6.1.0"
 futures = "0.3.31"
 futures-util = "0.3.31"
+git-version = "0.3.9"
 log = "0.4.29"
 socket2 = { version = "0.6.2", features = ["all"] }
 num_cpus = "1.17.0"
