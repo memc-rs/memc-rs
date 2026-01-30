@@ -146,10 +146,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download artifacts
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: result
+          name: binaries-*
           path: ./artifacts
       - name: List
         run: find ./artifacts
