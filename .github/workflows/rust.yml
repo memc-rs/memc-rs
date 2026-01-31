@@ -26,7 +26,7 @@ jobs:
       - name: List
         run: find ./
       - name: Run tests
-        run:  |
+        run: |
           export RUST_BACKTRACE=full
           cargo test --verbose
 
@@ -151,6 +151,7 @@ jobs:
         with:
           pattern: binaries-*
           path: ./artifacts
+          merge-multiple: true
       - name: List
         run: find ./artifacts
       - name: Release
