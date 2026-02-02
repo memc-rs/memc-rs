@@ -56,6 +56,37 @@ history.
 
 * [https://memc.rs/](https://memc.rs/)
 
+## Running
+
+`memcrsd` is configured via command-line options. Most options have sensible defaults; below are the primary flags and their meanings (see the `--help` output for the full list).
+
+* `-p, --port <PORT>`: TCP port to listen on. Default: `11211`.
+* `-c, --connection-limit <CONNECTION-LIMIT>`: Maximum simultaneous connections. Default: `1024`.
+* `-b, --backlog-limit <LISTEN-BACKLOG>`: Backlog queue limit for incoming connections. Default: `1024`.
+* `-m, --memory-limit <MEMORY-LIMIT>`: Memory limit (supports size suffixes). Default: `64MiB`.
+* `-i, --item-size-limit <MAX-ITEM-SIZE>`: Maximum size per stored item (min: 1k, max: 1024m). Default: `1MiB`.
+* `-t, --threads <THREADS>`: Number of threads to use (the binary may default to number of cores). Default: physical cores.
+* `-v, --verbose...`: Increases logging verbosity; repeatable to raise verbosity level.
+* `-l, --listen-address <listen>`: Interface/address to listen on. Default: `127.0.0.1` (use `0.0.0.0` to listen on all interfaces).
+* `-r, --runtime-type <RUNTIME-TYPE>`: Runtime type to use. Possible values:
+        - `current-thread`: each thread creates its own runtime and avoids thread switching
+        - `multi-thread`: work-stealing threadpool runtime
+        Default: `current-thread`.
+* `-e, --eviction-policy <EVICTION-POLICY>`: Eviction policy to use(for `moka` engine default evition policy used if `none` is specified, `dash-map` does not yet support eviction policy). Default: `none`.
+* `-s, --store-engine <STORE-ENGINE>`: Store engine implementation. Possible values:
+        - `dash-map`: store uses dash-map implementation
+        - `moka`: store uses moka implementation
+        Default: `dash-map`.
+* `-h, --help`: Print help summary.
+* `-V, --version`: Print version information.
+
+Notes:
+
+* Size values accept suffixes (examples: `1MiB`, `10k`).
+* Some defaults (e.g. thread count or OS limits on connections) may be influenced by the host system.
+* `dash-map` store does not yet support eviction policy
+* `memory-limit` option does not work correctly for `moka` store, for moka store it is a maximum capacity, so use with care
+
 ## Docker image
 
 Docker image is available at docker hub: [https://hub.docker.com/r/memcrs/memc-rs](https://hub.docker.com/r/memcrs/memc-rs)
