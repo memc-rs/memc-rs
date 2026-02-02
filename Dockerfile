@@ -12,5 +12,5 @@ RUN cargo build --release --target=x86_64-unknown-linux-musl --features=jemalloc
 # Create the execution container by copying the compiled hello world to it and running it
 FROM scratch
 COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/memcrsd /memcrsd
-ENTRYPOINT [ "/memcrsd",  "-c", "50000", "-l", "0.0.0.0", "-v", "-m", "2048", "-i", "10m", "-s", "moka"]
+ENTRYPOINT [ "/memcrsd", "-l", "0.0.0.0", "-v"]
 
