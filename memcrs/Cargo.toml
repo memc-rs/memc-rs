@@ -12,7 +12,7 @@ path = "src/lib.rs"
 
 [dependencies]
 byte-unit = "5.2.0"
-bytes = "1.11.0"
+bytes = "1.11.1"
 clap = { version = "4.5.56", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
 dashmap = "6.1.0"
