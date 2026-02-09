@@ -60,8 +60,13 @@ impl MockServer {
 }
 
 pub fn create_moka_server() -> MockServer {
+    let config = crate::memcache::builder::MemcacheStoreConfig::new(
+        crate::memory_store::StoreEngine::Moka,
+        1024 * 1024,
+        crate::cache::eviction_policy::EvictionPolicy::None,
+    );
     let timer = Arc::new(MockSystemTimer::new());
-    MockServer::new(Arc::new(MokaStore::new(timer.clone(), 1024 * 1024)), timer)
+    MockServer::new(Arc::new(MokaStore::new(timer.clone(), config)), timer)
 }
 
 pub fn create_dash_map_server() -> MockServer {
@@ -83,10 +88,15 @@ pub fn create_dash_map_storage() -> StoreWithMockTimer {
 }
 
 pub fn create_moka_storage() -> StoreWithMockTimer {
+    let config = crate::memcache::builder::MemcacheStoreConfig::new(
+        crate::memory_store::StoreEngine::Moka,
+        1024 * 1024,
+        crate::cache::eviction_policy::EvictionPolicy::None,
+    );
     let timer = Arc::new(MockSystemTimer::new());
     let memc_store = Arc::new(MemcStore::new(Arc::new(MokaStore::new(
         timer.clone(),
-        1024 * 1024,
+        config,
     ))));
     StoreWithMockTimer { timer, memc_store }
 }

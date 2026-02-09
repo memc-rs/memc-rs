@@ -5,6 +5,7 @@ use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
 use crate::memory_store::StoreEngine;
 use crate::server::timer;
 use std::sync::Arc;
+
 #[allow(dead_code)]
 pub struct MemcacheStoreConfig {
     engine: StoreEngine,
@@ -24,6 +25,26 @@ impl MemcacheStoreConfig {
             memory_limit,
         }
     }
+
+    pub fn engine(&self) -> StoreEngine {
+        self.engine
+    }
+
+    pub fn policy(&self) -> EvictionPolicy {
+        self.policy
+    }
+
+    pub fn memory_limit(&self) -> u64 {
+        self.memory_limit
+    }
+
+    pub fn maximum_capacity(&self) -> u64 {
+        self.memory_limit
+    }
+
+    pub fn initial_capacity(&self) -> u64 {
+        self.memory_limit
+    }
 }
 
 #[derive(Default)]
@@ -40,7 +61,7 @@ impl MemcacheStoreBuilder {
     ) -> Arc<dyn Cache + Send + Sync> {
         let store: Arc<dyn Cache + Send + Sync> = match config.engine {
             StoreEngine::DashMap => Arc::new(DashMapStore::new(timer)),
-            StoreEngine::Moka => Arc::new(MokaStore::new(timer, config.memory_limit)),
+            StoreEngine::Moka => Arc::new(MokaStore::new(timer, config)),
         };
         store
     }
