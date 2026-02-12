@@ -15,7 +15,7 @@ fi
 
 TEST_NAME="$1"
 NUM_RUNS=5
-THREADS=6
+THREADS=4
 PROTOCOL="memcache_binary"
 PORT=11211
 TEST_DURATION=60
@@ -29,6 +29,8 @@ echo "Threads: $THREADS"
 echo "Protocol: $PROTOCOL"
 echo "Test Duration: ${TEST_DURATION}s"
 echo "=========================================="
+echo ""
+echo "Note: Ensure memcached is running on localhost:$PORT before executing this script."
 echo ""
 
 # Function to run a benchmark test
@@ -101,4 +103,9 @@ echo ""
 echo "Online visualization:"
 echo "  1. Go to https://hdrhistogram.github.io/HdrHistogram/plotFiles.html"
 echo "  2. Upload the .txt files to compare latency distributions."
-
+echo ""
+echo "Cleanup:"
+echo "Removing generated files for test: $TEST_NAME"
+echo "find . -name \"${TEST_NAME}_run_*.hgrm\" -delete"
+echo "find . -name \"${TEST_NAME}_run_*.txt\" -delete"
+echo ""
