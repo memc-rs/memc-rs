@@ -1,3 +1,5 @@
 /target
 **/*.rs.bk
 memcrs/target
+memcrs/benchmarks/*.txt
+memcrs/benchmarks/*.hgrm
