@@ -6,10 +6,29 @@
 
 set -e
 
+
+# Option parsing for --native
+NATIVE=0
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+        --native)
+        NATIVE=1
+        shift # past argument
+        ;;
+        *)
+        POSITIONAL+=("$1") # save positional arg
+        shift # past argument
+        ;;
+    esac
+done
+set -- "${POSITIONAL[@]}"
+
 # Check for parameter
 if [ $# -ne 1 ]; then
-    echo "Usage: $0 <test_name>"
-    echo "Example: $0 my_benchmark"
+    echo "Usage: $0 <test_name> [--native]"
+    echo "Example: $0 my_benchmark --native"
     exit 1
 fi
 
@@ -41,36 +60,49 @@ run_benchmark() {
     local key_maximum=$4
     local key_pattern=$5
     local description=$6
-    
+
     echo "Running $description tests..."
     echo "Configuration: ratio=$ratio, data_size=$data_size, keys=$key_maximum, pattern=$key_pattern"
     echo ""
-    
-    
+
     echo "[${test_type}] Run $run/$NUM_RUNS..."
-    
+
     hdr_prefix="${test_type}_${TEST_NAME}_run_${run}"
-    
-    docker run --mount type=bind,src=.,dst=/mnt \
-        --workdir /mnt \
-        --net=host -it \
-        --rm redislabs/memtier_benchmark:latest \
-        --port=$PORT \
-        --run-count=$NUM_RUNS \
-        --protocol=$PROTOCOL \
-        --threads=$THREADS \
-        --clients=50 \
-        --test-time=$TEST_DURATION \
-        --ratio=$ratio \
-        --data-size=$data_size \
-        --key-maximum=$key_maximum \
-        --key-pattern=$key_pattern \
-        --hdr-file-prefix="$hdr_prefix" \
-         --hide-histogram
-    
+
+    if [ "$NATIVE" -eq 1 ]; then
+        memtier_benchmark \
+            --port=$PORT \
+            --run-count=$NUM_RUNS \
+            --protocol=$PROTOCOL \
+            --threads=$THREADS \
+            --clients=50 \
+            --test-time=$TEST_DURATION \
+            --ratio=$ratio \
+            --data-size=$data_size \
+            --key-maximum=$key_maximum \
+            --key-pattern=$key_pattern \
+            --hdr-file-prefix="$hdr_prefix" \
+            --hide-histogram
+    else
+        docker run --mount type=bind,src=.,dst=/mnt \
+            --workdir /mnt \
+            --net=host -it \
+            --rm redislabs/memtier_benchmark:latest \
+            --port=$PORT \
+            --run-count=$NUM_RUNS \
+            --protocol=$PROTOCOL \
+            --threads=$THREADS \
+            --clients=50 \
+            --test-time=$TEST_DURATION \
+            --ratio=$ratio \
+            --data-size=$data_size \
+            --key-maximum=$key_maximum \
+            --key-pattern=$key_pattern \
+            --hdr-file-prefix="$hdr_prefix" \
+            --hide-histogram
+    fi
+
     echo ""
-    
-    
     echo "Completed $description tests."
     echo ""
 }
