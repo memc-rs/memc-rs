@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::RngExt;
 
 mod multi_thread_server;
 mod params_builder;

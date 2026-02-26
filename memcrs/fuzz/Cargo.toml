@@ -10,8 +10,8 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4.10"
-bytes = "1.11.0"
+libfuzzer-sys = "0.4.12"
+bytes = "1.11.1"
 tokio-util = { version = "0.7.18", features = ["full"] }
 
 [dependencies.memcrs]
