@@ -1,7 +1,7 @@
 use crate::cache::eviction_policy::EvictionPolicy;
 use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
-use clap::{Parser, ValueEnum};
+use clap::{Args, Parser, ValueEnum};
 use git_version::git_version;
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
@@ -50,7 +50,7 @@ pub struct MemcrsdConfig {
     /// set the backlog queue limit
     pub backlog_limit: u32,
 
-    #[arg(short, long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
+    #[arg(short('g'), long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
     /// memory limit in megabytes
     pub memory_limit: u64,
 
@@ -74,17 +74,47 @@ pub struct MemcrsdConfig {
     ///  runtime type to use
     pub runtime_type: RuntimeType,
 
-    #[arg(short, long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
+    #[arg(short('u'), long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
     /// eviction policy to use
     pub eviction_policy: EvictionPolicy,
 
-    #[arg(short, long, value_name = "STORE-ENGINE",  verbatim_doc_comment, value_parser = parse_store_engine, default_value_t = StoreEngine::DashMap, value_enum)]
+    #[arg(short, long, value_name = "STORE-ENGINE",  verbatim_doc_comment, value_parser = parse_store_engine, default_value_t = StoreEngine::Moka, value_enum)]
     /// store engine to be used
     ///
     /// Possible values:
     /// - dash-map: store will use dash-map implementation
     /// - moka: store will use moka implementation
     pub store_engine: StoreEngine,
+
+    #[command(flatten)]
+    moka: MokaConfig,
+
+    #[command(flatten)]
+    dash_map: DashMapConfig,
+}
+
+#[derive(Args, Debug, Clone)]
+#[group(multiple = false)]
+pub struct DashMapConfig {
+    #[arg(group("dash-map"), long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
+    /// memory limit in megabytes
+    pub memory_limit1: u64,
+}
+
+#[derive(Args, Debug, Clone)]
+#[group(multiple = true)]
+pub struct MokaConfig {
+    #[arg(group("moka"), long, value_name = "CAPACITY", default_value_t = 1024*1024)]
+    /// maximum capacity (key->value pairs)
+    pub max_capacity: u64,
+
+    #[arg(group("moka"), long, value_name = "EVICTION-POLICY", verbatim_doc_comment, value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
+    /// eviction policy to use
+    ///
+    /// Possible values
+    /// - tiny_lfu: tiny LFU,
+    /// - lru: least recently used (default).
+    pub eviction_policy1: EvictionPolicy,
 }
 
 const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
