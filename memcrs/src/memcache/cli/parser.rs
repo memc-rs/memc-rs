@@ -3,6 +3,7 @@ use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
 use clap::{Args, Parser, ValueEnum};
 use git_version::git_version;
+use serde::de;
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -74,6 +75,10 @@ pub struct MemcrsdConfig {
     ///  runtime type to use
     pub runtime_type: RuntimeType,
 
+    #[arg(long, value_name = "NO-PIN", default_value_t = false)]
+    ///  don’t pin threads to CPU cores when using the current-thread runtime.
+    pub cpu_no_pin: bool,
+
     #[arg(short('u'), long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
     /// eviction policy to use
     pub eviction_policy: EvictionPolicy,
@@ -87,14 +92,14 @@ pub struct MemcrsdConfig {
     pub store_engine: StoreEngine,
 
     #[command(flatten)]
-    moka: MokaConfig,
+    moka: Option<MokaConfig>,
 
     #[command(flatten)]
-    dash_map: DashMapConfig,
+    dash_map: Option<DashMapConfig>,
 }
 
 #[derive(Args, Debug, Clone)]
-#[group(multiple = false)]
+#[group(multiple = true)]
 pub struct DashMapConfig {
     #[arg(group("dash-map"), long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
     /// memory limit in megabytes
@@ -105,7 +110,7 @@ pub struct DashMapConfig {
 #[group(multiple = true)]
 pub struct MokaConfig {
     #[arg(group("moka"), long, value_name = "CAPACITY", default_value_t = 1024*1024)]
-    /// maximum capacity (key->value pairs)
+    /// maximum Moka cache capacity (key->value pairs)
     pub max_capacity: u64,
 
     #[arg(group("moka"), long, value_name = "EVICTION-POLICY", verbatim_doc_comment, value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
@@ -161,6 +166,13 @@ fn parse_store_engine(s: &str) -> Result<StoreEngine, String> {
 impl MemcrsdConfig {
     fn from_args(args: Vec<String>) -> Result<MemcrsdConfig, String> {
         let memcrs_args = MemcrsdConfig::parse_from(args.iter());
+        match memcrs_args.store_engine {
+            StoreEngine::DashMap => {}
+            StoreEngine::Moka => {
+                let default = MokaConfig::new();
+                println!("Default moka config {:?}", default);
+            }
+        }
         Ok(memcrs_args)
     }
 }
