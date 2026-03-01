@@ -1,5 +1,6 @@
 extern crate core_affinity;
 use crate::memcache;
+use crate::memcache::builder::EngineStoreConfig;
 use crate::memcache::cli::parser::RuntimeType;
 use crate::memcache_server;
 use crate::memcache_server::server_context::ServerContext;
@@ -77,7 +78,10 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
             let core_id = core_ids_clone[i % core_ids_clone.len()];
-            let res = core_affinity::set_for_current(core_id);
+            let mut res = false;
+            if !config.cpu_no_pin {
+                res = core_affinity::set_for_current(core_id);
+            }
             let create_runtime = || {
                 let child_runtime = create_current_thread_runtime();
                 let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
@@ -95,7 +99,15 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
                 );
                 create_runtime();
             } else {
-                warn!("Cannot pin thread to core {}", core_id.id);
+                if config.cpu_no_pin {
+                    info!(
+                        "Threads not pinned to core as per user request, core {}",
+                        core_id.id
+                    );
+                } else {
+                    warn!("Cannot pin thread to core {}", core_id.id);
+                }
+
                 create_runtime();
             }
         });
@@ -133,11 +145,17 @@ fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
 }
 
 pub fn start_memcrs_server(config: MemcrsdConfig) {
-    let store_config = memcache::builder::MemcacheStoreConfig::new(
-        config.store_engine,
-        config.memory_limit,
-        config.eviction_policy,
-    );
+    let engine_store_config = match config.store_engine {
+        crate::memory_store::StoreEngine::DashMap => {
+            EngineStoreConfig::DashMap(config.dash_map.clone().unwrap())
+        }
+        crate::memory_store::StoreEngine::Moka => {
+            EngineStoreConfig::Moka(config.moka.clone().unwrap())
+        }
+    };
+
+    let store_config =
+        memcache::builder::MemcacheStoreConfig::new(config.store_engine, engine_store_config);
     let ctxt = ServerContext::get_default_server_context(store_config);
     start_memcrs_server_with_ctxt(config, ctxt)
 }

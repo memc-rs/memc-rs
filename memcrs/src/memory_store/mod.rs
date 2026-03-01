@@ -2,6 +2,7 @@ use clap::ValueEnum;
 
 pub mod dash_map_store;
 pub mod moka_store;
+mod parallelism;
 pub mod shared_store_state;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
