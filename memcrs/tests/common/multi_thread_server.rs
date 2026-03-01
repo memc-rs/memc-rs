@@ -1,7 +1,7 @@
 use std::process;
 
 use memcrs::{
-    memcache,
+    memcache::{self, builder::EngineStoreConfig, cli::parser::{DashMapConfig, MokaConfig}},
     memcache_server::{
         runtime_builder::start_memcrs_server_with_ctxt, server_context::ServerContext,
     },
@@ -65,10 +65,19 @@ fn spawn_server_args(args: Vec<String>) -> MemcrsdMultiThreadTestServer {
             process::exit(1);
         }
     };
+    // From a MokaConfig
+    let engine_config = match config.store_engine {
+        memcrs::memory_store::StoreEngine::DashMap => {
+            EngineStoreConfig::DashMap(DashMapConfig::default())
+        }
+        memcrs::memory_store::StoreEngine::Moka => {
+            EngineStoreConfig::Moka(MokaConfig::default())
+        }
+    };
+
     let store_config = memcache::builder::MemcacheStoreConfig::new(
         config.store_engine,
-        config.memory_limit,
-        config.eviction_policy,
+        engine_config
     );
     let ctxt = ServerContext::get_default_server_context(store_config);
     let cancellation_token = ctxt.cancellation_token();

@@ -3,7 +3,7 @@ use crate::memory_store::StoreEngine;
 use byte_unit::Byte;
 use clap::{Args, Parser, ValueEnum};
 use git_version::git_version;
-use serde::de;
+use core::result::Result;
 use std::{fmt::Debug, net::IpAddr, ops::RangeInclusive};
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
@@ -40,87 +40,122 @@ fn get_default_threads_number() -> usize {
 /// memcached compatible server implementation in Rust
 pub struct MemcrsdConfig {
     #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]
-    /// TCP port to listen on
+    /// TCP port the server will bind to for incoming connections
     pub port: u16,
 
     #[arg(short, long, value_name = "CONNECTION-LIMIT", default_value_t = CONNECTION_LIMIT)]
-    /// max simultaneous connections
+    /// maximum number of simultaneous client connections allowed
     pub connection_limit: u32,
 
     #[arg(short, long, value_name = "LISTEN-BACKLOG", default_value_t = LISTEN_BACKLOG)]
-    /// set the backlog queue limit
+    /// backlog queue size for pending TCP connections
     pub backlog_limit: u32,
 
-    #[arg(short('g'), long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
-    /// memory limit in megabytes
-    pub memory_limit: u64,
-
     #[arg(short, long, value_name = "MAX-ITEM-SIZE", value_parser = parse_memory_mb, default_value = MAX_ITEM_SIZE)]
-    ///  adjusts max item size (min: 1k, max: 1024m)
+    /// maximum allowed size for a single item (between 1KiB and 1024MiB)
     pub item_size_limit: u64,
 
     #[arg(short, long, value_name = "THREADS", default_value_t = get_default_threads_number())]
-    /// number of threads to use (defualts to number of cores)
+    /// number of worker threads (defaults to number of CPU cores)
     pub threads: usize,
 
     #[arg(short, long, action = clap::ArgAction::Count, default_value_t = 1)]
-    /// sets the level of verbosity
+    /// increase log verbosity (can be repeated)
     pub verbose: u8,
 
-    #[arg(short, long, value_name = "listen", default_value_t = String::from(DEFAULT_ADDRESS).parse::<IpAddr>().unwrap())]
-    /// interface to listen on
+    #[arg(short, long, value_name = "LISTEN-ADDRESS", default_value_t = String::from(DEFAULT_ADDRESS).parse::<IpAddr>().unwrap())]
+    /// IP address or interface the server will bind to
     pub listen_address: IpAddr,
 
     #[arg(short, long, value_name = "RUNTIME-TYPE", default_value_t = RuntimeType::CurrentThread, value_enum)]
-    ///  runtime type to use
+    /// execution runtime: current-thread or multi-threaded
     pub runtime_type: RuntimeType,
 
     #[arg(long, value_name = "NO-PIN", default_value_t = false)]
-    ///  don’t pin threads to CPU cores when using the current-thread runtime.
+    /// do not pin worker threads to cores (only for current-thread runtime)
     pub cpu_no_pin: bool,
 
-    #[arg(short('u'), long, value_name = "EVICTION-POLICY", value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
-    /// eviction policy to use
-    pub eviction_policy: EvictionPolicy,
-
     #[arg(short, long, value_name = "STORE-ENGINE",  verbatim_doc_comment, value_parser = parse_store_engine, default_value_t = StoreEngine::Moka, value_enum)]
-    /// store engine to be used
+    /// which underlying storage engine to use
     ///
-    /// Possible values:
-    /// - dash-map: store will use dash-map implementation
-    /// - moka: store will use moka implementation
+    /// available options:
+    /// dash-map – use the DashMap-based memory store
+    /// moka     – use the Moka-based memory store (default)
     pub store_engine: StoreEngine,
 
     #[command(flatten)]
-    moka: Option<MokaConfig>,
+    pub moka: Option<MokaConfig>,
 
     #[command(flatten)]
-    dash_map: Option<DashMapConfig>,
+    pub dash_map: Option<DashMapConfig>,
 }
 
 #[derive(Args, Debug, Clone)]
 #[group(multiple = true)]
 pub struct DashMapConfig {
-    #[arg(group("dash-map"), long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
+    #[arg(long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
     /// memory limit in megabytes
-    pub memory_limit1: u64,
+    pub memory_limit: u64,
+}
+
+impl DashMapConfig {
+    pub fn get_default_memory_limit() -> &'static str {
+        MEMORY_LIMIT
+    }
+}
+
+
+impl Default for DashMapConfig {
+    fn default() -> Self {
+        let value: Result<u64, String> = parse_memory_mb(DashMapConfig::get_default_memory_limit());
+        let memory_limit = match value {
+            Result::Ok(value ) => {
+                value
+            }
+            Result::Err(err) => {
+                error!("{}", err);
+                1024*1024*54
+            }
+        };
+        DashMapConfig { memory_limit }
+    }
 }
 
 #[derive(Args, Debug, Clone)]
-#[group(multiple = true)]
 pub struct MokaConfig {
-    #[arg(group("moka"), long, value_name = "CAPACITY", default_value_t = 1024*1024)]
+    #[arg(long, value_name = "CAPACITY", default_value_t = MokaConfig::get_max_capacity_default())]
     /// maximum Moka cache capacity (key->value pairs)
     pub max_capacity: u64,
 
-    #[arg(group("moka"), long, value_name = "EVICTION-POLICY", verbatim_doc_comment, value_parser = parse_eviction_policy, default_value_t = EvictionPolicy::None, value_enum)]
+    #[arg(long, value_name = "EVICTION-POLICY", verbatim_doc_comment, value_parser = parse_eviction_policy, default_value_t = MokaConfig::get_eviction_policy_default(), value_enum)]
     /// eviction policy to use
     ///
     /// Possible values
-    /// - tiny_lfu: tiny LFU,
+    /// - tiny-lfu: tiny LFU,
     /// - lru: least recently used (default).
-    pub eviction_policy1: EvictionPolicy,
+    pub eviction_policy: EvictionPolicy,
 }
+
+impl MokaConfig {
+    pub fn get_max_capacity_default() -> u64 {
+        1024 * 1024
+    }
+
+    pub fn get_eviction_policy_default() -> EvictionPolicy {
+        EvictionPolicy::LeastRecentlyUsed
+    }
+}
+
+
+impl Default for MokaConfig {
+    fn default() -> Self {
+        MokaConfig {
+            max_capacity: MokaConfig::get_max_capacity_default(),
+            eviction_policy: MokaConfig::get_eviction_policy_default(),
+        }
+    }
+}
+
 
 const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
 
@@ -148,8 +183,10 @@ fn parse_memory_mb(s: &str) -> Result<u64, String> {
 
 fn parse_eviction_policy(s: &str) -> Result<EvictionPolicy, String> {
     match s {
-        "tiny_lfu" => Ok(EvictionPolicy::TinyLeastFrequentlyUsed),
-        "lru" => Ok(EvictionPolicy::LeastRecentylUsed),
+        "tiny-lfu" => Ok(EvictionPolicy::TinyLeastFrequentlyUsed),
+        "tiny-least-frequently-used" => Ok(EvictionPolicy::TinyLeastFrequentlyUsed),
+        "lru" => Ok(EvictionPolicy::LeastRecentlyUsed),
+        "least-recently-used" => Ok(EvictionPolicy::LeastRecentlyUsed),
         "none" => Ok(EvictionPolicy::None),
         _ => Err(format!("Invalid eviction policy: {}", s)),
     }
@@ -165,12 +202,25 @@ fn parse_store_engine(s: &str) -> Result<StoreEngine, String> {
 
 impl MemcrsdConfig {
     fn from_args(args: Vec<String>) -> Result<MemcrsdConfig, String> {
-        let memcrs_args = MemcrsdConfig::parse_from(args.iter());
+        let mut memcrs_args = MemcrsdConfig::parse_from(args.iter());
         match memcrs_args.store_engine {
-            StoreEngine::DashMap => {}
+            StoreEngine::DashMap => {
+                let config = memcrs_args.dash_map.or(Some(DashMapConfig::default()));
+                memcrs_args.dash_map = config;
+                if memcrs_args.moka.is_some() {
+                    return Result::Err(
+                        "--store-engine 'dash-map' does not accept options from 'moka'; only dashmap-specific flags are allowed. See --help".to_string()
+                    );
+                }
+            },
             StoreEngine::Moka => {
-                let default = MokaConfig::new();
-                println!("Default moka config {:?}", default);
+                let config = memcrs_args.moka.or(Some(MokaConfig::default()));
+                memcrs_args.moka = config;
+                if memcrs_args.dash_map.is_some() {
+                    return Result::Err(
+                        "--store-engine 'moka' does not accept options from 'dash-map'; only moka-specific flags are allowed. See: --help".to_string()
+                    );
+                }
             }
         }
         Ok(memcrs_args)
@@ -223,7 +273,6 @@ mod tests {
         assert_eq!(config.port, DEFAULT_PORT);
         assert_eq!(config.connection_limit, CONNECTION_LIMIT);
         assert_eq!(config.backlog_limit, LISTEN_BACKLOG);
-        assert_eq!(config.memory_limit, parse_memory_mb(MEMORY_LIMIT).unwrap());
         assert_eq!(
             config.item_size_limit,
             parse_memory_mb(MAX_ITEM_SIZE).unwrap()
@@ -234,9 +283,10 @@ mod tests {
             config.listen_address,
             DEFAULT_ADDRESS.parse::<IpAddr>().unwrap()
         );
+        assert_eq!(config.cpu_no_pin, false);
         assert_eq!(config.runtime_type, RuntimeType::CurrentThread);
-        assert_eq!(config.eviction_policy, EvictionPolicy::None);
-        assert_eq!(config.store_engine, StoreEngine::DashMap);
+        assert_eq!(config.store_engine, StoreEngine::Moka);
+        assert_eq!(config.moka.unwrap().eviction_policy, EvictionPolicy::LeastRecentlyUsed);
     }
 
     #[test]
@@ -265,12 +315,14 @@ mod tests {
         // Test if the memory limit is parsed correctly
         let args = vec![
             "".to_string(),
+            "--store-engine".to_string(),
+            "dash-map".to_string(),
             "--memory-limit".to_string(),
             "128MiB".to_string(),
         ];
         let config = parse(args).unwrap();
 
-        assert_eq!(config.memory_limit, parse_memory_mb("128MiB").unwrap());
+        assert_eq!(config.dash_map.unwrap().memory_limit, parse_memory_mb("128MiB").unwrap());
     }
 
     #[test]
@@ -278,6 +330,8 @@ mod tests {
         // Test if an invalid memory limit results in an error
         let args = vec![
             "".to_string(),
+            "--store-engine".to_string(),
+            "dash-map".to_string(),
             "--memory-limit".to_string(),
             "invalid".to_string(),
         ];
@@ -301,10 +355,10 @@ mod tests {
 
     #[test]
     fn test_eviction_policy() {
-        let policy = vec!["tiny_lfu", "lru", "none"];
+        let policy = vec!["tiny-lfu", "lru", "none"];
         let policies = vec![
             EvictionPolicy::TinyLeastFrequentlyUsed,
-            EvictionPolicy::LeastRecentylUsed,
+            EvictionPolicy::LeastRecentlyUsed,
             EvictionPolicy::None,
         ];
 
@@ -318,7 +372,7 @@ mod tests {
             ];
             let config = MemcrsdConfig::try_parse_from(args).unwrap();
 
-            assert_eq!(config.eviction_policy, *policy);
+            assert_eq!(config.moka.unwrap().eviction_policy, *policy);
         }
     }
 
@@ -371,6 +425,61 @@ mod tests {
             source.to_string(),
             "Invalid store engine selected: invalid-store"
         );
+    }
+
+    #[test]
+    fn test_moka_flags() {
+        // Test if an invalid store engine results in an error
+        let args = vec![
+            "".to_string(),
+            "--store-engine".to_string(),
+            "moka".to_string(),
+            "--max-capacity".to_string(),
+            "1024".to_string(),
+            "--eviction-policy".to_string(),
+            "lru".to_string(),
+        ];
+        let result = MemcrsdConfig::try_parse_from(args);
+        println!("{:?}", result);
+        assert_eq!(result.is_err(), false);
+        let config = result.unwrap();
+        assert_eq!(config.store_engine, StoreEngine::Moka);
+        let moka_config = config.moka.unwrap();
+        assert_eq!(moka_config.eviction_policy, EvictionPolicy::LeastRecentlyUsed);
+        assert_eq!(moka_config.max_capacity, 1024);
+    }
+
+    #[test]
+    fn test_dashmap_flags() {
+        // Test if an invalid store engine results in an error
+        let args = vec![
+            "".to_string(),
+            "--store-engine".to_string(),
+            "dash-map".to_string(),
+            "--memory-limit".to_string(),
+            "1024M".to_string(),
+        ];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert_eq!(result.is_err(), false);
+        let config = result.unwrap();
+        assert_eq!(config.store_engine, StoreEngine::DashMap);
+        let dashmap_config = config.dash_map.unwrap();
+        assert_eq!(dashmap_config.memory_limit, 1024000000);
+    }
+
+    #[test]
+    fn cpu_no_pin_flag_requested() {
+        // Test if an invalid store engine results in an error
+        let args = vec![
+            "".to_string(),
+            "--cpu-no-pin".to_string(),
+        ];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert_eq!(result.is_err(), false);
+        let config = result.unwrap();
+        assert_eq!(config.cpu_no_pin, true);
     }
 
     #[test]

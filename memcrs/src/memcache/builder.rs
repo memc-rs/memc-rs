@@ -1,28 +1,32 @@
 use crate::cache::cache::Cache;
-use crate::cache::eviction_policy::EvictionPolicy;
+use crate::memcache::cli::parser::{DashMapConfig, MokaConfig};
 use crate::memory_store::dash_map_store::DashMapMemoryStore as DashMapStore;
 use crate::memory_store::moka_store::MokaMemoryStore as MokaStore;
 use crate::memory_store::StoreEngine;
 use crate::server::timer;
 use std::sync::Arc;
 
+#[derive(Clone)]
+pub enum EngineStoreConfig {
+    Moka(MokaConfig),
+    DashMap(DashMapConfig)
+}
+
+
 #[allow(dead_code)]
 pub struct MemcacheStoreConfig {
     engine: StoreEngine,
-    policy: EvictionPolicy,
-    memory_limit: u64,
+    config: EngineStoreConfig,
 }
 
 impl MemcacheStoreConfig {
     pub fn new(
         engine: StoreEngine,
-        memory_limit: u64,
-        policy: EvictionPolicy,
+        config: EngineStoreConfig
     ) -> MemcacheStoreConfig {
         MemcacheStoreConfig {
             engine,
-            policy,
-            memory_limit,
+            config
         }
     }
 
@@ -30,20 +34,8 @@ impl MemcacheStoreConfig {
         self.engine
     }
 
-    pub fn policy(&self) -> EvictionPolicy {
-        self.policy
-    }
-
-    pub fn memory_limit(&self) -> u64 {
-        self.memory_limit
-    }
-
-    pub fn maximum_capacity(&self) -> u64 {
-        self.memory_limit
-    }
-
-    pub fn initial_capacity(&self) -> u64 {
-        self.memory_limit
+    pub fn config(&self) -> EngineStoreConfig {
+        self.config.clone()
     }
 }
 
@@ -59,9 +51,19 @@ impl MemcacheStoreBuilder {
         config: MemcacheStoreConfig,
         timer: Arc<dyn timer::Timer + Send + Sync>,
     ) -> Arc<dyn Cache + Send + Sync> {
+       let mut dashmap_config: Option<DashMapConfig> = None;
+       let mut moka_config: Option<MokaConfig> = None;
+       match config.config {
+        EngineStoreConfig::DashMap(cfg) => {
+            dashmap_config = Some(cfg);
+        }
+        EngineStoreConfig::Moka(cfg) => {
+            moka_config = Some(cfg);
+        }
+       }
         let store: Arc<dyn Cache + Send + Sync> = match config.engine {
-            StoreEngine::DashMap => Arc::new(DashMapStore::new(timer)),
-            StoreEngine::Moka => Arc::new(MokaStore::new(timer, config)),
+            StoreEngine::DashMap => Arc::new(DashMapStore::new(timer, dashmap_config.unwrap())),
+            StoreEngine::Moka => Arc::new(MokaStore::new(timer, moka_config.unwrap())),
         };
         store
     }

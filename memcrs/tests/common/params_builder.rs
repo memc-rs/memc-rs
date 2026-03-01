@@ -1,13 +1,11 @@
 use memcrs::{
-    cache::eviction_policy::EvictionPolicy, memcache::cli::parser::RuntimeType,
+    memcache::cli::parser::RuntimeType,
     memory_store::StoreEngine,
 };
 
 pub struct MemcrsdServerParamsBuilder {
     engine: StoreEngine,
-    policy: EvictionPolicy,
     runtime: RuntimeType,
-    memory_limit: u64,
     port: u16,
 }
 
@@ -15,9 +13,7 @@ impl MemcrsdServerParamsBuilder {
     pub fn new() -> MemcrsdServerParamsBuilder {
         MemcrsdServerParamsBuilder {
             engine: StoreEngine::DashMap,
-            policy: EvictionPolicy::None,
             runtime: RuntimeType::CurrentThread,
-            memory_limit: 1024 * 1024 * 64,
             port: 11211,
         }
     }
@@ -25,18 +21,6 @@ impl MemcrsdServerParamsBuilder {
     #[allow(dead_code)]
     pub fn with_engine(&mut self, engine: StoreEngine) -> &mut Self {
         self.engine = engine;
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn with_policy(&mut self, policy: EvictionPolicy) -> &mut Self {
-        self.policy = policy;
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn with_memory_limit(&mut self, memory_limit: u64) -> &mut Self {
-        self.memory_limit = memory_limit;
         self
     }
 
@@ -69,9 +53,6 @@ impl MemcrsdServerParamsBuilder {
                 result.push(String::from("multi-thread"));
             }
         }
-
-        result.push(String::from("--memory-limit"));
-        result.push(self.memory_limit.to_string());
 
         result.push(String::from("--port"));
         result.push(self.port.to_string());

@@ -3,8 +3,7 @@ use crate::cache::cache::{
 };
 use crate::cache::error::{CacheError, Result};
 use crate::cache::eviction_policy;
-use crate::memcache::builder::MemcacheStoreConfig;
-use crate::memory_store::parallelism::get_number_of_shards;
+use crate::memcache::cli::parser::MokaConfig;
 use crate::memory_store::shared_store_state::SharedStoreState;
 use crate::protocol::binary::network::DELTA_NO_INITIAL_VALUE;
 use crate::server::timer;
@@ -13,9 +12,7 @@ use moka::ops::compute::Op;
 use moka::policy::EvictionPolicy as EvictionPolicyType;
 // use moka::sync::SegmentedCache;
 use moka::sync::Cache as MokaCache;
-use std::collections::hash_map;
 use std::sync::Arc;
-use std::time::Duration;
 
 //type MokaStorage = SegmentedCache<KeyType, Record, hash_map::RandomState>;
 type MokaStorage = MokaCache<KeyType, Record>;
@@ -28,25 +25,19 @@ pub struct MokaMemoryStore {
 impl MokaMemoryStore {
     pub fn new(
         timer: Arc<dyn timer::Timer + Send + Sync>,
-        config: MemcacheStoreConfig,
+        moka_config: MokaConfig,
     ) -> MokaMemoryStore {
         let store_state = SharedStoreState::new(timer.clone());
-        let eviction_policy = match config.policy() {
+        let eviction_policy = match moka_config.eviction_policy {
             eviction_policy::EvictionPolicy::None => EvictionPolicyType::lru(),
             eviction_policy::EvictionPolicy::TinyLeastFrequentlyUsed => {
                 EvictionPolicyType::tiny_lfu()
             }
-            eviction_policy::EvictionPolicy::LeastRecentylUsed => EvictionPolicyType::lru(),
+            eviction_policy::EvictionPolicy::LeastRecentlyUsed => EvictionPolicyType::lru(),
         };
-        let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
-        //let shards = get_number_of_shards(parallelism);
         let cache: MokaStorage = MokaCache::builder()
             // Max entries
-            .max_capacity(config.maximum_capacity())
-            // Time to live (TTL): 30 minutes
-            .time_to_live(Duration::from_secs(60 * 60))
-            // Time to idle (TTI):  5 minutes
-            .time_to_idle(Duration::from_secs(5 * 60))
+            .max_capacity(moka_config.max_capacity)
             // Create the cache.
             .eviction_policy(eviction_policy)
             .build();

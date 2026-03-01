@@ -2,6 +2,7 @@ use crate::cache::cache::{
     Cache, CacheMetaData, DeltaParam, DeltaResult, KeyType, Record, SetStatus,
 };
 use crate::cache::error::{CacheError, Result};
+use crate::memcache::cli::parser::DashMapConfig;
 use crate::memory_store::parallelism::get_number_of_shards;
 use crate::memory_store::shared_store_state::SharedStoreState;
 use crate::protocol::binary::network::DELTA_NO_INITIAL_VALUE;
@@ -18,7 +19,7 @@ pub struct DashMapMemoryStore {
 }
 
 impl DashMapMemoryStore {
-    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>) -> DashMapMemoryStore {
+    pub fn new(timer: Arc<dyn timer::Timer + Send + Sync>, _cfg: DashMapConfig) -> DashMapMemoryStore {
         let parallelism = std::thread::available_parallelism().map_or(1, usize::from);
         let shards = get_number_of_shards(parallelism);
         info!("Number of shards: {}", shards);
