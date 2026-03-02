@@ -115,8 +115,8 @@ Notes:
 
 * Size values accept suffixes (examples: `1MiB`, `10k`).
 * Some defaults (e.g. thread count or OS limits on connections) may be influenced by the host system.
-* `--max-capacity` and `--eviction-policy` are only applicable when `--store-engine` is set to `moka`. When using `dash-map`, these options are ignored and eviction is not supported.
-* `--memory-limit` is only applicable when `--store-engine` is set to `dash-map` (it controls memory usage in megabytes). When using `moka`, control cache size with `--max-capacity`; `--memory-limit` will be ignored for `moka`.
+* `--max-capacity` and `--eviction-policy` are only applicable when `--store-engine` is set to `moka`. When using `dash-map`, these options will cause an error.
+* `--memory-limit` is only applicable when `--store-engine` is set to `dash-map` (it controls memory usage in megabytes). When using `moka`, control cache size with `--max-capacity`; `--memory-limit` will cause an error for `moka`.
 
 ## Docker image
 
