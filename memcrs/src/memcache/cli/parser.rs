@@ -440,8 +440,7 @@ mod tests {
             "--eviction-policy".to_string(),
             "lru".to_string(),
         ];
-        let result = MemcrsdConfig::try_parse_from(args);
-        println!("{:?}", result);
+        let result = MemcrsdConfig::from_args(args);
         assert_eq!(result.is_err(), false);
         let config = result.unwrap();
         assert_eq!(config.store_engine, StoreEngine::Moka);
@@ -463,13 +462,45 @@ mod tests {
             "--memory-limit".to_string(),
             "1024M".to_string(),
         ];
-        let result = MemcrsdConfig::try_parse_from(args);
+        let result = MemcrsdConfig::from_args(args);
 
         assert_eq!(result.is_err(), false);
         let config = result.unwrap();
         assert_eq!(config.store_engine, StoreEngine::DashMap);
         let dashmap_config = config.dash_map.unwrap();
         assert_eq!(dashmap_config.memory_limit, 1024000000);
+    }
+
+    #[test]
+    fn test_invalid_dashmap_flags() {
+        // Test if an invalid store engine results in an error
+        let args = vec![
+            "".to_string(),
+            "--store-engine".to_string(),
+            "dash-map".to_string(),
+            "--max-capacity".to_string(),
+            "1024".to_string(),
+            "--eviction-policy".to_string(),
+            "lru".to_string(),
+        ];
+        let result = MemcrsdConfig::from_args(args);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_moka_flags() {
+        // Test if an invalid store engine results in an error
+        let args = vec![
+            "".to_string(),
+            "--store-engine".to_string(),
+            "moka".to_string(),
+            "--memory-limit".to_string(),
+            "1024M".to_string(),
+        ];
+        let result = MemcrsdConfig::from_args(args);
+
+        assert!(result.is_err());
     }
 
     #[test]

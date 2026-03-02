@@ -2,6 +2,10 @@
 
 memcrsd is a key value store implementation in Rust. It is compatible with binary protocol of memcached server.
 
+## Changelog (since memcrsd-0.0.1k)
+
+**Important:** Configuration options for Moka and DashMap store engines are now separated. Options like `--max-capacity` and `--eviction-policy` apply only to Moka, while `--memory-limit` applies only to DashMap. This makes configuration clearer and prevents confusion when switching between store engines.
+
 ## Supported features and compatibility
 
 To check compatibility with memcached server implementation memcrsd project
@@ -60,32 +64,59 @@ history.
 
 `memcrsd` is configured via command-line options. Most options have sensible defaults; below are the primary flags and their meanings (see the `--help` output for the full list).
 
-* `-p, --port <PORT>`: TCP port to listen on. Default: `11211`.
-* `-c, --connection-limit <CONNECTION-LIMIT>`: Maximum simultaneous connections. Default: `1024`.
-* `-b, --backlog-limit <LISTEN-BACKLOG>`: Backlog queue limit for incoming connections. Default: `1024`.
-* `-m, --memory-limit <MEMORY-LIMIT>`: Memory limit (supports size suffixes). Default: `64MiB`.
-* `-i, --item-size-limit <MAX-ITEM-SIZE>`: Maximum size per stored item (min: 1k, max: 1024m). Default: `1MiB`.
-* `-t, --threads <THREADS>`: Number of threads to use (the binary may default to number of cores). Default: physical cores.
-* `-v, --verbose...`: Increases logging verbosity; repeatable to raise verbosity level.
-* `-l, --listen-address <listen>`: Interface/address to listen on. Default: `127.0.0.1` (use `0.0.0.0` to listen on all interfaces).
-* `-r, --runtime-type <RUNTIME-TYPE>`: Runtime type to use. Possible values:
-        - `current-thread`: each thread creates its own runtime and avoids thread switching
-        - `multi-thread`: work-stealing threadpool runtime
-        Default: `current-thread`.
-* `-e, --eviction-policy <EVICTION-POLICY>`: Eviction policy to use(for `moka` engine default evition policy used if `none` is specified, `dash-map` does not yet support eviction policy). Default: `none`.
-* `-s, --store-engine <STORE-ENGINE>`: Store engine implementation. Possible values:
-        - `dash-map`: store uses dash-map implementation
-        - `moka`: store uses moka implementation
-        Default: `dash-map`.
-* `-h, --help`: Print help summary.
-* `-V, --version`: Print version information.
+* `-p, --port <PORT>`: TCP port the server will bind to for incoming connections. Default: `11211`.
+
+* `-c, --connection-limit <CONNECTION-LIMIT>`: maximum number of simultaneous client connections allowed. Default: `1024`.
+
+* `-b, --backlog-limit <LISTEN-BACKLOG>`: backlog queue size for pending TCP connections. Default: `1024`.
+
+* `-i, --item-size-limit <MAX-ITEM-SIZE>`: maximum allowed size for a single item (between 1KiB and 1024MiB). Default: `1MiB`.
+
+* `-t, --threads <THREADS>`: number of worker threads (defaults to number of CPU cores). Default: `8`.
+
+* `-v, --verbose...`: increase log verbosity (can be repeated).
+
+* `-l, --listen-address <LISTEN-ADDRESS>`: IP address or interface the server will bind to. Default: `127.0.0.1`.
+
+* `-r, --runtime-type <RUNTIME-TYPE>`: execution runtime: `current-thread` or `multi-thread`.
+
+  Possible values:
+  - `current-thread`: every thread will create its own runtime which will handle work without thread switching
+  - `multi-thread`:   work stealing threadpool runtime
+
+  Default: `current-thread`.
+
+* `--cpu-no-pin`: do not pin worker threads to cores (aplicable only for `current-thread` runtime, ignored in `multi-thread`).
+
+* `-s, --store-engine <STORE-ENGINE>`: which underlying storage engine to use. Available options:
+
+  - `dash-map` – use the DashMap-based memory store
+  - `moka`     – use the Moka-based memory store (default)
+
+  Default: `moka`.
+
+* `--max-capacity <CAPACITY>`: maximum Moka cache capacity (key->value pairs). Default: `1048576`.
+
+* `--eviction-policy <EVICTION-POLICY>`: eviction policy to use.
+
+  Possible values:
+  - `tiny-lfu`: tiny LFU
+  - `lru`: least recently used (default)
+
+  Default: `least-recently-used`.
+
+* `--memory-limit <MEMORY-LIMIT>`: memory limit in megabytes. Default: `64MiB`.
+
+* `-h, --help`: Print help (see a summary with '-h').
+
+* `-V, --version`: Print version.
 
 Notes:
 
 * Size values accept suffixes (examples: `1MiB`, `10k`).
 * Some defaults (e.g. thread count or OS limits on connections) may be influenced by the host system.
-* `dash-map` store does not yet support eviction policy
-* `memory-limit` option does not work correctly for `moka` store, for moka store it is a maximum capacity, so use with care
+* `--max-capacity` and `--eviction-policy` are only applicable when `--store-engine` is set to `moka`. When using `dash-map`, these options are ignored and eviction is not supported.
+* `--memory-limit` is only applicable when `--store-engine` is set to `dash-map` (it controls memory usage in megabytes). When using `moka`, control cache size with `--max-capacity`; `--memory-limit` will be ignored for `moka`.
 
 ## Docker image
 
