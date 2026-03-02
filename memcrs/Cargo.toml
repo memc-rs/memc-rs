@@ -13,18 +13,18 @@ path = "src/lib.rs"
 [dependencies]
 byte-unit = "5.2.0"
 bytes = "1.11.1"
-clap = { version = "4.5.56", features = ["derive", "cargo"] }
+clap = { version = "4.5.60", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
 dashmap = "6.1.0"
-futures = "0.3.31"
-futures-util = "0.3.31"
+futures = "0.3.32"
+futures-util = "0.3.32"
 git-version = "0.3.9"
 log = "0.4.29"
 socket2 = { version = "0.6.2", features = ["all"] }
 num_cpus = "1.17.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-moka = { version = "0.12.13", features = ["sync"] }
+moka = { version = "0.12.14", features = ["sync"] }
 rand = { version = "0.10.0" }
 serde = "1.0.228"
 serde_derive = "1.0.228"
@@ -43,9 +43,9 @@ jemallocator = { version = "0.5.4", optional = true }
 
 [dev-dependencies]
 memcache = "0.19.0"
-nix = { version = "0.31.0", features = ["signal"] }
+nix = { version = "0.31.2", features = ["signal"] }
 test-case = "3.3.1"
-criterion = { version = "0.8.1", features = ["html_reports"] }
+criterion = { version = "0.8.2", features = ["html_reports"] }
 procspawn = { version = "1.0.1", features = ["test-support"] }
 lazy_static = "1.5.0"
 
