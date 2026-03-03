@@ -4,6 +4,8 @@ on:
   push:
     branches-ignore:
       - "dev-**"
+    tags:
+      - "memcrsd-**"
 
 env:
   CARGO_TERM_COLOR: always
