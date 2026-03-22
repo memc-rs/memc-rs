@@ -24,7 +24,7 @@ socket2 = { version = "0.6.3", features = ["all"] }
 num_cpus = "1.17.0"
 num-derive = "0.4.2"
 num-traits = "0.2.19"
-moka = { version = "0.12.14", features = ["sync"] }
+moka = { version = "0.12.15", features = ["sync"] }
 rand = { version = "0.10.0" }
 serde = "1.0.228"
 serde_derive = "1.0.228"
