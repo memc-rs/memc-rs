@@ -63,12 +63,15 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
     let task_runner = ctxt.pending_tasks_runner();
 
     let addr = SocketAddr::new(config.listen_address, config.port);
+
     let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
         60,
         config.connection_limit,
         config.item_size_limit as u32,
         config.backlog_limit,
     );
+    let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
+
     let core_ids = core_affinity::get_core_ids().unwrap();
 
     for i in 0..config.threads {
@@ -89,7 +92,11 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
                     store_rc,
                     cancellation_token.clone(),
                 );
-                child_runtime.block_on(tcp_server.run(addr)).unwrap()
+                let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
+                    log::error!("Failed to create TCP listener: {}; addr: {}", e, addr);
+                    std::process::exit(1);
+                });
+                child_runtime.block_on(tcp_server.run(listener)).unwrap()
             };
             if res {
                 debug!(
@@ -131,6 +138,11 @@ fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
         config.item_size_limit as u32,
         config.backlog_limit,
     );
+    let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
+    let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
+        log::error!("Failed to create TCP listener: {}; address {}", e, addr);
+        std::process::exit(1);
+    });
     let mut runtime = create_multi_thread_runtime(config.threads);
     let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
         memc_config,
@@ -139,7 +151,7 @@ fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
     );
 
     runtime.spawn(async move { task_runner.run().await });
-    runtime.spawn(async move { tcp_server.run(addr).await });
+    runtime.spawn(async move { tcp_server.run(listener).await });
     register_ctrlc_handler(&mut runtime, cancellation_token);
     runtime.block_on(system_timer.run())
 }

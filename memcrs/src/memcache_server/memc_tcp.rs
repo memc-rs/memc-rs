@@ -1,12 +1,10 @@
-use socket2::{Domain, SockAddr, Socket, Type};
-use std::net::ToSocketAddrs;
 use std::sync::Arc;
 
 use tokio::io;
 use tokio::net::TcpListener;
 use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
-use tracing::{debug, error};
+use tracing::error;
 
 //use tracing_attributes::instrument;
 
@@ -16,10 +14,10 @@ use crate::memcache::store as storage;
 
 #[derive(Clone, Copy)]
 pub struct MemcacheServerConfig {
-    timeout_secs: u32,
-    connection_limit: u32,
-    item_memory_limit: u32,
-    listen_backlog: u32,
+    pub timeout_secs: u32,
+    pub connection_limit: u32,
+    pub item_memory_limit: u32,
+    pub listen_backlog: u32,
 }
 
 impl MemcacheServerConfig {
@@ -59,8 +57,12 @@ impl MemcacheTcpServer {
         }
     }
 
-    pub async fn run<A: ToSocketAddrs>(&mut self, addr: A) -> io::Result<()> {
-        let listener = self.get_tcp_listener(addr)?;
+    pub async fn run(&mut self, std_listener: std::net::TcpListener) -> io::Result<()> {
+        let listener = TcpListener::from_std(std_listener).unwrap_or_else(|e| {
+            log::error!("Failed to create TCP listener: {}", e);
+            std::process::exit(1);
+        });
+
         loop {
             tokio::select! {
                 connection = listener.accept() => {
@@ -95,34 +97,6 @@ impl MemcacheTcpServer {
                 }
             }
         }
-    }
-
-    fn get_tcp_listener<A: ToSocketAddrs>(
-        &mut self,
-        addr: A,
-    ) -> Result<TcpListener, std::io::Error> {
-        let socket = Socket::new(Domain::IPV4, Type::STREAM, None)?;
-        socket.set_reuse_address(true)?;
-        socket.set_reuse_port(true)?;
-        socket.set_nonblocking(true)?;
-        let addrs_iter = addr.to_socket_addrs()?;
-        for socket_addr in addrs_iter {
-            debug!("Binding to addr: {:?}", socket_addr);
-            let sock_addr = SockAddr::from(socket_addr);
-            let res = socket.bind(&sock_addr);
-            if let Err(err) = res {
-                error!("Can't bind to: {:?}, err {:?}", sock_addr, err);
-                return Err(err);
-            }
-        }
-
-        if let Err(err) = socket.listen(self.config.listen_backlog as i32) {
-            error!("Listen error: {:?}", err);
-            return Err(err);
-        }
-
-        let std_listener: std::net::TcpListener = socket.into();
-        TcpListener::from_std(std_listener)
     }
 
     fn get_client_config(&self) -> client_handler::ClientConfig {
