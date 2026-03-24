@@ -2,58 +2,24 @@ extern crate core_affinity;
 use crate::memcache;
 use crate::memcache::builder::EngineStoreConfig;
 use crate::memcache::cli::parser::RuntimeType;
-use crate::memcache_server;
 use crate::memcache_server::server_context::ServerContext;
+use crate::memcache_server::threadpool_server_builder::ThreadpoolServerBuilder;
+use crate::memcache_server::{self, register_cancellation, server_thread};
 use std::net::SocketAddr;
-use std::sync::{
-    atomic::{AtomicUsize, Ordering},
-    Arc,
-};
+use std::sync::Arc;
 use tokio::runtime::Builder;
-use tokio_util::sync::CancellationToken;
 
 use crate::memcache::cli::parser::MemcrsdConfig;
-
-fn get_worker_thread_name() -> String {
-    static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-    let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-    let str = format!("memcrsd-wrk-{}", id);
-    str
-}
-
-fn create_multi_thread_runtime(worker_threads: usize) -> tokio::runtime::Runtime {
-    let runtime = Builder::new_multi_thread()
-        .thread_name_fn(get_worker_thread_name)
-        .worker_threads(worker_threads)
-        .enable_all()
-        .build()
-        .unwrap();
-    runtime
-}
 
 fn create_current_thread_runtime() -> tokio::runtime::Runtime {
     let runtime = Builder::new_current_thread()
         //.worker_threads(threads as usize)
-        .thread_name_fn(get_worker_thread_name)
+        .thread_name_fn(server_thread::get_worker_thread_name)
         //.max_blocking_threads(2)
         .enable_all()
         .build()
         .unwrap();
     runtime
-}
-
-fn register_ctrlc_handler(
-    runtime: &mut tokio::runtime::Runtime,
-    cancellation_token: CancellationToken,
-) {
-    let cancel_token = cancellation_token.clone();
-    runtime.handle().spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Failed to listen for ctrl-c signal");
-        info!("Ctrl-C received, shutting down...");
-        cancel_token.cancel();
-    });
 }
 
 fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
@@ -120,39 +86,15 @@ fn create_current_thread_server(config: MemcrsdConfig, ctxt: ServerContext) {
         });
     }
     let mut runtime = create_current_thread_runtime();
-    register_ctrlc_handler(&mut runtime, cancellation_token);
+    register_cancellation::register_ctrlc_handler(&mut runtime, cancellation_token);
     runtime.spawn(async move { task_runner.run().await });
     runtime.block_on(system_timer.run())
 }
 
 fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
-    let cancellation_token = ctxt.cancellation_token();
     let system_timer = ctxt.system_timer();
-    let store = ctxt.store();
-    let task_runner = ctxt.pending_tasks_runner();
-
-    let addr = SocketAddr::new(config.listen_address, config.port);
-    let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
-        60,
-        config.connection_limit,
-        config.item_size_limit as u32,
-        config.backlog_limit,
-    );
-    let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
-    let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
-        log::error!("Failed to create TCP listener: {}; address {}", e, addr);
-        std::process::exit(1);
-    });
-    let mut runtime = create_multi_thread_runtime(config.threads);
-    let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
-        memc_config,
-        Arc::clone(&store),
-        cancellation_token.clone(),
-    );
-
-    runtime.spawn(async move { task_runner.run().await });
-    runtime.spawn(async move { tcp_server.run(listener).await });
-    register_ctrlc_handler(&mut runtime, cancellation_token);
+    let runtime_builder = ThreadpoolServerBuilder::new(config, ctxt.clone());
+    let runtime = runtime_builder.build();
     runtime.block_on(system_timer.run())
 }
 

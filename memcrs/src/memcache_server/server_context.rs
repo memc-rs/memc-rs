@@ -7,6 +7,7 @@ use crate::{
     server::timer,
 };
 
+#[derive(Clone)]
 pub struct ServerContext {
     cancellation_token: CancellationToken,
     system_timer: Arc<timer::SystemTimer>,
