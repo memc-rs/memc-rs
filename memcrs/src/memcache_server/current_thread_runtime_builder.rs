@@ -22,15 +22,15 @@ impl CurrentThreadRuntimeBuilder {
         let core_ids = core_affinity::get_core_ids().unwrap();
 
         for i in 0..self.config.threads {
-            self.spawn_thread_with_runtime(core_ids.clone(), i);
+            self.spawn_worker_runtime(core_ids.clone(), i);
         }
-        let mut runtime = create_current_thread_runtime();
-        register_cancellation::register_ctrlc_handler(&mut runtime, cancellation_token);
-        runtime.spawn(async move { task_runner.run().await });
-        runtime
+        let mut control_runtime = create_current_thread_runtime();
+        register_cancellation::register_ctrlc_handler(&mut control_runtime, cancellation_token);
+        control_runtime.spawn(async move { task_runner.run().await });
+        control_runtime
     }
 
-    fn spawn_thread_with_runtime(&self, core_ids_clone: Vec<CoreId>, i: usize) {
+    fn spawn_worker_runtime(&self, core_ids_clone: Vec<CoreId>, i: usize) {
         let cancellation_token = self.ctxt.cancellation_token().clone();
         let store_rc = Arc::clone(&self.ctxt.store());
         let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
@@ -42,12 +42,13 @@ impl CurrentThreadRuntimeBuilder {
         let addr = SocketAddr::new(self.config.listen_address, self.config.port);
         let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
         let cpu_no_pin = self.config.cpu_no_pin;
+        let core_id = core_ids_clone[i % core_ids_clone.len()];
         std::thread::spawn(move || {
             debug!("Creating runtime {}", i);
-            let core_id = core_ids_clone[i % core_ids_clone.len()];
+
             pin_current_thread_to_core(cpu_no_pin, core_id);
 
-            let child_runtime = create_current_thread_runtime();
+            let worker_runtime = create_current_thread_runtime();
             let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
                 memc_config,
                 store_rc,
@@ -57,7 +58,7 @@ impl CurrentThreadRuntimeBuilder {
                 log::error!("Failed to create TCP listener: {}; addr: {}", e, addr);
                 std::process::exit(1);
             });
-            child_runtime.block_on(tcp_server.run(listener)).unwrap()
+            worker_runtime.block_on(tcp_server.run(listener)).unwrap()
         });
     }
 }
