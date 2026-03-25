@@ -5,14 +5,14 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 
-pub struct ThreadpoolServerBuilder {
+pub struct ThreadpoolRuntimeBuilder {
     config: MemcrsdConfig,
     ctxt: ServerContext,
 }
 
-impl ThreadpoolServerBuilder {
-    pub fn new(config: MemcrsdConfig, ctxt: ServerContext) -> ThreadpoolServerBuilder {
-        ThreadpoolServerBuilder { config, ctxt }
+impl ThreadpoolRuntimeBuilder {
+    pub fn new(config: MemcrsdConfig, ctxt: ServerContext) -> ThreadpoolRuntimeBuilder {
+        ThreadpoolRuntimeBuilder { config, ctxt }
     }
 
     pub fn build(&self) -> tokio::runtime::Runtime {
@@ -20,18 +20,20 @@ impl ThreadpoolServerBuilder {
         let store = self.ctxt.store();
         let task_runner = self.ctxt.pending_tasks_runner();
 
-        let addr = SocketAddr::new(self.config.listen_address, self.config.port);
         let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
             60,
             self.config.connection_limit,
             self.config.item_size_limit as u32,
             self.config.backlog_limit,
         );
+
+        let addr = SocketAddr::new(self.config.listen_address, self.config.port);
         let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
         let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
             log::error!("Failed to create TCP listener: {}; address {}", e, addr);
             std::process::exit(1);
         });
+
         let mut runtime = create_multi_thread_runtime(self.config.threads);
         let mut tcp_server = memcache_server::memc_tcp::MemcacheTcpServer::new(
             memc_config,
