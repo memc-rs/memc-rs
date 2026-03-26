@@ -1,7 +1,6 @@
 use crate::memcache;
 use crate::memcache::cli::parser::MemcrsdConfig;
 use crate::memcache_server;
-use log::info;
 use std::process;
 use tracing_log::LogTracer;
 extern crate clap;
@@ -46,34 +45,34 @@ pub fn run(args: Vec<String>) {
 }
 
 fn log_config(cli_config: &MemcrsdConfig) {
-    info!("Listen address: {}", cli_config.listen_address);
-    info!("Listen port: {}", cli_config.port);
-    info!("Connection limit: {}", cli_config.connection_limit);
-    info!("Number of threads: {}", cli_config.threads);
-    info!("Store engine: {}", cli_config.store_engine.as_str());
-    let dashmap_config = cli_config.dash_map.clone();
-    let moka_config = cli_config.moka.clone();
-    if let Some(cfg) = dashmap_config.clone() {
-        info!(
+    log::info!("Listen address: {}", cli_config.listen_address);
+    log::info!("Listen port: {}", cli_config.port);
+    log::info!("Connection limit: {}", cli_config.connection_limit);
+    log::info!("Number of threads: {}", cli_config.threads);
+    log::info!("Store engine: {}", cli_config.store_engine.as_str());
+    let dashmap_config = cli_config.dash_map;
+    let moka_config = cli_config.moka;
+    if let Some(cfg) = dashmap_config {
+        log::info!(
             "Memory limit: {}",
             byte_unit::Byte::from_u64(cfg.memory_limit)
                 .get_appropriate_unit(byte_unit::UnitType::Decimal)
         );
     }
-    if let Some(cfg) = moka_config.clone() {
-        info!("Eviction policy: {}", cfg.eviction_policy.as_str());
-        info!("Maximum capacity: {}", cfg.max_capacity);
+    if let Some(cfg) = moka_config {
+        log::info!("Eviction policy: {}", cfg.eviction_policy.as_str());
+        log::info!("Maximum capacity: {}", cfg.max_capacity);
     }
 
-    info!("Runtime type: {}", cli_config.runtime_type.as_str());
-    info!(
+    log::info!("Runtime type: {}", cli_config.runtime_type.as_str());
+    log::info!(
         "Max item size: {}",
         byte_unit::Byte::from_u64(cli_config.item_size_limit)
             .get_appropriate_unit(byte_unit::UnitType::Decimal)
     );
 
     if cli_config.store_engine == crate::memory_store::StoreEngine::DashMap {
-        warn!(
+        log::warn!(
             "{} memory store does not yet support eviction of items.",
             cli_config.store_engine.as_str()
         );

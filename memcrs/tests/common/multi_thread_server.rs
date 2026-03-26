@@ -18,14 +18,14 @@ use crate::common::{random_port::pseudoRanomPort, MemcrsdServerParamsBuilder};
 pub struct MemcrsdMultiThreadTestServer {
     thread_join_handle: Option<std::thread::JoinHandle<()>>,
     cancellation_token: CancellationToken,
-    port: u16,
+    port: i32,
 }
 
 impl MemcrsdMultiThreadTestServer {
     fn new(
         thread_join_handle: std::thread::JoinHandle<()>,
         cancellation_token: CancellationToken,
-        port: u16,
+        port: i32,
     ) -> MemcrsdMultiThreadTestServer {
         MemcrsdMultiThreadTestServer {
             thread_join_handle: Some(thread_join_handle),

@@ -25,11 +25,9 @@ fn create_threadpool_server(config: MemcrsdConfig, ctxt: ServerContext) {
 pub fn start_memcrs_server(config: MemcrsdConfig) {
     let engine_store_config = match config.store_engine {
         crate::memory_store::StoreEngine::DashMap => {
-            EngineStoreConfig::DashMap(config.dash_map.clone().unwrap())
+            EngineStoreConfig::DashMap(config.dash_map.unwrap())
         }
-        crate::memory_store::StoreEngine::Moka => {
-            EngineStoreConfig::Moka(config.moka.clone().unwrap())
-        }
+        crate::memory_store::StoreEngine::Moka => EngineStoreConfig::Moka(config.moka.unwrap()),
     };
 
     let store_config =

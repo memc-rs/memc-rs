@@ -1,7 +1,6 @@
 use crate::{memcache::cli::parser::MemcrsdConfig, memcache_server::server_context::ServerContext};
 extern crate core_affinity;
 use crate::memcache_server::{self, register_cancellation, server_thread};
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 
@@ -24,13 +23,12 @@ impl ThreadpoolRuntimeBuilder {
             60,
             self.config.connection_limit,
             self.config.item_size_limit as u32,
-            self.config.backlog_limit,
         );
 
-        let addr = SocketAddr::new(self.config.listen_address, self.config.port);
-        let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
-        let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
-            log::error!("Failed to create TCP listener: {}; address {}", e, addr);
+        let listener_factory =
+            memcache_server::listener_factory::create_listener_from_config(self.config);
+        let listener = listener_factory.get_tcp_listener().unwrap_or_else(|e| {
+            log::error!("Failed to create TCP listener: {}", e);
             std::process::exit(1);
         });
 

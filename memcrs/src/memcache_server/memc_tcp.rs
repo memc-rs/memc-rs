@@ -17,21 +17,14 @@ pub struct MemcacheServerConfig {
     pub timeout_secs: u32,
     pub connection_limit: u32,
     pub item_memory_limit: u32,
-    pub listen_backlog: u32,
 }
 
 impl MemcacheServerConfig {
-    pub fn new(
-        timeout_secs: u32,
-        connection_limit: u32,
-        item_memory_limit: u32,
-        listen_backlog: u32,
-    ) -> Self {
+    pub fn new(timeout_secs: u32, connection_limit: u32, item_memory_limit: u32) -> Self {
         MemcacheServerConfig {
             timeout_secs,
             connection_limit,
             item_memory_limit,
-            listen_backlog,
         }
     }
 }
@@ -59,7 +52,7 @@ impl MemcacheTcpServer {
 
     pub async fn run(&mut self, std_listener: std::net::TcpListener) -> io::Result<()> {
         let listener = TcpListener::from_std(std_listener).unwrap_or_else(|e| {
-            log::error!("Failed to create TCP listener: {}", e);
+            log::error!("Failed to create Tokio TCP listener: {}", e);
             std::process::exit(1);
         });
 

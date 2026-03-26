@@ -1,8 +1,8 @@
+use crate::memcache_server::listener_factory::ListenerFactory;
 use crate::{memcache::cli::parser::MemcrsdConfig, memcache_server::server_context::ServerContext};
 extern crate core_affinity;
 use crate::memcache_server::{self, register_cancellation, server_thread};
 use core_affinity::CoreId;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::runtime::Builder;
 
@@ -20,27 +20,33 @@ impl CurrentThreadRuntimeBuilder {
         let cancellation_token = self.ctxt.cancellation_token();
         let task_runner = self.ctxt.pending_tasks_runner();
         let core_ids = core_affinity::get_core_ids().unwrap();
+        let listener_factory =
+            memcache_server::listener_factory::create_listener_from_config(self.config);
 
         for i in 0..self.config.threads {
-            self.spawn_worker_runtime(core_ids.clone(), i);
+            self.spawn_worker_runtime(listener_factory.clone(), core_ids.clone(), i);
         }
+
         let mut control_runtime = create_current_thread_runtime();
         register_cancellation::register_ctrlc_handler(&mut control_runtime, cancellation_token);
         control_runtime.spawn(async move { task_runner.run().await });
         control_runtime
     }
 
-    fn spawn_worker_runtime(&self, core_ids_clone: Vec<CoreId>, i: usize) {
+    fn spawn_worker_runtime(
+        &self,
+        listener_factory: ListenerFactory,
+        core_ids_clone: Vec<CoreId>,
+        i: usize,
+    ) {
         let cancellation_token = self.ctxt.cancellation_token().clone();
         let store_rc = Arc::clone(&self.ctxt.store());
         let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
             60,
             self.config.connection_limit,
             self.config.item_size_limit as u32,
-            self.config.backlog_limit,
         );
-        let addr = SocketAddr::new(self.config.listen_address, self.config.port);
-        let listener_factory = memcache_server::listener_factory::ListenerFactory::new(memc_config);
+
         let cpu_no_pin = self.config.cpu_no_pin;
         let core_id = core_ids_clone[i % core_ids_clone.len()];
         std::thread::spawn(move || {
@@ -54,8 +60,8 @@ impl CurrentThreadRuntimeBuilder {
                 store_rc,
                 cancellation_token.clone(),
             );
-            let listener = listener_factory.get_tcp_listener(addr).unwrap_or_else(|e| {
-                log::error!("Failed to create TCP listener: {}; addr: {}", e, addr);
+            let listener = listener_factory.get_tcp_listener().unwrap_or_else(|e| {
+                log::error!("Failed to create TCP listener: {}", e);
                 std::process::exit(1);
             });
             worker_runtime.block_on(tcp_server.run(listener)).unwrap()
