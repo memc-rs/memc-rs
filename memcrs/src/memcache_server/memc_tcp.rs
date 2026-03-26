@@ -69,8 +69,12 @@ impl MemcacheTcpServer {
                     match connection {
                         Ok((socket, addr)) => {
                             let peer_addr = addr;
-                            socket.set_nodelay(true)?;
-                            socket.set_linger(None)?;
+                            socket.set_nodelay(true).unwrap_or_else(|err| {
+                                log::error!("System call set_nodelay failure: {}", err);
+                            });
+                            socket.set_zero_linger().unwrap_or_else(|err| {
+                                log::error!("System call set_zero_linger failure: {}", err);
+                            });
                             let mut client = client_handler::Client::new(
                                 Arc::clone(&self.storage),
                                 socket,
@@ -92,7 +96,7 @@ impl MemcacheTcpServer {
                     }
                 }
                  _ = self.cancellation_token.cancelled() => {
-                        info!("Cancelling server loop...");
+                        log::info!("Cancelling server loop...");
                         break io::Result::Ok(());
                 }
             }
