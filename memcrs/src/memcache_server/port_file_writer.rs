@@ -33,6 +33,7 @@ impl PortFileWriter {
                         let write_result = file.write(file_contents.as_bytes());
                         match write_result {
                             Ok(_res) => {
+                                file.sync_all()?;
                                 log::info!("Information about port written to: {}", file_name);
                                 return Ok(());
                             }
