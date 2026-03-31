@@ -1,14 +1,10 @@
 use socket2::{Domain, SockAddr, Socket, Type};
-use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
+use std::net::{SocketAddr, ToSocketAddrs};
 
-use crate::memcache::cli::parser::MemcrsdConfig;
-
-#[derive(Clone, Copy)]
-struct ListenSocketConfig {
-    pub listen_backlog: u32,
-    pub listen_address: IpAddr,
-    pub port: i32,
-}
+use crate::{
+    memcache::cli::parser::MemcrsdConfig,
+    memcache_server::{listen_socket_config::ListenSocketConfig, port_file_writer::PortFileWriter},
+};
 
 #[derive(Clone)]
 pub struct ListenerFactory {
@@ -24,6 +20,10 @@ pub fn create_listener_from_config(memc_config: MemcrsdConfig) -> ListenerFactor
     };
     let mut factory = ListenerSocketFactory { config };
     let listener_config = factory.determine_port();
+    let port_file_writer = PortFileWriter::new();
+    // ignoring results as all errors should be logged by PortFileWriter
+    // and not writing port to a file should not block server start
+    let _res = port_file_writer.write_port_to_file(listener_config);
     ListenerFactory {
         config: listener_config,
         factory,

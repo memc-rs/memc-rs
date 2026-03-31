@@ -39,7 +39,7 @@ fn get_default_threads_number() -> usize {
 #[command(author, version, about, long_about = None, after_help = format!("Git version: {GIT_VERSION}"))]
 /// memcached compatible server implementation in Rust
 pub struct MemcrsdConfig {
-    #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]
+    #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT, allow_negative_numbers=true)]
     /// TCP port the server will bind to for incoming connections
     pub port: i32,
 
@@ -158,7 +158,7 @@ fn port_in_range(s: &str) -> Result<i32, String> {
     let port: i32 = s
         .parse()
         .map_err(|_| format!("`{s}` isn't a port number"))?;
-    if PORT_RANGE.contains(&port) {
+    if PORT_RANGE.contains(&port) && port != 0 {
         Ok(port)
     } else {
         Err(format!(
@@ -294,6 +294,33 @@ mod tests {
         let config = parse(args).unwrap();
 
         assert_eq!(config.port, 8080);
+    }
+
+    #[test]
+    fn test_negative_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "-1".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.port, -1);
+    }
+
+    #[test]
+    fn test_negative_incorrect_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "-2".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_zero_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "0".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
     }
 
     #[test]
