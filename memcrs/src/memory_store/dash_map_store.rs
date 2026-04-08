@@ -60,7 +60,7 @@ impl DashMapMemoryStore {
                 entry.insert(new_record);
                 Ok(SetStatus { cas: new_cas })
             }
-            dashmap::mapref::entry::Entry::Vacant(_) => Err(CacheError::NotFound),
+            dashmap::mapref::entry::Entry::Vacant(_) => Err(CacheError::ItemNotStored),
         }
     }
 }
@@ -118,7 +118,7 @@ impl Cache for DashMapMemoryStore {
     fn flush(&self, header: CacheMetaData) {
         if header.time_to_live > 0 {
             self.memory.alter_all(|_key, mut value| {
-                value.header.time_to_live = header.time_to_live;
+                self.store_state.update_ttl(&mut value, header.time_to_live);
                 value
             });
         } else {

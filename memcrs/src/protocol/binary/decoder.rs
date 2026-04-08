@@ -1,5 +1,5 @@
 use crate::protocol::binary::network;
-use bytes::{Buf, BytesMut};
+use bytes::{Buf, Bytes, BytesMut};
 use num_traits::FromPrimitive;
 use std::io;
 use std::io::{Error, ErrorKind};
@@ -36,9 +36,45 @@ pub enum BinaryRequest {
     QuitQuietly(network::QuitRequest),
     ItemTooLarge(network::SetRequest),
     Stats(network::StatsRequest),
+    UnkownCommand(network::UnkownCommandErrorRequest),
 }
 
 impl BinaryRequest {
+    pub fn get_key(&self) -> Bytes {
+        match self {
+            BinaryRequest::Delete(request)
+            | BinaryRequest::DeleteQuiet(request)
+            | BinaryRequest::Get(request)
+            | BinaryRequest::GetKey(request)
+            | BinaryRequest::GetKeyQuietly(request)
+            | BinaryRequest::GetQuietly(request) => request.key.clone(),
+            BinaryRequest::Set(request)
+            | BinaryRequest::SetQuietly(request)
+            | BinaryRequest::Replace(request)
+            | BinaryRequest::ReplaceQuietly(request)
+            | BinaryRequest::Add(request)
+            | BinaryRequest::AddQuietly(request)
+            | BinaryRequest::ItemTooLarge(request) => request.key.clone(),
+            BinaryRequest::Prepend(request)
+            | BinaryRequest::PrependQuietly(request)
+            | BinaryRequest::Append(request)
+            | BinaryRequest::AppendQuietly(request) => request.key.clone(),
+            BinaryRequest::Increment(request)
+            | BinaryRequest::IncrementQuiet(request)
+            | BinaryRequest::Decrement(request)
+            | BinaryRequest::DecrementQuiet(request) => request.key.clone(),
+
+            BinaryRequest::Noop(_request)
+            | BinaryRequest::Version(_request)
+            | BinaryRequest::Stats(_request)
+            | BinaryRequest::UnkownCommand(_request) => Bytes::from(""),
+            BinaryRequest::Flush(_request) | BinaryRequest::FlushQuietly(_request) => {
+                Bytes::from("")
+            }
+            BinaryRequest::Quit(_request) | BinaryRequest::QuitQuietly(_request) => Bytes::from(""),
+        }
+    }
+
     pub fn get_header(&'_ self) -> &'_ network::RequestHeader {
         match self {
             BinaryRequest::Delete(request)
@@ -68,7 +104,8 @@ impl BinaryRequest {
 
             BinaryRequest::Noop(request)
             | BinaryRequest::Version(request)
-            | BinaryRequest::Stats(request) => &request.header,
+            | BinaryRequest::Stats(request)
+            | BinaryRequest::UnkownCommand(request) => &request.header,
 
             BinaryRequest::Flush(request) | BinaryRequest::FlushQuietly(request) => &request.header,
 
@@ -140,25 +177,25 @@ impl MemcacheBinaryDecoder {
 
     fn header_valid(&self) -> bool {
         if self.header.magic != network::Magic::Request as u8 {
-            error!("Invalid header: magic != binary::Magic::Request");
-            return false;
-        }
-
-        if self.header.opcode >= network::Command::OpCodeMax as u8 {
-            error!("Invalid header: opcode >= OpCodeMax");
+            log::error!("Invalid header: magic != binary::Magic::Request");
             return false;
         }
 
         if self.header.data_type != network::DataTypes::RawBytes as u8 {
-            error!("Invalid header: data_type != binary::DataTypes::RawBytes");
+            log::error!("Invalid header: data_type != binary::DataTypes::RawBytes");
             return false;
         }
+
+        if self.header.opcode >= network::Command::OpCodeMax as u8 {
+            log::error!("Invalid header: opcode >= OpCodeMax");
+        }
+
         true
     }
 
     fn parse_request(&mut self, src: &mut BytesMut) -> Result<Option<BinaryRequest>, io::Error> {
         if self.state != RequestParserState::HeaderParsed {
-            error!("Incorrect parser state ({:?})", self.state);
+            log::error!("Incorrect parser state ({:?})", self.state);
             return Err(Error::other("Header is not parsed"));
         }
 
@@ -169,7 +206,7 @@ impl MemcacheBinaryDecoder {
         }
 
         if self.header.body_length as usize > src.len() {
-            error!(
+            log::error!(
                 "Header body length({:?}) larger than src buffer length({:?})",
                 self.header.body_length,
                 src.len()
@@ -225,15 +262,14 @@ impl MemcacheBinaryDecoder {
                 error!("Command not supported, opcode: {:?}", self.header.opcode);
                 Ok(None)
             }
-
-            Some(network::Command::OpCodeMax) => {
-                error!("Incorrect command opcode: {:?}", self.header.opcode);
-                Err(Error::new(ErrorKind::InvalidData, "Incorrect opcode"))
-            }
-            None => {
+            Some(network::Command::OpCodeMax) | None => {
                 // println!("Cannot parse command opcode {:?}", self.header);
-                error!("Cannot parse command opcode: {:?}", self.header.opcode);
-                Err(Error::new(ErrorKind::InvalidData, "Incorrect op code"))
+                error!("Unkown opcode command: {:?}", self.header.opcode);
+                Ok(Some(BinaryRequest::UnkownCommand(
+                    network::UnkownCommandErrorRequest {
+                        header: self.header,
+                    },
+                )))
             }
         };
         self.init_parser();

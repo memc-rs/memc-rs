@@ -21,7 +21,7 @@ pub enum ResponseStatus {
     NonNumericValue = 0x06,
     AuthenticationError = 0x20,
     AuthenticationContinue = 0x21,
-    UnkownError = 0x81,
+    UnkownCommandError = 0x81,
     NotEnoughMemory = 0x82,
 }
 
@@ -124,6 +124,9 @@ pub struct Response {
 
 pub type NoopRequest = Request;
 pub type NoopResponse = Response;
+
+pub type UnkownCommandErrorRequest = Request;
+pub type UnkownCommandErrorResponse = Response;
 
 pub type VersionRequest = Request;
 #[derive(Serialize, Deserialize, Debug)]

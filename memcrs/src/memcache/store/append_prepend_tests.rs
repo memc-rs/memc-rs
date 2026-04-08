@@ -12,7 +12,7 @@ fn append_should_fail_if_not_exist(server: MockServer) {
 
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, CacheError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::ItemNotStored),
     }
 }
 
@@ -77,7 +77,7 @@ fn prepend_should_fail_if_not_exist(server: MockServer) {
 
     match result {
         Ok(_) => unreachable!(),
-        Err(err) => assert_eq!(err, CacheError::NotFound),
+        Err(err) => assert_eq!(err, CacheError::ItemNotStored),
     }
 }
 
