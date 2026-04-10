@@ -259,12 +259,18 @@ impl MemcacheBinaryDecoder {
             | Some(network::Command::SaslAuth)
             | Some(network::Command::SaslListMechs)
             | Some(network::Command::SaslStep) => {
-                error!("Command not supported, opcode: {:?}", self.header.opcode);
-                Ok(None)
+                log::error!("Command not supported, opcode: {:?}", self.header.opcode);
+                Ok(Some(BinaryRequest::UnkownCommand(
+                    network::UnkownCommandErrorRequest {
+                        header: self.header,
+                    },
+                )))
             }
             Some(network::Command::OpCodeMax) | None => {
-                // println!("Cannot parse command opcode {:?}", self.header);
-                error!("Unkown opcode command: {:?}", self.header.opcode);
+                log::error!(
+                    "Unkown opcode, sending unkown command response: {:?}",
+                    self.header.opcode
+                );
                 Ok(Some(BinaryRequest::UnkownCommand(
                     network::UnkownCommandErrorRequest {
                         header: self.header,

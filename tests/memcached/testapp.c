@@ -17,6 +17,7 @@
 #include <unistd.h>
 #include <netinet/in.h>
 #include <fcntl.h>
+#include <stdatomic.h>
 
 #include "config.h"
 #include "cache.h"
@@ -579,7 +580,7 @@ static pid_t start_server(in_port_t *port_out, bool daemon, int timeout)
         argv[arg++] = "-1";
         argv[arg++] = "-s";
         argv[arg++] = "dash-map";
-        argv[arg++] = "-vvv";
+        argv[arg++] = "-v";
 #ifdef TLS
         if (enable_ssl)
         {
@@ -591,11 +592,11 @@ static pid_t start_server(in_port_t *port_out, bool daemon, int timeout)
         }
 #endif
         /* Handle rpmbuild and the like doing this as root */
-        if (getuid() == 0)
-        {
-            argv[arg++] = "-u";
-            argv[arg++] = "root";
-        }
+        // if (getuid() == 0)
+        // {
+        //     argv[arg++] = "-u";
+        //     argv[arg++] = "root";
+        // }
         // if (daemon) {
         //     argv[arg++] = "-d";
         //     argv[arg++] = "-P";
@@ -627,8 +628,9 @@ static pid_t start_server(in_port_t *port_out, bool daemon, int timeout)
         assert(false);
     }
 
-    /* Give some time to server so that it is able to open ports */
+    /* Give some time to server so that it is able to spawn threads and open ports */
     wait_timeout = 1000000 * 2;
+    wait = 1000;
     while (wait_timeout > 0)
     {
         usleep(wait);
@@ -2236,6 +2238,7 @@ static enum test_return test_binary_illegal(void)
 }
 
 volatile bool hickup_thread_running;
+atomic_bool stop_verification_thread = false;
 
 static void *binary_hickup_recv_verification_thread(void *arg)
 {
@@ -2244,6 +2247,10 @@ static void *binary_hickup_recv_verification_thread(void *arg)
     {
         while (safe_recv_packet(response, 65 * 1024))
         {
+            if (atomic_load(&stop_verification_thread))
+            {
+                break;
+            }
             /* Just validate the packet format */
             validate_response_header(response,
                                      response->message.header.response.opcode,
@@ -2327,30 +2334,30 @@ static enum test_return test_binary_pipeline_hickup_chunk(void *buffer, size_t b
                               key, keylen, NULL, 0);
             break;
 
-        case PROTOCOL_BINARY_CMD_TOUCH:
-        case PROTOCOL_BINARY_CMD_GAT:
-        case PROTOCOL_BINARY_CMD_GATQ:
-        case PROTOCOL_BINARY_CMD_GATK:
-        case PROTOCOL_BINARY_CMD_GATKQ:
-            len = touch_command(command.bytes, sizeof(command.bytes), cmd,
-                                key, keylen, 10);
-            break;
+            /* case PROTOCOL_BINARY_CMD_TOUCH:
+             case PROTOCOL_BINARY_CMD_GAT:
+             case PROTOCOL_BINARY_CMD_GATQ:
+             case PROTOCOL_BINARY_CMD_GATK:
+             case PROTOCOL_BINARY_CMD_GATKQ:
+                 len = touch_command(command.bytes, sizeof(command.bytes), cmd,
+                                     key, keylen, 10);
+                 break;*/
 
-        case PROTOCOL_BINARY_CMD_STAT:
-            len = raw_command(command.bytes, sizeof(command.bytes),
-                              PROTOCOL_BINARY_CMD_STAT,
-                              NULL, 0, NULL, 0);
-            break;
+            /*case PROTOCOL_BINARY_CMD_STAT:
+                len = raw_command(command.bytes, sizeof(command.bytes),
+                                  PROTOCOL_BINARY_CMD_STAT,
+                                  NULL, 0, NULL, 0);
+                break;*/
 
         case PROTOCOL_BINARY_CMD_SASL_LIST_MECHS:
         case PROTOCOL_BINARY_CMD_SASL_AUTH:
         case PROTOCOL_BINARY_CMD_SASL_STEP:
-            /* Ignoring SASL */
+        /* Ignoring SASL */
         case PROTOCOL_BINARY_CMD_QUITQ:
         case PROTOCOL_BINARY_CMD_QUIT:
             /* I don't want to pass on the quit commands ;-) */
             cmd |= 0xf0;
-            /* FALLTHROUGH */
+        /* FALLTHROUGH */
         default:
             len = raw_command(command.bytes, sizeof(command.bytes),
                               cmd, NULL, 0, NULL, 0);
@@ -2398,8 +2405,9 @@ static enum test_return test_binary_pipeline_hickup(void)
         test_binary_pipeline_hickup_chunk(buffer, buffersize);
     }
 
-    /* send quitq to shut down the read thread ;-) */
-    size_t len = raw_command(buffer, buffersize, PROTOCOL_BINARY_CMD_QUITQ,
+    atomic_store(&stop_verification_thread, true);
+    /* send noop command to shut down the read thread ;-) */
+    size_t len = raw_command(buffer, buffersize, PROTOCOL_BINARY_CMD_NOOP,
                              NULL, 0, NULL, 0);
     safe_send(buffer, len, false);
 
@@ -2542,9 +2550,10 @@ struct testcase testcases[] = {
     {"start_server", start_memcached_server},
     //{"issue_92", test_issue_92},
     //{"issue_102", test_issue_102},
-    /*{"binary_noop", test_binary_noop},
-    {"binary_quit", test_binary_quit},
-    {"binary_quitq", test_binary_quitq},
+
+    // {"binary_quit", test_binary_quit},
+    // {"binary_quitq", test_binary_quitq},
+    {"binary_noop", test_binary_noop},
     {"binary_set", test_binary_set},
     {"binary_setq", test_binary_setq},
     {"binary_add", test_binary_add},
@@ -2556,12 +2565,12 @@ struct testcase testcases[] = {
     {"binary_get", test_binary_get},
     {"binary_getq", test_binary_getq},
     {"binary_getk", test_binary_getk},
-    {"binary_getkq", test_binary_getkq},*/
+    {"binary_getkq", test_binary_getkq},
     // {"binary_gat", test_binary_gat},
     // {"binary_gatq", test_binary_gatq},
     // {"binary_gatk", test_binary_gatk},
     // {"binary_gatkq", test_binary_gatkq},
-    /*{"binary_incr", test_binary_incr},
+    {"binary_incr", test_binary_incr},
     {"binary_incrq", test_binary_incrq},
     {"binary_decr", test_binary_decr},
     {"binary_decrq", test_binary_decrq},
@@ -2571,10 +2580,10 @@ struct testcase testcases[] = {
     {"binary_append", test_binary_append},
     {"binary_appendq", test_binary_appendq},
     {"binary_prepend", test_binary_prepend},
-    {"binary_prependq", test_binary_prependq},*/
+    {"binary_prependq", test_binary_prependq},
     //{"binary_stat", test_binary_stat},
     {"binary_illegal", test_binary_illegal},
-    //{"binary_pipeline_hickup", test_binary_pipeline_hickup},
+    {"binary_pipeline_hickup", test_binary_pipeline_hickup},
     //{"shutdown", shutdown_memcached_server},
     {"stop_server", stop_memcached_server},
     {NULL, NULL}};
