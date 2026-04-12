@@ -22,6 +22,11 @@ impl SharedStoreState {
         record.header.cas != 0 && cas != record.header.cas
     }
 
+    pub fn update_ttl(&self, record: &mut Record, ttl: u32) {
+        let timestamp = self.timestamp();
+        record.header.time_to_live = timestamp + ttl;
+    }
+
     pub fn set_cas_ttl(&self, record: &mut Record) -> u64 {
         record.header.cas = match record.header.cas {
             0 => self.get_cas_id(),
@@ -80,6 +85,12 @@ impl SharedStoreState {
         if record.header.time_to_live == 0 {
             return false;
         }
+
+        log::debug!(
+            "Current time: {:?}; TTL {:?}",
+            current_time,
+            record.header.time_to_live
+        );
 
         if record.header.time_to_live > current_time {
             return false;

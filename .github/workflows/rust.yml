@@ -111,6 +111,14 @@ jobs:
           ./target/$TARGET/release/$NAME &
           echo $! > server.pid
           sleep 5
+      - name: Build testapp Docker image (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
+        run: |
+          docker build --rm -f testapp.Dockerfile -t memcrs/testapp:dev .
+      - name: Run testapp container (x86_64 Linux only)
+        if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
+        run: |
+          docker run --rm memcrs/testapp:dev
       - name: Run Docker memcapable client (x86_64 Linux only)
         if: contains(matrix.TARGET, 'x86_64') && !contains(matrix.TARGET, 'darwin') && !startsWith(matrix.OS, 'windows')
         run: |

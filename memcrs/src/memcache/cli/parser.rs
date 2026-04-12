@@ -24,7 +24,7 @@ impl RuntimeType {
 }
 
 const GIT_VERSION: &str = git_version!();
-const DEFAULT_PORT: u16 = 11211;
+const DEFAULT_PORT: i32 = 11211;
 const DEFAULT_ADDRESS: &str = "127.0.0.1";
 const CONNECTION_LIMIT: u32 = 1024;
 const LISTEN_BACKLOG: u32 = 1024;
@@ -35,13 +35,13 @@ fn get_default_threads_number() -> usize {
     num_cpus::get_physical().to_string().parse().unwrap()
 }
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Debug, Clone, Copy)]
 #[command(author, version, about, long_about = None, after_help = format!("Git version: {GIT_VERSION}"))]
 /// memcached compatible server implementation in Rust
 pub struct MemcrsdConfig {
-    #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT)]
+    #[arg(short, long, value_name = "PORT", value_parser = port_in_range, default_value_t = DEFAULT_PORT, allow_negative_numbers=true)]
     /// TCP port the server will bind to for incoming connections
-    pub port: u16,
+    pub port: i32,
 
     #[arg(short, long, value_name = "CONNECTION-LIMIT", default_value_t = CONNECTION_LIMIT)]
     /// maximum number of simultaneous client connections allowed
@@ -90,7 +90,7 @@ pub struct MemcrsdConfig {
     pub dash_map: Option<DashMapConfig>,
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Copy)]
 #[group(multiple = true)]
 pub struct DashMapConfig {
     #[arg(long, value_name = "MEMORY-LIMIT", value_parser = parse_memory_mb, default_value = MEMORY_LIMIT)]
@@ -118,7 +118,7 @@ impl Default for DashMapConfig {
     }
 }
 
-#[derive(Args, Debug, Clone)]
+#[derive(Args, Debug, Clone, Copy)]
 pub struct MokaConfig {
     #[arg(long, value_name = "CAPACITY", default_value_t = MokaConfig::get_max_capacity_default())]
     /// maximum Moka cache capacity (key->value pairs)
@@ -152,14 +152,14 @@ impl Default for MokaConfig {
     }
 }
 
-const PORT_RANGE: RangeInclusive<usize> = 1..=65535;
+const PORT_RANGE: RangeInclusive<i32> = -1..=65535;
 
-fn port_in_range(s: &str) -> Result<u16, String> {
-    let port: usize = s
+fn port_in_range(s: &str) -> Result<i32, String> {
+    let port: i32 = s
         .parse()
         .map_err(|_| format!("`{s}` isn't a port number"))?;
-    if PORT_RANGE.contains(&port) {
-        Ok(port as u16)
+    if PORT_RANGE.contains(&port) && port != 0 {
+        Ok(port)
     } else {
         Err(format!(
             "port not in range {}-{}",
@@ -297,6 +297,33 @@ mod tests {
     }
 
     #[test]
+    fn test_negative_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "-1".to_string()];
+        let config = parse(args).unwrap();
+
+        assert_eq!(config.port, -1);
+    }
+
+    #[test]
+    fn test_negative_incorrect_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "-2".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_zero_port() {
+        // Test if a custom port value is parsed correctly
+        let args = vec!["".to_string(), "--port".to_string(), "0".to_string()];
+        let result = MemcrsdConfig::try_parse_from(args);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_invalid_port() {
         // Test if an invalid port gives an error
         let args = vec!["".to_string(), "--port".to_string(), "70000".to_string()];
@@ -305,7 +332,7 @@ mod tests {
 
         let error = result.unwrap_err();
         let source = error.source().unwrap();
-        assert_eq!(source.to_string(), "port not in range 1-65535");
+        assert_eq!(source.to_string(), "port not in range -1-65535");
     }
 
     #[test]

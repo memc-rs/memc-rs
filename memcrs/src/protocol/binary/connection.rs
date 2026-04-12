@@ -28,28 +28,20 @@ impl MemcacheBinaryConnection {
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
         let _extras_length: u32 = 8;
         loop {
-            // Attempt to parse a frame from the buffered data. If enough data
-            // has been buffered, the frame is returned.
-            if let Some(frame) = self.decoder.decode(&mut self.buffer)? {
-                match frame {
-                    BinaryRequest::ItemTooLarge(request) => {
-                        debug!(
-                            "Body len {:?} buffer len {:?}",
-                            request.header.body_length,
-                            self.buffer.len()
-                        );
-                        let skip = (request.header.body_length) - (self.buffer.len() as u32);
-                        if skip >= self.buffer.len() as u32 {
-                            self.buffer.clear();
-                        } else {
-                            self.buffer = self.buffer.split_off(skip as usize);
-                        }
-                        self.skip_bytes(skip).await?;
-                        return Ok(Some(BinaryRequest::ItemTooLarge(request)));
+            let parse_result = self.decoder.decode(&mut self.buffer);
+
+            match parse_result {
+                Ok(frame) => match frame {
+                    Some(frame) => {
+                        return self.handle_frame(frame).await;
                     }
-                    _ => {
-                        return Ok(Some(frame));
+                    None => {
+                        log::debug!("Not enough data buffered");
                     }
+                },
+                Err(err) => {
+                    log::error!("Cannot decode buffer {:?}", err);
+                    return Err(err);
                 }
             }
 
@@ -71,6 +63,34 @@ impl MemcacheBinaryConnection {
                         "Connection reset by peer",
                     ));
                 }
+            }
+        }
+    }
+
+    pub async fn handle_frame(
+        &mut self,
+        frame: BinaryRequest,
+    ) -> Result<Option<BinaryRequest>, io::Error> {
+        // Attempt to parse a frame from the buffered data. If enough data
+        // has been buffered, the frame is returned.
+        match frame {
+            BinaryRequest::ItemTooLarge(request) => {
+                log::debug!(
+                    "Body len {:?} buffer len {:?}",
+                    request.header.body_length,
+                    self.buffer.len()
+                );
+                let skip = (request.header.body_length) - (self.buffer.len() as u32);
+                if skip >= self.buffer.len() as u32 {
+                    self.buffer.clear();
+                } else {
+                    self.buffer = self.buffer.split_off(skip as usize);
+                }
+                self.skip_bytes(skip).await?;
+                return Ok(Some(BinaryRequest::ItemTooLarge(request)));
+            }
+            _ => {
+                return Ok(Some(frame));
             }
         }
     }

@@ -53,7 +53,7 @@ impl MokaMemoryStore {
         mut new_record: Record,
         is_append: bool,
     ) -> Result<SetStatus> {
-        let mut result: Result<SetStatus> = Err(CacheError::NotFound);
+        let mut result: Result<SetStatus> = Err(CacheError::ItemNotStored);
         let _entry = self
             .memory
             .entry(key)

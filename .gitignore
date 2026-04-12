@@ -3,3 +3,8 @@
 memcrs/target
 memcrs/benchmarks/*.txt
 memcrs/benchmarks/*.hgrm
+tests/memcached/.deps/
+tests/memcached/*.o
+tests/memcached/testapp
+tests/memcached/timedrun
+

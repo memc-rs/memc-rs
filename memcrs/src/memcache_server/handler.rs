@@ -132,6 +132,9 @@ impl BinaryHandler {
                 CacheError::ValueTooLarge,
                 &mut response_header,
             )),
+            decoder::BinaryRequest::UnkownCommand(_unkown_command) => Some(
+                storage_error_to_response(CacheError::UnkownCommand, &mut response_header),
+            ),
         }
     }
 

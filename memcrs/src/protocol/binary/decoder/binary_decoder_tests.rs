@@ -478,9 +478,28 @@ mod tests {
 
         let decode_result = decode_packet(&set_request_packet);
         match decode_result {
-            Ok(_) => unreachable!(),
-            Err(err) => {
-                assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+            Ok(req) => {
+                assert!(req.is_some());
+                if let Some(request) = req {
+                    let header = request.get_header();
+                    assert_eq!(header.magic, network::Magic::Request as u8);
+                    assert_eq!(header.opcode, network::Command::OpCodeMax as u8);
+                    assert_eq!(header.key_length, 0x03);
+                    assert_eq!(header.extras_length, 0x08);
+                    assert_eq!(header.data_type, network::DataTypes::RawBytes as u8);
+                    assert_eq!(header.vbucket_id, 0x00);
+                    assert_eq!(header.body_length, 0x0A);
+                    assert_eq!(header.opaque, 0xDEADBEEF);
+                    assert_eq!(header.cas, 0x01);
+                    //
+                    match request {
+                        BinaryRequest::UnkownCommand(_req) => {}
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Err(_err) => {
+                unreachable!();
             }
         }
     }
