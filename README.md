@@ -46,6 +46,39 @@ binary stat                             [pass]
 All tests passed
 ```
 
+Here is a memcached integration tests output:
+
+```sh
+ok 1 - start_server
+ok 2 - binary_noop
+ok 3 - binary_set
+ok 4 - binary_setq
+ok 5 - binary_add
+ok 6 - binary_addq
+ok 7 - binary_replace
+ok 8 - binary_replaceq
+ok 9 - binary_delete
+ok 10 - binary_deleteq
+ok 11 - binary_get
+ok 12 - binary_getq
+ok 13 - binary_getk
+ok 14 - binary_getkq
+ok 15 - binary_incr
+ok 16 - binary_incrq
+ok 17 - binary_decr
+ok 18 - binary_decrq
+ok 19 - binary_version
+ok 20 - binary_flush
+ok 21 - binary_flushq
+ok 22 - binary_append
+ok 23 - binary_appendq
+ok 24 - binary_prepend
+ok 25 - binary_prependq
+ok 26 - binary_illegal
+ok 27 - binary_pipeline_hickup
+ok 28 - stop_server
+```
+
 ## Bug reports
 
 Feel free to use the issue tracker on github.
@@ -148,6 +181,40 @@ docker push memcrs/memc-rs:latest
 docker push memcrs/memc-rs:0.0.1b
 ```
 
+### Releasing a new memc-rs version
+
+The release process uses an annotated git tag containing the release notes and publishes the Docker image from that tagged commit.
+
+1. Create an annotated git tag with release notes:
+
+```sh
+git tag -a memcrsd-0.0.1c -m "Release memcrsd 0.0.1c\n\nRelease notes:\n- Add support for X\n- Fix Y bug"
+git push origin memcrsd-0.0.1c
+```
+
+2. Build the Docker image from the git tag:
+
+```sh
+git checkout memcrsd-0.0.1c
+docker pull rust
+docker build -m 4096m -t memcrs/memc-rs:0.0.1c .
+```
+
+3. Tag and publish the Docker image:
+
+```sh
+docker tag memcrs/memc-rs:0.0.1c memcrs/memc-rs:latest
+docker push memcrs/memc-rs:0.0.1c
+docker push memcrs/memc-rs:latest
+```
+
+4. Optionally, if you want a separate patch or stable tag, create and push a lightweight alias:
+
+```sh
+git tag memcrsd-latest memcrsd-0.0.1c
+git push origin memcrsd-latest
+```
+
 ### Getting docker image from docker hub
 
 To get latest version of memcrsd run following command:
@@ -215,13 +282,20 @@ The plan in the future is to have coverage ~90%.
 
 ### Integration testing
 
-For end-to-end integration testing we are using most popular Rust client library memcache[https://crates.io/crates/memcache]. See tests directory for further details.
+For end-to-end integration testing we are using the Rust client library memcache[https://crates.io/crates/memcache]. See tests directory for further details.
 
 ```sh
 cargo test --test '*' -- --nocapture
 ```
 
-To run regression tests with a precompiled memcapable binary(on x86-64 architecture) from [https://github.com/awesomized/libmemcached](libmemcached-awesome), you can use the following Docker command:
+A subset of memcached integration tests is executed, restricted to the binary protocol commands currently supported by memcrsd. These compatibility checks are driven through `testapp.Dockerfile`, which builds a helper container for the supported command set.
+
+```sh
+docker build -f testapp.Dockerfile -t memc-testapp .
+docker run --rm -it memc-testapp
+```
+
+To run regression tests with a precompiled memcapable binary (on x86-64 architecture) from [https://github.com/awesomized/libmemcached](libmemcached-awesome), you can use the following Docker command:
 
 ```sh
 docker run --rm --network host memcrs/memcached-awesome:latest
