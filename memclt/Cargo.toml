@@ -10,7 +10,5 @@ edition = "2021"
 byte-unit = "5.2.0"
 env_logger = "0.11.10"
 log = "0.4.29"
-memcache = "0.19.0"
 termcolor = "1.4.1"
 clap = { version = "4.6.1", features = ["derive", "cargo"] }
-openssl = { version = "0.10.78", features = ["vendored"] }
