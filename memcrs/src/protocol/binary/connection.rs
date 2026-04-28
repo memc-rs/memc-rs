@@ -60,7 +60,7 @@ impl MemcacheBinaryConnection {
                 } else {
                     return Err(Error::new(
                         ErrorKind::ConnectionReset,
-                        "Connection reset by peer",
+                        "Buffer not empty but connection closed by peer",
                     ));
                 }
             }
@@ -95,13 +95,13 @@ impl MemcacheBinaryConnection {
         }
     }
 
-    pub async fn skip_bytes(&mut self, bytes: u32) -> io::Result<()> {
+    pub async fn skip_bytes(&mut self, bytes_to_skip: u32) -> io::Result<()> {
         let buffer_size = 64 * 1024;
-        let mut buffer = BytesMut::with_capacity(cmp::min(bytes as usize, buffer_size));
+        let mut buffer = BytesMut::with_capacity(cmp::min(bytes_to_skip as usize, buffer_size));
         let mut bytes_read: usize;
         let mut bytes_counter: usize = 0;
-        debug!("Skip bytes {:?}", bytes);
-        if bytes == 0 {
+        debug!("Skip bytes {:?}", bytes_to_skip);
+        if bytes_to_skip == 0 {
             return Ok(());
         }
 
@@ -125,13 +125,13 @@ impl MemcacheBinaryConnection {
             }
 
             bytes_counter += bytes_read;
-            let difference = bytes as usize - bytes_counter;
+            let difference = bytes_to_skip as usize - bytes_counter;
             debug!(
                 "Bytes read: {:?} {:?} {:?}",
                 bytes_read, bytes_counter, difference
             );
 
-            if bytes_counter == bytes as usize {
+            if bytes_counter == bytes_to_skip as usize {
                 return Ok(());
             }
 
@@ -141,7 +141,7 @@ impl MemcacheBinaryConnection {
                 buffer.clear();
             }
 
-            if bytes_counter > bytes as usize {
+            if bytes_counter > bytes_to_skip as usize {
                 panic!("Read too much bytes socket corrupted");
             }
         }
