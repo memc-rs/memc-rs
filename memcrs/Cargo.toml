@@ -35,7 +35,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
   "std",
   "fmt",
 ] }
-tokio = { version = "1.52.1", features = ["full"] }
+tokio = { version = "1.52.3", features = ["full"] }
 tokio-util = { version = "0.7.18", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
@@ -43,7 +43,7 @@ jemallocator = { version = "0.5.4", optional = true }
 
 [dev-dependencies]
 memcache = "0.19.0"
-nix = { version = "0.31.2", features = ["signal"] }
+nix = { version = "0.31.3", features = ["signal"] }
 test-case = "3.3.1"
 criterion = { version = "0.8.2", features = ["html_reports"] }
 procspawn = { version = "1.0.1", features = ["test-support"] }

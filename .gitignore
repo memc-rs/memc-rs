@@ -7,7 +7,7 @@ benchmarks/*.txt
 benchmarks/*.hgrm
 benchmarks/**/*.txt
 benchmarks/**/*.hgrm
-tests/memcached/.deps/
+tests/memcached/.deps
 tests/memcached/*.o
 tests/memcached/testapp
 tests/memcached/timedrun
