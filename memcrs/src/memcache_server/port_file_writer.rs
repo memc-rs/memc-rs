@@ -51,7 +51,7 @@ impl PortFileWriter {
             }
             Err(err) => {
                 log::info!(
-                    "Environment variable \"{}\"not present, not writing info about port to a file: {}",
+                    "Environment variable \"{}\" not present, not writing info about port to a file: {}",
                     env_var, err
                 );
             }
