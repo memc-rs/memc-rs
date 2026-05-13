@@ -5,10 +5,10 @@ use std::process;
 use tracing_log::LogTracer;
 extern crate clap;
 
-#[cfg(feature = "jemallocator")]
-use jemallocator::Jemalloc;
+#[cfg(feature = "tikv-jemallocator")]
+use tikv_jemallocator::Jemalloc;
 
-#[cfg(feature = "jemallocator")]
+#[cfg(feature = "tikv-jemallocator")]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 

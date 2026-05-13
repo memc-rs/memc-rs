@@ -39,7 +39,7 @@ tokio = { version = "1.52.3", features = ["full"] }
 tokio-util = { version = "0.7.18", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
-jemallocator = { version = "0.5.4", optional = true }
+tikv-jemallocator = { version = "0.6.1", optional = true }
 
 [dev-dependencies]
 memcache = "0.19.0"
