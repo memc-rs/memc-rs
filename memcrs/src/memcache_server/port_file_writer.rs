@@ -49,12 +49,17 @@ impl PortFileWriter {
                     }
                 }
             }
-            Err(err) => {
-                log::info!(
-                    "Environment variable \"{}\" not present, not writing info about port to a file: {}",
-                    env_var, err
-                );
-            }
+            Err(err) => match err {
+                env::VarError::NotPresent => {
+                    log::info!(
+                        "Environment variable \"{}\" not found; information about opened port will not be saved to file",
+                        env_var
+                    );
+                }
+                env::VarError::NotUnicode(_os_string) => {
+                    log::debug!("Environment variable \"{}\" contains invalid data", env_var);
+                }
+            },
         }
         Ok(())
     }
