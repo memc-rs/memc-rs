@@ -87,11 +87,9 @@ impl MemcacheBinaryConnection {
                     self.buffer = self.buffer.split_off(skip as usize);
                 }
                 self.skip_bytes(skip).await?;
-                return Ok(Some(BinaryRequest::ItemTooLarge(request)));
+                Ok(Some(BinaryRequest::ItemTooLarge(request)))
             }
-            _ => {
-                return Ok(Some(frame));
-            }
+            _ => Ok(Some(frame)),
         }
     }
 

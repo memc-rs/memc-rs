@@ -25,6 +25,7 @@ impl PortFileWriter {
                 let file_result = OpenOptions::new()
                     .write(true)
                     .create(true)
+                    .truncate(true)
                     .open(file_name.clone());
 
                 match file_result {
