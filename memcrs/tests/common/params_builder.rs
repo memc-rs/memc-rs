@@ -7,9 +7,9 @@ pub struct MemcrsdServerParamsBuilder {
 }
 
 impl MemcrsdServerParamsBuilder {
-    pub fn new() -> MemcrsdServerParamsBuilder {
+    pub fn new(engine: StoreEngine) -> MemcrsdServerParamsBuilder {
         MemcrsdServerParamsBuilder {
-            engine: StoreEngine::DashMap,
+            engine: engine,
             runtime: RuntimeType::CurrentThread,
             port: 11211,
         }

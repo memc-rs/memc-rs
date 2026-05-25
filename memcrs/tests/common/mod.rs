@@ -1,3 +1,4 @@
+use memcrs::memory_store::StoreEngine;
 use rand::RngExt;
 
 mod multi_thread_server;
@@ -7,6 +8,14 @@ mod random_port;
 
 pub use multi_thread_server::spawn_server;
 pub use params_builder::MemcrsdServerParamsBuilder;
+
+pub fn create_moka_engine() -> StoreEngine {
+    return StoreEngine::Moka;
+}
+
+pub fn create_dashmap_engine() -> StoreEngine {
+    return StoreEngine::DashMap;
+}
 
 #[allow(dead_code)]
 pub fn create_value_with_size(size: usize) -> String {

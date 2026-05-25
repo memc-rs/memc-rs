@@ -1,12 +1,14 @@
 //procspawn::enable_test_support!();
-use memcrs::mock::key_value::generate_random_with_max_size;
+use memcrs::{memory_store::StoreEngine, mock::key_value::generate_random_with_max_size};
 use std::time::Instant;
+use test_case::test_case;
 mod common;
 
-#[test]
-fn insert_10k_values() {
+#[test_case(common::create_moka_engine() ; "moka_backend")]
+#[test_case(common::create_dashmap_engine() ; "dash_map_backend")]
+fn insert_10k_values(engine: StoreEngine) {
     let params_builder: common::MemcrsdServerParamsBuilder =
-        common::MemcrsdServerParamsBuilder::new();
+        common::MemcrsdServerParamsBuilder::new(engine);
     let server_handle = common::spawn_server(params_builder);
     let connection_str =
         std::sync::Arc::new(std::sync::Mutex::new(server_handle.get_connection_string()));
