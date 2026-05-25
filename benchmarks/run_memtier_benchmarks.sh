@@ -33,6 +33,7 @@ if [ $# -ne 1 ]; then
 fi
 
 TEST_NAME="$1"
+OUTPUT_DIR="$TEST_NAME"
 NUM_RUNS=5
 THREADS=8
 PROTOCOL="memcache_binary"
@@ -102,6 +103,18 @@ run_benchmark() {
             --hide-histogram
     fi
 
+    # Move generated files for this test into the test-specific output directory
+    mkdir -p "$OUTPUT_DIR"
+    shopt -s nullglob
+    files=( "${test_type}_${TEST_NAME}_run_"* )
+    if [ ${#files[@]} -gt 0 ]; then
+        mv "${files[@]}" "$OUTPUT_DIR/"
+        echo "Moved ${#files[@]} generated file(s) to $OUTPUT_DIR/"
+    else
+        echo "No generated files to move for ${test_type}."
+    fi
+    shopt -u nullglob
+
     echo ""
     echo "Completed $description tests."
     echo ""
@@ -124,9 +137,9 @@ echo "All benchmarks completed!"
 echo "=========================================="
 echo ""
 echo "Generated files:"
-echo "  Read-Heavy:  read_heavy_${TEST_NAME}_run_*.{hgrm,txt}"
-echo "  Write-Heavy: write_heavy_${TEST_NAME}_run_*.{hgrm,txt}"
-echo "  Stress Test: stress_test_${TEST_NAME}_run_*.{hgrm,txt}"
+echo "  Read-Heavy:  ${OUTPUT_DIR}/read_heavy_${TEST_NAME}_run_*.{hgrm,txt}"
+echo "  Write-Heavy: ${OUTPUT_DIR}/write_heavy_${TEST_NAME}_run_*.{hgrm,txt}"
+echo "  Stress Test: ${OUTPUT_DIR}/stress_test_${TEST_NAME}_run_*.{hgrm,txt}"
 echo ""
 echo "To analyze results:"
 echo "  python3 analyze_hgrm.py read_heavy_${TEST_NAME}_run_*.hgrm -o comparison.png"
