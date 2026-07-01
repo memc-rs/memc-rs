@@ -8,7 +8,7 @@ edition = "2021"
 
 [dependencies]
 byte-unit = "5.2.0"
-env_logger = "0.11.10"
-log = "0.4.29"
+env_logger = "0.11.11"
+log = "0.4.33"
 termcolor = "1.4.1"
 clap = { version = "4.6.1", features = ["derive", "cargo"] }
