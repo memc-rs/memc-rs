@@ -15,6 +15,7 @@ byte-unit = "5.2.5"
 bytes = "1.12.0"
 clap = { version = "4.6.1", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
+cfg-if = "1.0.4"
 dashmap = "6.2.1"
 futures = "0.3.32"
 futures-util = "0.3.32"
@@ -55,7 +56,9 @@ lazy_static = "1.5.0"
 
 [features]
 criterion = []
-profile = ["tikv-jemallocator", "tikv-jemalloc-ctl"]
+tikv-alloc = ["tikv-jemallocator", "tikv-jemalloc-ctl"]
+system-alloc = []
+rust-alloc = []
 
 [[bench]]
 name = "handler"

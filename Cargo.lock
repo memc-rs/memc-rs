@@ -1065,6 +1065,7 @@ version = "0.0.1"
 dependencies = [
  "byte-unit",
  "bytes",
+ "cfg-if",
  "clap",
  "core_affinity",
  "criterion",

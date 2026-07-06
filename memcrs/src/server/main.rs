@@ -5,12 +5,6 @@ use std::process;
 use tracing_log::LogTracer;
 extern crate clap;
 
-#[cfg(feature = "tikv-jemallocator")]
-use tikv_jemallocator::Jemalloc;
-
-#[cfg(feature = "tikv-jemallocator")]
-#[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
 
 fn get_log_level(verbose: u8) -> tracing::Level {
     // Vary the output based on how many times the user used the "verbose" flag
