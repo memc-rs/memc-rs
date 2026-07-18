@@ -39,6 +39,7 @@ pub fn run(args: Vec<String>) {
 }
 
 fn log_config(cli_config: &MemcrsdConfig) {
+    log::info!("Verbose level: {}", cli_config.verbose);
     log::info!("Listen address: {}", cli_config.listen_address);
     log::info!("Listen port: {}", cli_config.port);
     log::info!("Connection limit: {}", cli_config.connection_limit);

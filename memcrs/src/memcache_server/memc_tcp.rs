@@ -55,6 +55,7 @@ impl MemcacheTcpServer {
             log::error!("Failed to create Tokio TCP listener: {}", e);
             std::process::exit(1);
         });
+        log::info!("Starting server loop {:?}", listener);
 
         loop {
             tokio::select! {

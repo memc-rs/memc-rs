@@ -5,6 +5,7 @@ use crate::memcache_server::{self, register_cancellation, server_thread};
 use core_affinity::CoreId;
 use std::sync::Arc;
 use tokio::runtime::Builder;
+use tokio::runtime::UnhandledPanic;
 
 pub struct CurrentThreadRuntimeBuilder {
     config: MemcrsdConfig,
@@ -23,13 +24,14 @@ impl CurrentThreadRuntimeBuilder {
         let listener_factory =
             memcache_server::listener_factory::create_listener_from_config(self.config);
 
+        let mut vec = Vec::new();
         for i in 0..self.config.threads {
-            self.spawn_worker_runtime(listener_factory.clone(), core_ids.clone(), i);
+            vec.push(self.spawn_worker_runtime(listener_factory.clone(), core_ids.clone(), i));
         }
 
         let mut control_runtime = create_current_thread_runtime();
         register_cancellation::register_ctrlc_handler(&mut control_runtime, cancellation_token);
-        control_runtime.spawn(async move { task_runner.run().await });
+        control_runtime.spawn(async move { task_runner.run(vec).await });
         control_runtime
     }
 
@@ -38,7 +40,7 @@ impl CurrentThreadRuntimeBuilder {
         listener_factory: ListenerFactory,
         core_ids_clone: Vec<CoreId>,
         i: usize,
-    ) {
+    ) -> std::thread::JoinHandle<()> {
         let cancellation_token = self.ctxt.cancellation_token().clone();
         let store_rc = Arc::clone(&self.ctxt.store());
         let memc_config = memcache_server::memc_tcp::MemcacheServerConfig::new(
@@ -65,7 +67,7 @@ impl CurrentThreadRuntimeBuilder {
                 std::process::exit(1);
             });
             worker_runtime.block_on(tcp_server.run(listener)).unwrap()
-        });
+        })
     }
 }
 
@@ -93,6 +95,7 @@ fn create_current_thread_runtime() -> tokio::runtime::Runtime {
     let runtime = Builder::new_current_thread()
         //.worker_threads(threads as usize)
         .thread_name_fn(server_thread::get_worker_thread_name)
+        .unhandled_panic(UnhandledPanic::ShutdownRuntime)
         //.max_blocking_threads(2)
         .enable_all()
         .build()

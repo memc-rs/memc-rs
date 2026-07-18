@@ -20,7 +20,7 @@ impl PendingTasksRunner {
         }
     }
 
-    pub async fn run(&self) {
+    pub async fn run(&self, thread_handles: std::vec::Vec<std::thread::JoinHandle<()>>) {
         let start = Instant::now();
         let mut interval = interval_at(
             start,
@@ -44,5 +44,15 @@ impl PendingTasksRunner {
                 },
             }
         }
+        log::info!("Waiting for worker threads to finish");
+        for handle in thread_handles {
+            if handle.is_finished() {
+                continue;
+            }
+            if let Err(e) = handle.join() {
+                log::info!("Thread panicked: {:?}", e);
+            }
+        }
+        log::info!("Worker threads finished");
     }
 }

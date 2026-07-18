@@ -39,7 +39,7 @@ impl ThreadpoolRuntimeBuilder {
             cancellation_token.clone(),
         );
 
-        runtime.spawn(async move { task_runner.run().await });
+        runtime.spawn(async move { task_runner.run(std::vec::Vec::new()).await });
         runtime.spawn(async move { tcp_server.run(listener).await });
         register_cancellation::register_ctrlc_handler(&mut runtime, cancellation_token);
         runtime

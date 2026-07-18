@@ -13,7 +13,7 @@ cfg_if::cfg_if! {
         #[global_allocator]
         static GLOBAL: System = System;
     } else {
-        compile_error!("You must enable one of the following features: `rustalloc`, `jemalloc`, or `system-alloc`");
+        // uses the default Rust allocator
     }
 }
 

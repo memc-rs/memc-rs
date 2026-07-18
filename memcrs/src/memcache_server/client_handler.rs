@@ -113,14 +113,14 @@ impl Client {
     /// Handles single memcached binary request
     /// Returns true if we should leave client receive loop
     async fn handle_request(&mut self, request: BinaryRequest) -> bool {
-        debug!(
+        trace!(
             "Got request {:?} {:?}",
             request.get_header(),
             request.get_key()
         );
 
         if let BinaryRequest::QuitQuietly(_req) = request {
-            debug!("Closing client socket quit quietly");
+            debug!("Closing client socket quit quietly: {}", self.addr);
             if let Err(_e) = self.stream.shutdown().await.map_err(log_error) {}
             return true;
         }
@@ -133,7 +133,7 @@ impl Client {
                     socket_close = true;
                 }
 
-                debug!("Sending response {:?}", response);
+                trace!("Sending response {:?}", response);
                 if let Err(e) = self.stream.write(&response).await {
                     error!("error on sending response; error = {:?}", e);
                     return true;
@@ -164,6 +164,7 @@ impl Drop for Client {
         // bug causes a panic. The permit would never be returned to the
         // semaphore.
         self.limit_connections.add_permits(1);
+        debug!("Dropping client: {}",  self.addr);
     }
 }
 

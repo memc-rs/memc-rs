@@ -13,6 +13,7 @@ pub struct MemcacheBinaryConnection {
     decoder: MemcacheBinaryDecoder,
     encoder: MemcacheBinaryEncoder,
     buffer: BytesMut,
+    item_size_limit: u32,
 }
 
 impl MemcacheBinaryConnection {
@@ -21,7 +22,8 @@ impl MemcacheBinaryConnection {
             stream: socket,
             decoder: MemcacheBinaryDecoder::new(item_size_limit),
             encoder: MemcacheBinaryEncoder::new(),
-            buffer: BytesMut::with_capacity(item_size_limit as usize),
+            buffer: BytesMut::with_capacity(MemcacheBinaryConnection::get_default_buffer_size(item_size_limit)),
+            item_size_limit
         }
     }
 
@@ -36,7 +38,7 @@ impl MemcacheBinaryConnection {
                         return self.handle_frame(frame).await;
                     }
                     None => {
-                        log::debug!("Not enough data buffered");
+                        log::trace!("Not enough data buffered {}", self.buffer.len());
                     }
                 },
                 Err(err) => {
@@ -87,11 +89,20 @@ impl MemcacheBinaryConnection {
                     self.buffer = self.buffer.split_off(skip as usize);
                 }
                 self.skip_bytes(skip).await?;
+                self.buffer.clear();
                 Ok(Some(BinaryRequest::ItemTooLarge(request)))
             }
-            _ => Ok(Some(frame)),
+            _ => {
+                self.buffer.clear();
+                Ok(Some(frame))
+            }
         }
     }
+
+    fn get_default_buffer_size(_item_size_limit: u32) -> usize {
+        4096
+    }
+
 
     pub async fn skip_bytes(&mut self, bytes_to_skip: u32) -> io::Result<()> {
         let buffer_size = 64 * 1024;
@@ -157,6 +168,7 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn shutdown(&mut self) -> io::Result<()> {
+        self.buffer.clear();
         self.stream.shutdown().await?;
         Ok(())
     }

@@ -88,6 +88,14 @@ impl MokaMemoryStore {
     }
 }
 
+impl Drop for MokaMemoryStore {
+    fn drop(&mut self) {
+        log::info!("Dropping moka memory store");
+        self.memory.invalidate_all();
+        self.memory.run_pending_tasks();
+    }
+}
+
 impl Cache for MokaMemoryStore {
     /// Returns a value associated with a key
     fn get(&self, key: &KeyType) -> Result<Record> {
@@ -159,7 +167,11 @@ impl Cache for MokaMemoryStore {
             //     value
             // });
         } else {
+            log::info!("Flushing all entries from cache");
+            log::info!("Number of entries: {}", self.memory.entry_count());
             self.memory.invalidate_all();
+            self.memory.run_pending_tasks();
+            log::info!("Number of entries: {}", self.memory.entry_count());
         }
     }
 
