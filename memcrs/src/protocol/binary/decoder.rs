@@ -513,8 +513,8 @@ impl MemcacheBinaryDecoder {
             header: self.header,
             flags: src.get_u32(),
             expiration: src.get_u32(),
-            key: Bytes::copy_from_slice(&src.split_to(self.header.key_length as usize)),
-            value: Bytes::copy_from_slice(&src.split_to(value_len)),
+            key: src.split_to(self.header.key_length as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         match FromPrimitive::from_u8(self.header.opcode) {
