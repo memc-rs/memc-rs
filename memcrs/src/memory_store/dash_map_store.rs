@@ -122,7 +122,9 @@ impl Cache for DashMapMemoryStore {
                 value
             });
         } else {
+            log::info!("Clearing cache: {}", self.memory.len());
             self.memory.clear();
+            log::info!("Clearing cache: {}", self.memory.len());
         }
     }
 
@@ -221,5 +223,12 @@ impl Cache for DashMapMemoryStore {
                 Err(CacheError::NotFound)
             }
         }
+    }
+}
+
+impl Drop for DashMapMemoryStore {
+    fn drop(&mut self) {
+        log::info!("Dropping dashmap memory store");
+        self.memory.clear();
     }
 }

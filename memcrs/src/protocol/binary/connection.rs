@@ -89,18 +89,18 @@ impl MemcacheBinaryConnection {
                     self.buffer = self.buffer.split_off(skip as usize);
                 }
                 self.skip_bytes(skip).await?;
-                self.buffer.clear();
+                self.buffer = BytesMut::with_capacity(MemcacheBinaryConnection::get_default_buffer_size(self.item_size_limit));
                 Ok(Some(BinaryRequest::ItemTooLarge(request)))
             }
             _ => {
-                self.buffer.clear();
+                self.buffer = BytesMut::with_capacity(MemcacheBinaryConnection::get_default_buffer_size(self.item_size_limit));
                 Ok(Some(frame))
             }
         }
     }
 
     fn get_default_buffer_size(_item_size_limit: u32) -> usize {
-        4096
+        1024
     }
 
 
@@ -168,7 +168,6 @@ impl MemcacheBinaryConnection {
     }
 
     pub async fn shutdown(&mut self) -> io::Result<()> {
-        self.buffer.clear();
         self.stream.shutdown().await?;
         Ok(())
     }
