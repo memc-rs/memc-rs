@@ -147,6 +147,8 @@ pub trait Cache {
         delta: DeltaParam,
         increment: bool,
     ) -> Result<DeltaResult>;
+
+    fn len(&self) -> usize;
 }
 
 #[cfg(test)]

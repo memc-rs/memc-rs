@@ -121,16 +121,16 @@ run_benchmark() {
 }
 
 # Test 1: Read-Heavy Workload (90% reads, 10% writes)
-echo "=== TEST 1: READ-HEAVY WORKLOAD ==="
-run_benchmark "read_heavy" "1:10" "256" "1000000" "R:R" "Read-Heavy Workload"
+#echo "=== TEST 1: READ-HEAVY WORKLOAD ==="
+# run_benchmark "read_heavy" "1:10" "256" "1000000" "R:R" "Read-Heavy Workload"
 
 # Test 2: Write-Heavy Workload (50/50 reads and writes)
 echo "=== TEST 2: WRITE-HEAVY WORKLOAD ==="
 run_benchmark "write_heavy" "5:5" "1024" "1000000" "R:R" "Write-Heavy Workload"
 
 # Test 3: Stress Test (High throughput with Zipfian distribution)
-echo "=== TEST 3: STRESS TEST ==="
-run_benchmark "stress_test" "1:10" "512" "10000000" "G:G" "Stress Test"
+#echo "=== TEST 3: STRESS TEST ==="
+#run_benchmark "stress_test" "1:10" "512" "10000000" "G:G" "Stress Test"
 
 echo "=========================================="
 echo "All benchmarks completed!"

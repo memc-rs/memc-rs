@@ -65,7 +65,7 @@ impl PendingTasksRunner {
                     }
                 },
                 _ = log_interval.tick() => {
-                    log_memory_usage();
+                    self.log_stats();
                 },
             }
         }
@@ -79,5 +79,10 @@ impl PendingTasksRunner {
             }
         }
         log::info!("Worker threads finished");
+    }
+
+    fn log_stats(&self) {
+        log::info!("Items in cache: {}", self.store.len());
+        log_memory_usage();
     }
 }

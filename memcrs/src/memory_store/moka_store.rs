@@ -175,6 +175,10 @@ impl Cache for MokaMemoryStore {
         }
     }
 
+    fn len(&self) -> usize {
+        self.memory.entry_count() as usize
+    }
+
     fn run_pending_tasks(&self) {
         self.memory.run_pending_tasks()
     }

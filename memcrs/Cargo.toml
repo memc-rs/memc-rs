@@ -47,7 +47,7 @@ tikv-jemallocator = { optional = true, version = "0.7.0", features = [
 tikv-jemalloc-ctl = { optional = true, version = "0.7.0", features = ["stats"] }
 
 [dev-dependencies]
-memcache = "0.19.0"
+memcache = "0.20.0"
 nix = { version = "0.31.3", features = ["signal"] }
 test-case = "3.3.1"
 criterion = { version = "0.8.2", features = ["html_reports"] }

@@ -1030,15 +1030,15 @@ checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
 name = "memcache"
-version = "0.19.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c48ab5486280b74dc4e8b2fb4a556f823ff856dd6b6bb10276840f5260d1f6f"
+checksum = "1ec7b4dd840ba97291ac3bc2ea25ffa506b085c1d011983d8909953d418b1466"
 dependencies = [
  "byteorder",
  "enum_dispatch",
  "openssl",
  "r2d2",
- "rand 0.8.5",
+ "rand 0.10.1",
  "url",
 ]
 
