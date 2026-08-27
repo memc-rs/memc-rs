@@ -539,7 +539,7 @@ impl MemcacheBinaryDecoder {
     }
 
     fn request_valid(&self, _src: &mut BytesMut, key_required: bool) -> bool {
-        if self.header.extras_length > MemcacheBinaryDecoder::MAX_EXTRAS_LEN as u8  {
+        if self.header.extras_length > MemcacheBinaryDecoder::MAX_EXTRAS_LEN as u8 {
             return false;
         }
 
@@ -580,7 +580,6 @@ impl Decoder for MemcacheBinaryDecoder {
             result?
         }
 
-        
         if self.header.body_length > self.item_size_limit {
             let result = self.parse_item_too_large(src);
             self.init_parser();

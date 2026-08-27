@@ -131,7 +131,7 @@ impl Cache for DashMapMemoryStore {
     fn len(&self) -> usize {
         self.memory.len()
     }
-    
+
     fn run_pending_tasks(&self) {}
 
     /// Adds a new key-value pair to the cache, but only if the key does not already exist.

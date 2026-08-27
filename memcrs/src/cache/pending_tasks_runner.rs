@@ -2,10 +2,10 @@ use crate::cache::cache::Cache;
 use log::debug;
 use std::sync::Arc;
 use std::time::{Duration, Instant as StdInstant};
+#[cfg(feature = "tikv-alloc")]
+use tikv_jemalloc_ctl::{epoch, stats};
 use tokio::time::{interval_at, Instant};
 use tokio_util::sync::CancellationToken;
-#[cfg(feature = "tikv-alloc")]
-use tikv_jemalloc_ctl::{stats, epoch};
 
 pub struct PendingTasksRunner {
     store: Arc<dyn Cache + Send + Sync>,
@@ -44,10 +44,7 @@ impl PendingTasksRunner {
             start,
             Duration::from_millis(PendingTasksRunner::INTERVAL_IN_MILIS),
         );
-        let mut log_interval = interval_at(
-            start,
-            Duration::from_secs(1),
-        );
+        let mut log_interval = interval_at(start, Duration::from_secs(1));
         loop {
             tokio::select! {
                 _ = self.cancellation_token.cancelled() => {

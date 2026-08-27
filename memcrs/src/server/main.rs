@@ -5,7 +5,6 @@ use std::process;
 use tracing_log::LogTracer;
 extern crate clap;
 
-
 fn get_log_level(verbose: u8) -> tracing::Level {
     // Vary the output based on how many times the user used the "verbose" flag
     // // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'

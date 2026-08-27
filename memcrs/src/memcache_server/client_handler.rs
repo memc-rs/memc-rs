@@ -164,7 +164,7 @@ impl Drop for Client {
         // bug causes a panic. The permit would never be returned to the
         // semaphore.
         self.limit_connections.add_permits(1);
-        debug!("Dropping client: {}",  self.addr);
+        debug!("Dropping client: {}", self.addr);
     }
 }
 
