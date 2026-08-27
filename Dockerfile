@@ -7,7 +7,7 @@ WORKDIR /build
 RUN rustup target add x86_64-unknown-linux-musl
 RUN apt update && apt install -y musl-tools musl-dev
 RUN apt install gcc
-RUN cargo build --release --target=x86_64-unknown-linux-musl --features=jemallocator
+RUN cargo build --release --target=x86_64-unknown-linux-musl --features=tikv-alloc
 
 # Create the execution container by copying the compiled hello world to it and running it
 FROM scratch
