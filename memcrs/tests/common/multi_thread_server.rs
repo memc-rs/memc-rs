@@ -12,8 +12,23 @@ use memcrs::{
 };
 use nix::errno::Errno;
 use tokio_util::sync::CancellationToken;
+use tracing_log::LogTracer;
 
 use crate::common::{random_port::pseudoRanomPort, MemcrsdServerParamsBuilder};
+
+use std::sync::Once;
+
+static INIT_LOGGING: Once = Once::new();
+
+fn init_logging() {
+    INIT_LOGGING.call_once(|| {
+        let _ = LogTracer::init();
+
+        let _ = tracing_subscriber::fmt()
+            .with_test_writer()
+            .try_init();
+    });
+}
 
 pub struct MemcrsdMultiThreadTestServer {
     thread_join_handle: Option<std::thread::JoinHandle<()>>,
@@ -62,13 +77,16 @@ impl Drop for MemcrsdMultiThreadTestServer {
 }
 
 fn spawn_server_args(args: Vec<String>) -> MemcrsdMultiThreadTestServer {
-    let config = match memcache::cli::parser::parse(args) {
+   init_logging();
+
+    let mut config = match memcache::cli::parser::parse(args) {
         Ok(config) => config,
         Err(err) => {
             eprint!("{}", err);
             process::exit(1);
         }
     };
+    config.verbose = 8;
     // From a MokaConfig
     let engine_config = match config.store_engine {
         memcrs::memory_store::StoreEngine::DashMap => {
@@ -83,6 +101,8 @@ fn spawn_server_args(args: Vec<String>) -> MemcrsdMultiThreadTestServer {
     let cancellation_token = ctxt.cancellation_token();
     let port = config.port;
     let handle = std::thread::spawn(move || start_memcrs_server_with_ctxt(config, ctxt));
+    let milis = std::time::Duration::from_millis(800);
+    std::thread::sleep(milis);
     MemcrsdMultiThreadTestServer::new(handle, cancellation_token, port)
 }
 

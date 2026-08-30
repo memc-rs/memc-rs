@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate log;
-
 extern crate num_derive;
+
 pub mod cache;
 pub mod memcache;
 pub mod memcache_server;
