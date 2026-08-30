@@ -21,8 +21,12 @@ impl MemcacheBinaryConnection {
             stream: socket,
             decoder: MemcacheBinaryDecoder::new(item_size_limit),
             encoder: MemcacheBinaryEncoder::new(),
-            buffer: BytesMut::with_capacity(item_size_limit as usize),
+            buffer: BytesMut::with_capacity(MemcacheBinaryConnection::get_default_buffer_size(item_size_limit)),
         }
+    }
+
+    fn get_default_buffer_size(_item_size_limit: u32) -> usize {
+        2048
     }
 
     pub async fn read_frame(&mut self) -> Result<Option<BinaryRequest>, io::Error> {
@@ -36,7 +40,7 @@ impl MemcacheBinaryConnection {
                         return self.handle_frame(frame).await;
                     }
                     None => {
-                        log::debug!("Not enough data buffered");
+                        log::trace!("Not enough data buffered {}", self.buffer.len());
                     }
                 },
                 Err(err) => {
@@ -65,6 +69,8 @@ impl MemcacheBinaryConnection {
                 }
             }
         }
+
+
     }
 
     pub async fn handle_frame(
@@ -87,9 +93,20 @@ impl MemcacheBinaryConnection {
                     self.buffer = self.buffer.split_off(skip as usize);
                 }
                 self.skip_bytes(skip).await?;
+                self.buffer.clear();
                 Ok(Some(BinaryRequest::ItemTooLarge(request)))
             }
-            _ => Ok(Some(frame)),
+            _ => {
+                if self.buffer.is_empty() {
+                    self.buffer.clear();
+                } else {
+                    log::debug!(
+                    "Buffer not empty not clearing {}",
+                    self.buffer.len()
+                );
+                }
+                Ok(Some(frame))
+            }
         }
     }
 
@@ -159,5 +176,28 @@ impl MemcacheBinaryConnection {
     pub async fn shutdown(&mut self) -> io::Result<()> {
         self.stream.shutdown().await?;
         Ok(())
+    }
+}
+
+
+impl Drop for MemcacheBinaryConnection {
+    fn drop(&mut self) {
+        // Add a permit back to the semaphore.
+        //
+        // Doing so unblocks the listener if the max number of
+        // connections has been reached.
+        //
+        // This is done in a `Drop` implementation in order to guarantee that
+        // the permit is added even if the task handling the connection panics.
+        // If `add_permit` was called at the end of the `run` function and some
+        // bug causes a panic. The permit would never be returned to the
+        // semaphore.
+        if self.buffer.len() > 0 {
+            info!("Dropping connection, buffer not empty: {}", self.buffer.len());
+        } else {
+            info!("Dropping connection, buffer empty: {}", self.buffer.len());
+
+        }
+        self.buffer.clear();
     }
 }
