@@ -1,3 +1,4 @@
+.cargo/
 /target
 **/*.rs.bk
 memcrs/target
