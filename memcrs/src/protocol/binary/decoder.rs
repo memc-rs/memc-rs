@@ -513,8 +513,8 @@ impl MemcacheBinaryDecoder {
             header: self.header,
             flags: src.get_u32(),
             expiration: src.get_u32(),
-            key: Bytes::copy_from_slice(&src.split_to(self.header.key_length as usize)),
-            value: Bytes::copy_from_slice(&src.split_to(value_len)),
+            key: src.split_to(self.header.key_length as usize).freeze(),
+            value: src.split_to(value_len).freeze(),
         };
 
         match FromPrimitive::from_u8(self.header.opcode) {
@@ -539,11 +539,11 @@ impl MemcacheBinaryDecoder {
     }
 
     fn request_valid(&self, _src: &mut BytesMut, key_required: bool) -> bool {
-        if self.header.extras_length > MemcacheBinaryDecoder::MAX_EXTRAS_LEN as u8 {
+        if self.header.extras_length > 20 {
             return false;
         }
 
-        if self.header.key_length > MemcacheBinaryDecoder::MAX_KEY_LEN as u16 {
+        if self.header.key_length > 250 {
             return false;
         }
 
@@ -562,9 +562,7 @@ impl MemcacheBinaryDecoder {
 }
 
 impl MemcacheBinaryDecoder {
-    pub const HEADER_LEN: usize = 24;
-    pub const MAX_KEY_LEN: usize = 250;
-    pub const MAX_EXTRAS_LEN: usize = 20;
+    const HEADER_LEN: usize = 24;
 }
 
 impl Decoder for MemcacheBinaryDecoder {
@@ -585,8 +583,7 @@ impl Decoder for MemcacheBinaryDecoder {
             self.init_parser();
             return result;
         }
-        let body_len = self.header.body_length as usize;
-        src.reserve(body_len);
+
         if (self.header.body_length as usize) > src.len() {
             return Ok(None);
         }
