@@ -1,7 +1,6 @@
 use crate::memcache_server::listener_factory::ListenerFactory;
-use crate::{memcache::cli::parser::MemcrsdConfig, memcache_server::server_context::ServerContext};
-extern crate core_affinity;
 use crate::memcache_server::{self, register_cancellation, server_thread};
+use crate::{memcache::cli::parser::MemcrsdConfig, memcache_server::server_context::ServerContext};
 use core_affinity::CoreId;
 use std::sync::Arc;
 use tokio::runtime::Builder;
