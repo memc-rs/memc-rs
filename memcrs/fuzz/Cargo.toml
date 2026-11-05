@@ -11,8 +11,8 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.4.13"
-bytes = "1.12.0"
-tokio-util = { version = "0.7.18", features = ["full"] }
+bytes = "1.12.1"
+tokio-util = { version = "0.7.20", features = ["full"] }
 
 [dependencies.memcrs]
 path = ".."

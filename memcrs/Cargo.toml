@@ -11,24 +11,24 @@ path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-byte-unit = "5.2.5"
-bytes = "1.12.0"
-clap = { version = "4.6.1", features = ["derive", "cargo"] }
+byte-unit = "5.2.6"
+bytes = "1.12.1"
+clap = { version = "4.6.7", features = ["derive", "cargo"] }
 core_affinity = "0.8.3"
-cfg-if = "1.0.4"
+cfg-if = "1.0.5"
 dashmap = "6.2.1"
-futures = "0.3.32"
-futures-util = "0.3.32"
+futures = "0.3.34"
+futures-util = "0.3.34"
 git-version = "0.3.9"
-log = "0.4.33"
-socket2 = { version = "0.6.3", features = ["all"] }
+log = "0.4.35"
+socket2 = { version = "0.6.5", features = ["all"] }
 num_cpus = "1.17.0"
-num-derive = "0.4.2"
+num-derive = "0.5.1"
 num-traits = "0.2.19"
-moka = { version = "0.12.15", features = ["sync"] }
-rand = { version = "0.10.1" }
-serde = "1.0.228"
-serde_derive = "1.0.228"
+moka = { version = "0.12.16", features = ["sync"] }
+rand = { version = "0.10.3" }
+serde = "1.0.229"
+serde_derive = "1.0.229"
 tracing = "0.1.44"
 tracing-attributes = "0.1.31"
 tracing-log = "0.2.0"
@@ -36,8 +36,8 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
   "std",
   "fmt",
 ] }
-tokio = { version = "1.52.3", features = ["full"] }
-tokio-util = { version = "0.7.18", features = ["full"] }
+tokio = { version = "1.54.1", features = ["full"] }
+tokio-util = { version = "0.7.20", features = ["full"] }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 tikv-jemallocator = { optional = true, version = "0.7.0", features = [
@@ -47,12 +47,12 @@ tikv-jemallocator = { optional = true, version = "0.7.0", features = [
 tikv-jemalloc-ctl = { optional = true, version = "0.7.0", features = ["stats"] }
 
 [dev-dependencies]
-memcache = "0.20.0"
+memcache = "0.21.0"
 nix = { version = "0.31.3", features = ["signal"] }
-test-case = "3.3.1"
+test-case = "3.4.1"
 criterion = { version = "0.8.2", features = ["html_reports"] }
-procspawn = { version = "1.0.1", features = ["test-support"] }
-lazy_static = "1.5.0"
+procspawn = { version = "1.0.2", features = ["test-support"] }
+lazy_static = "1.5.1"
 
 [features]
 criterion = []
