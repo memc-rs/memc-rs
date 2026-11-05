@@ -85,6 +85,8 @@ jobs:
             sudo apt-get install make
             sudo apt-get install musl-tools
           fi
+          
+          mkdir -p ~/.cargo
 
           # some additional configuration for cross-compilation on linux
           cat >>~/.cargo/config <<EOF
